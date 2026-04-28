@@ -19,6 +19,23 @@ let currentPageIdx  = 0
 let editingComp     = null
 let currentCompType = 'button'
 let pendingImages   = {}
+let adminFolderStack = []  // [{folderComp, pageIdx}] — folder navigation breadcrumb
+
+function adminPages()    { return adminFolderStack.length ? adminFolderStack[adminFolderStack.length - 1].folderComp.pages : config.pages }
+function adminIdx()      { return adminFolderStack.length ? adminFolderStack[adminFolderStack.length - 1].pageIdx : currentPageIdx }
+function setAdminIdx(i)  { if (adminFolderStack.length) adminFolderStack[adminFolderStack.length - 1].pageIdx = i; else currentPageIdx = i }
+
+function enterFolderAdmin(folderComp) {
+  if (!folderComp.pages?.length) { alert('Add at least one sub-page first.'); return }
+  adminFolderStack.push({ folderComp, pageIdx: 0 })
+  closeModal()
+  renderAll()
+}
+
+function exitFolderAdmin() {
+  adminFolderStack.pop()
+  renderAll()
+}
 
 // ── Server info display ───────────────────────────────
 function applyServerInfo(info) {
@@ -150,7 +167,7 @@ async function loadAndPopulatePlugins() {
   populatePluginSelect(plugins)
 }
 
-const COMP_TYPE_LABELS = { button: 'btn', switch: 'sw', slider: 'slider', knob: 'knob' }
+const COMP_TYPE_LABELS = { button: 'btn', switch: 'sw', slider: 'slider', knob: 'knob', folder: 'folder' }
 
 function populatePluginSelect(plugins) {
   loadedPlugins = plugins || []
@@ -313,22 +330,35 @@ function renderAll() { renderTabs(); renderGrid() }
 let renamingPageIdx = null
 
 function renderTabs() {
-  const tabs = document.getElementById('page-tabs')
+  const pages = adminPages()
+  const idx   = adminIdx()
+  const tabs  = document.getElementById('page-tabs')
   tabs.innerHTML = ''
-  config.pages.forEach((page, i) => {
+
+  if (adminFolderStack.length) {
+    const bc = document.createElement('div')
+    bc.className = 'folder-breadcrumb'
+    const crumbs = adminFolderStack.map(f => f.folderComp.label || 'Folder').join(' › ')
+    bc.innerHTML = `<button class="folder-back-btn" id="folder-back-btn">← Back</button><span class="folder-crumb">📁 ${crumbs}</span>`
+    bc.querySelector('#folder-back-btn').addEventListener('click', exitFolderAdmin)
+    tabs.appendChild(bc)
+  }
+
+  pages.forEach((page, i) => {
     const tab = document.createElement('div')
-    tab.className = 'tab' + (i === currentPageIdx ? ' active' : '')
-    tab.innerHTML = `<span class="tab-name">${page.name}</span>${config.pages.length > 1 ? `<button class="tab-del" data-i="${i}">✕</button>` : ''}`
-    tab.addEventListener('click', (e) => { if (!e.target.classList.contains('tab-del')) { currentPageIdx = i; renderAll() } })
+    tab.className = 'tab' + (i === idx ? ' active' : '')
+    tab.innerHTML = `<span class="tab-name">${page.name}</span>${pages.length > 1 ? `<button class="tab-del" data-i="${i}">✕</button>` : ''}`
+    tab.addEventListener('click', (e) => { if (!e.target.classList.contains('tab-del')) { setAdminIdx(i); renderAll() } })
     tab.querySelector('.tab-name').addEventListener('dblclick', (e) => { e.stopPropagation(); openRenameModal(i) })
     tabs.appendChild(tab)
   })
   tabs.querySelectorAll('.tab-del').forEach(btn => {
     btn.addEventListener('click', () => {
       const i = parseInt(btn.dataset.i)
-      if (!confirm(`Delete page "${config.pages[i].name}"?`)) return
-      config.pages.splice(i, 1)
-      if (currentPageIdx >= config.pages.length) currentPageIdx = config.pages.length - 1
+      const pages = adminPages()
+      if (!confirm(`Delete page "${pages[i].name}"?`)) return
+      pages.splice(i, 1)
+      if (adminIdx() >= pages.length) setAdminIdx(pages.length - 1)
       pushConfig(); renderAll()
     })
   })
@@ -336,7 +366,7 @@ function renderTabs() {
 
 function openRenameModal(pageIdx) {
   renamingPageIdx = pageIdx
-  document.getElementById('f-rename-name').value = config.pages[pageIdx].name
+  document.getElementById('f-rename-name').value = adminPages()[pageIdx].name
   document.getElementById('rename-modal').style.display = 'flex'
   setTimeout(() => document.getElementById('f-rename-name').select(), 50)
 }
@@ -350,7 +380,7 @@ function saveRename() {
   if (renamingPageIdx === null) return
   const name = document.getElementById('f-rename-name').value.trim()
   if (!name) return
-  config.pages[renamingPageIdx].name = name
+  adminPages()[renamingPageIdx].name = name
   pushConfig(); renderTabs()
   closeRenameModal()
 }
@@ -366,7 +396,7 @@ function ptrToCell(e, gridEl, cols, rows) {
 
 function renderGrid() {
   const gridEl = document.getElementById('grid')
-  const page   = config.pages[currentPageIdx]
+  const page   = adminPages()[adminIdx()]
   const cols   = page.cols || config.grid.cols
   const rows   = config.grid.rows
   gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`
@@ -514,6 +544,16 @@ function renderGrid() {
           <div class="cell-label">${comp.label || ''}</div>
           <div class="resize-handle"></div>`
         break
+      case 'folder': {
+        const fpCount = (comp.pages || []).length
+        card.innerHTML = `
+          <div class="cell-type-badge">folder</div>
+          <div class="cell-icon">${comp.icon || '📁'}</div>
+          <div class="cell-label">${comp.label || 'Folder'}</div>
+          ${fpCount ? `<div class="cell-hold-badge">${fpCount}p</div>` : ''}
+          <div class="resize-handle"></div>`
+        break
+      }
       default:
         card.innerHTML = `
           <div class="cell-icon">${comp.icon || ''}</div>
@@ -571,7 +611,7 @@ function renderGrid() {
       function onUp() {
         card.style.cursor = ''
         if (moved) pushConfig()
-        else openModal(currentPageIdx, comp.id, comp.col, comp.row)
+        else openModal(adminIdx(), comp.id, comp.col, comp.row)
         card.removeEventListener('pointermove', onMove)
         card.removeEventListener('pointerup', onUp)
       }
@@ -591,8 +631,9 @@ function setCompType(type) {
   currentCompType = type
   const uiType = type === 'toggle' ? 'switch' : type
   document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === uiType))
-  for (const t of ['button', 'switch', 'slider', 'knob', 'spotify', 'tile', 'voice', 'plugin-tile']) {
-    document.getElementById(`comp-${t}`).style.display = t === uiType ? 'block' : 'none'
+  for (const t of ['button', 'switch', 'slider', 'knob', 'spotify', 'tile', 'voice', 'plugin-tile', 'folder']) {
+    const el = document.getElementById(`comp-${t}`)
+    if (el) el.style.display = t === uiType ? 'block' : 'none'
   }
 }
 
@@ -607,7 +648,7 @@ function showActionFields(type) {
 function openModal(pageIdx, compId, col, row) {
   editingComp   = { pageIdx, compId, col: col || 1, row: row || 1 }
   pendingImages = {}
-  const comp    = compId ? config.pages[pageIdx].components.find(c => c.id === compId) : null
+  const comp    = compId ? adminPages()[pageIdx].components.find(c => c.id === compId) : null
 
   document.getElementById('modal-title').textContent    = comp ? 'Edit' : 'Add'
   document.getElementById('modal-delete').style.display = comp ? 'block' : 'none'
@@ -723,6 +764,10 @@ function openModal(pageIdx, compId, col, row) {
     document.getElementById('ptile-field').value     = comp?.pluginTileField || 'value'
   }
 
+  if (uiType === 'folder') {
+    renderFolderPagesList(comp, pageIdx, compId)
+  }
+
   document.getElementById('drawer').classList.add('open')
 }
 
@@ -742,7 +787,7 @@ function populatePageTargets(selectedId = null) { fillPageSelect('f-page-target'
 
 function saveModal() {
   const { pageIdx, compId, col, row } = editingComp
-  const components = config.pages[pageIdx].components
+  const components = adminPages()[pageIdx].components
   const existing   = compId ? components.find(c => c.id === compId) : null
 
   const colSpan = Math.max(1, parseInt(document.getElementById('f-col-span').value) || 1)
@@ -883,6 +928,16 @@ function saveModal() {
     }
   }
 
+  if (currentCompType === 'folder') {
+    fields = {
+      componentType: 'folder',
+      icon:  ea.icon  || '📁',
+      label: ea.label || 'Folder',
+      color: ea.color,
+      pages: existing?.pages || []
+    }
+  }
+
   if (existing) {
     Object.assign(existing, fields, { colSpan, rowSpan })
   } else {
@@ -895,7 +950,8 @@ function saveModal() {
 
 function deleteComp() {
   const { pageIdx, compId } = editingComp
-  config.pages[pageIdx].components = config.pages[pageIdx].components.filter(c => c.id !== compId)
+  const page = adminPages()[pageIdx]
+  page.components = page.components.filter(c => c.id !== compId)
   pushConfig(); renderGrid(); closeModal()
 }
 
@@ -907,8 +963,9 @@ function saveNewPage() {
   const pageCols = parseInt(document.getElementById('f-page-cols').value) || undefined
   const page     = { id: 'page-' + Date.now(), name, components: [] }
   if (pageCols) page.cols = pageCols
-  config.pages.push(page)
-  currentPageIdx = config.pages.length - 1
+  const pages = adminPages()
+  pages.push(page)
+  setAdminIdx(pages.length - 1)
   pushConfig(); renderAll(); closePageModal()
 }
 
@@ -921,7 +978,7 @@ function openPageModal() {
 
 // ── Component panel ───────────────────────────────────
 function cpTypeIcon(compType) {
-  const icons = { button: '⬛', switch: '⊙', slider: '▮', knob: '◎', tile: '📊', spotify: '🎵', voice: '🎤', 'plugin-tile': '🔌' }
+  const icons = { button: '⬛', switch: '⊙', slider: '▮', knob: '◎', tile: '📊', spotify: '🎵', voice: '🎤', 'plugin-tile': '🔌', folder: '📁' }
   return icons[compType] || '⬛'
 }
 
@@ -936,12 +993,13 @@ function compDefaults(compType) {
     case 'spotify':     return { color: '#0f172a', label: '', action: { type: 'builtin', key: 'media.playPause' } }
     case 'voice':       return { icon: '🎤', label: 'Voice', color: '#1e293b', voiceMode: 'smart' }
     case 'plugin-tile': return { ...base, color: '#0f172a', pluginTileId: '', pluginTileEvent: '', pluginTileField: 'value' }
+    case 'folder':      return { icon: '📁', label: 'Folder', color: '#1e293b', pages: [{ id: `fp-${Date.now()}`, name: 'Page 1', components: [] }] }
     default: return base
   }
 }
 
 function createComponentAtCell(compType, pluginKey, label, col, row, options = {}) {
-  const page = config.pages[currentPageIdx]
+  const page = adminPages()[adminIdx()]
   const id   = `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
   const defs = compDefaults(compType)
   Object.assign(defs, options)
@@ -1011,6 +1069,7 @@ function renderComponentPanel() {
     { compType: 'knob',   pluginKey: null, label: 'Knob',     icon: '◎',  options: {} },
     { compType: 'tile',   pluginKey: null, label: 'Info Tile',icon: '📊', options: {} },
     { compType: 'voice',  pluginKey: null, label: 'Voice',    icon: '🎤', options: {} },
+    { compType: 'folder', pluginKey: null, label: 'Folder',   icon: '📁', options: {} },
   ]
   panel.appendChild(makeCpSection('Controls', coreItems))
 
@@ -1293,7 +1352,7 @@ function setAppearanceFromComp(comp, uiType) {
     document.getElementById('ea-img-clear-btn').style.display = 'none'
   }
 
-  const hasIcon   = ['button','voice'].includes(uiType)
+  const hasIcon   = ['button','voice','folder'].includes(uiType)
   const hasImage  = uiType === 'button'
   const hasLabel  = uiType !== 'spotify'
   const hasActive = uiType === 'switch'
@@ -1329,6 +1388,39 @@ function getAppearanceFields(existing) {
     color: currentGradient || document.getElementById('ea-color').value,
     image,
   }
+}
+
+// ── Folder sub-pages UI ───────────────────────────────
+function renderFolderPagesList(comp, pageIdx, compId) {
+  const list = document.getElementById('folder-pages-list')
+  list.innerHTML = ''
+  const folderPages = comp?.pages || []
+  if (!folderPages.length) {
+    list.innerHTML = '<div class="field-hint folder-empty-hint">No sub-pages yet. Click "+ Add page" to create one.</div>'
+    return
+  }
+  folderPages.forEach((fp, i) => {
+    const row = document.createElement('div')
+    row.className = 'folder-page-row'
+    row.innerHTML = `
+      <span class="folder-page-name">${fp.name}</span>
+      <div class="folder-page-btns">
+        <button class="btn-sm" data-rename="${i}">Rename</button>
+        ${folderPages.length > 1 ? `<button class="btn-sm btn-sm-danger" data-del="${i}">✕</button>` : ''}
+      </div>`
+    row.querySelector(`[data-rename="${i}"]`)?.addEventListener('click', () => {
+      const name = prompt('Page name:', fp.name)
+      if (!name?.trim()) return
+      const c = adminPages()[pageIdx].components.find(c => c.id === compId)
+      if (c?.pages?.[i]) { c.pages[i].name = name.trim(); pushConfig(); renderFolderPagesList(c, pageIdx, compId) }
+    })
+    row.querySelector(`[data-del="${i}"]`)?.addEventListener('click', () => {
+      if (!confirm(`Delete "${fp.name}"?`)) return
+      const c = adminPages()[pageIdx].components.find(c => c.id === compId)
+      if (c) { c.pages.splice(i, 1); pushConfig(); renderFolderPagesList(c, pageIdx, compId) }
+    })
+    list.appendChild(row)
+  })
 }
 
 // ── Event wiring ──────────────────────────────────────
@@ -1384,5 +1476,27 @@ document.getElementById('rename-modal').addEventListener('click', (e) => {
 })
 document.getElementById('rename-modal-save').addEventListener('click', saveRename)
 document.getElementById('f-rename-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveRename() })
+
+// ── Folder events ──────────────────────────────────────
+document.getElementById('folder-add-page-btn').addEventListener('click', () => {
+  if (!editingComp) return
+  const { pageIdx, compId } = editingComp
+  const comp = adminPages()[pageIdx].components.find(c => c.id === compId)
+  if (!comp) return
+  if (!comp.pages) comp.pages = []
+  const name = prompt('Sub-page name:', `Page ${comp.pages.length + 1}`)
+  if (!name?.trim()) return
+  comp.pages.push({ id: `fp-${Date.now()}`, name: name.trim(), components: [] })
+  pushConfig()
+  renderFolderPagesList(comp, pageIdx, compId)
+  renderGrid()
+})
+
+document.getElementById('folder-edit-btn').addEventListener('click', () => {
+  if (!editingComp) return
+  const { pageIdx, compId } = editingComp
+  const comp = adminPages()[pageIdx].components.find(c => c.id === compId)
+  if (comp) enterFolderAdmin(comp)
+})
 
 init()

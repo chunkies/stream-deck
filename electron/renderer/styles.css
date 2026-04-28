@@ -762,3 +762,25 @@ body {
 .plugin-reload-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; padding: 0 0 4px }
 .plugin-comp-hint { color: #818cf8; background: rgba(79,70,229,0.08); border: 1px solid rgba(79,70,229,0.2); border-radius: 5px; padding: 5px 8px; font-size: 11px; margin-bottom: 2px }
 
+/* ──────────────── Folder ──────────────── */
+.folder-breadcrumb { display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px 0; flex-shrink: 0 }
+.folder-back-btn {
+  padding: 4px 10px; font-size: 12px; border-radius: 6px;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text); cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.folder-back-btn:hover { background: rgba(255,255,255,0.12) }
+.folder-crumb { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.folder-pages-section { margin-top: 8px }
+.folder-section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px }
+.folder-section-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em }
+.folder-pages-list { display: flex; flex-direction: column; gap: 4px }
+.folder-page-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px; padding: 6px 10px;
+}
+.folder-page-name { font-size: 13px; color: var(--text) }
+.folder-page-btns { display: flex; gap: 5px }
+.folder-empty-hint { color: var(--text-muted); font-size: 12px; padding: 4px 0 }
+
