@@ -37,20 +37,20 @@
     </div>
 
     <!-- Claude API key (for AI voice) -->
-    <div class="obs-block">
+    <div class="s-card">
       <div class="section-label">AI Voice (optional)</div>
-      <div class="obs-field">
+      <div class="s-field">
         <label>Claude API key</label>
         <input id="claude-api-key" type="password" placeholder="sk-ant-…" autocomplete="off">
       </div>
-      <div class="obs-actions">
+      <div class="s-row">
         <button id="claude-save-btn" class="btn-secondary">Save key</button>
         <span class="field-hint" style="font-size:11px">Used by Voice buttons in AI mode</span>
       </div>
     </div>
 
     <!-- Pro license -->
-    <div class="obs-block pro-block">
+    <div class="s-card pro-block">
       <div class="section-label">
         License
         <span id="pro-badge" class="pro-badge pro-badge-free">Free</span>
@@ -60,11 +60,11 @@
         <button id="pro-deactivate-btn" class="btn-sm btn-sm-danger" style="margin-top:6px">Deactivate</button>
       </div>
       <div id="pro-inactive-view">
-        <div class="obs-field">
+        <div class="s-field">
           <label>License key</label>
           <input id="pro-license-key" type="text" placeholder="SD-XXXXXXXX-XXXXXXXX-XXXXXXXX" autocomplete="off">
         </div>
-        <div class="obs-actions">
+        <div class="s-row">
           <button id="pro-activate-btn" class="btn-secondary">Activate</button>
           <a id="pro-buy-link" href="#" class="field-hint pro-buy-link">Get Pro ($8/mo) →</a>
         </div>
@@ -73,28 +73,28 @@
     </div>
 
     <!-- Grid settings -->
-    <div class="obs-block">
+    <div class="s-card">
       <div class="section-label">Grid</div>
       <div style="display:flex;gap:8px">
-        <div class="obs-field" style="flex:1">
+        <div class="s-field" style="flex:1">
           <label>Columns</label>
           <input id="grid-cols" type="number" value="3" min="1" max="8">
         </div>
-        <div class="obs-field" style="flex:1">
+        <div class="s-field" style="flex:1">
           <label>Rows</label>
           <input id="grid-rows" type="number" value="4" min="1" max="8">
         </div>
       </div>
-      <div class="obs-actions" style="margin-top:2px">
+      <div class="s-row" style="margin-top:2px">
         <button id="grid-save-btn" class="btn-secondary">Apply</button>
         <span class="field-hint" style="font-size:11px">Per-page cols override this</span>
       </div>
     </div>
 
     <!-- Import / export -->
-    <div class="obs-block">
+    <div class="s-card">
       <div class="section-label">Layout</div>
-      <div class="obs-actions" style="gap:6px">
+      <div class="s-row" style="gap:6px">
         <button id="export-btn" class="btn-secondary" style="flex:1">Export</button>
         <button id="import-btn" class="btn-secondary" style="flex:1">Import</button>
       </div>
