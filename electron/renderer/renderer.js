@@ -25,6 +25,9 @@ let editingSlot     = null
 let currentCompType = 'button'
 let pendingImages   = {}
 let dragSrc         = null
+let proStatus       = { active: false }
+
+const PURCHASE_URL = 'https://chunkies.gumroad.com/l/streamdeck-pro'
 
 // ── Init ──────────────────────────────────────────────
 async function init() {
@@ -58,6 +61,11 @@ async function init() {
   if (config.claudeApiKey) {
     document.getElementById('claude-api-key').placeholder = '••••••••••••••••••••'
   }
+
+  // Pro license
+  proStatus = await window.api.getProStatus()
+  renderProStatus()
+  wireProSection()
 
   window.api.onServerReady((info) => {
     serverInfo = info
@@ -578,12 +586,17 @@ function saveModal() {
   }
 
   if (currentCompType === 'voice') {
+    const mode = document.getElementById('voice-mode').value
+    if (mode === 'ai' && !proStatus.active) {
+      showUpgradeModal()
+      return
+    }
     slot = {
       componentType: 'voice',
       icon:      document.getElementById('voice-icon').value.trim() || '🎤',
       label:     document.getElementById('voice-label').value.trim() || 'Voice',
       color:     document.getElementById('voice-color').value,
-      voiceMode: document.getElementById('voice-mode').value
+      voiceMode: mode
     }
   }
 
@@ -673,5 +686,74 @@ document.getElementById('claude-save-btn').addEventListener('click', () => {
   document.getElementById('claude-api-key').placeholder = '••••••••••••••••••••'
   pushConfig()
 })
+
+// ── Pro license UI ─────────────────────────────────────
+function renderProStatus() {
+  const badge        = document.getElementById('pro-badge')
+  const activeView   = document.getElementById('pro-active-view')
+  const inactiveView = document.getElementById('pro-inactive-view')
+  if (proStatus.active) {
+    badge.textContent  = 'Pro'
+    badge.className    = 'pro-badge pro-badge-pro'
+    activeView.style.display   = ''
+    inactiveView.style.display = 'none'
+  } else {
+    badge.textContent  = 'Free'
+    badge.className    = 'pro-badge pro-badge-free'
+    activeView.style.display   = 'none'
+    inactiveView.style.display = ''
+  }
+}
+
+function wireProSection() {
+  document.getElementById('pro-buy-link').href = PURCHASE_URL
+  document.getElementById('pro-buy-link').addEventListener('click', (e) => {
+    e.preventDefault()
+    window.api.openMarketplace && window.open ? null : null
+    // openExternal via server-info link trick — just open directly
+    const a = document.createElement('a')
+    a.href = PURCHASE_URL; a.target = '_blank'; a.rel = 'noopener'; a.click()
+  })
+
+  document.getElementById('pro-activate-btn').addEventListener('click', async () => {
+    const key = document.getElementById('pro-license-key').value.trim()
+    const err = document.getElementById('pro-error')
+    err.style.display = 'none'
+    if (!key) return
+    const result = await window.api.activateLicense(key)
+    if (result.ok) {
+      proStatus = await window.api.getProStatus()
+      renderProStatus()
+      document.getElementById('pro-license-key').value = ''
+    } else {
+      err.textContent = result.error || 'Activation failed'
+      err.style.display = ''
+    }
+  })
+
+  document.getElementById('pro-deactivate-btn').addEventListener('click', async () => {
+    await window.api.deactivateLicense()
+    proStatus = { active: false }
+    renderProStatus()
+  })
+
+  // Upgrade modal
+  document.getElementById('upgrade-modal-close').addEventListener('click', closeUpgradeModal)
+  document.getElementById('upgrade-modal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('upgrade-modal')) closeUpgradeModal()
+  })
+  document.getElementById('upgrade-buy-btn').addEventListener('click', () => {
+    const a = document.createElement('a')
+    a.href = PURCHASE_URL; a.target = '_blank'; a.rel = 'noopener'; a.click()
+  })
+}
+
+function showUpgradeModal() {
+  document.getElementById('upgrade-modal').style.display = 'flex'
+}
+
+function closeUpgradeModal() {
+  document.getElementById('upgrade-modal').style.display = 'none'
+}
 
 init()

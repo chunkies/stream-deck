@@ -61,6 +61,29 @@
       </div>
     </div>
 
+    <!-- Pro license -->
+    <div class="obs-block pro-block">
+      <div class="section-label">
+        License
+        <span id="pro-badge" class="pro-badge pro-badge-free">Free</span>
+      </div>
+      <div id="pro-active-view" style="display:none">
+        <div class="field-hint pro-active-text">Pro active — AI voice &amp; premium features unlocked</div>
+        <button id="pro-deactivate-btn" class="btn-sm btn-sm-danger" style="margin-top:6px">Deactivate</button>
+      </div>
+      <div id="pro-inactive-view">
+        <div class="obs-field">
+          <label>License key</label>
+          <input id="pro-license-key" type="text" placeholder="SD-XXXXXXXX-XXXXXXXX-XXXXXXXX" autocomplete="off">
+        </div>
+        <div class="obs-actions">
+          <button id="pro-activate-btn" class="btn-secondary">Activate</button>
+          <a id="pro-buy-link" href="#" class="field-hint pro-buy-link">Get Pro ($8/mo) →</a>
+        </div>
+        <div id="pro-error" class="pro-error" style="display:none"></div>
+      </div>
+    </div>
+
     <!-- Actions -->
     <div class="sidebar-actions">
       <button id="add-page-btn" class="btn-secondary">+ Add Page</button>
@@ -75,6 +98,29 @@
     </div>
   </main>
 
+</div>
+
+<!-- ── Upgrade Modal ── -->
+<div class="modal-overlay" id="upgrade-modal" style="display:none">
+  <div class="modal upgrade-modal-inner">
+    <div class="modal-header">
+      <h2>Upgrade to Pro</h2>
+      <button class="modal-close" id="upgrade-modal-close">✕</button>
+    </div>
+    <div class="modal-body upgrade-body">
+      <div class="upgrade-icon">⚡</div>
+      <p class="upgrade-tagline">AI Voice mode uses Claude to understand natural language and fire the right button automatically.</p>
+      <ul class="upgrade-features">
+        <li>✓ AI Voice button (Claude-powered)</li>
+        <li>✓ Cloud sync <span class="coming-soon">coming soon</span></li>
+        <li>✓ Premium marketplace plugins</li>
+        <li>✓ Priority support</li>
+      </ul>
+      <div class="upgrade-price">$8 / month</div>
+      <button id="upgrade-buy-btn" class="btn-primary upgrade-cta">Get Pro</button>
+      <div class="upgrade-already">Already have a key? Enter it in the License section of the sidebar.</div>
+    </div>
+  </div>
 </div>
 
 <!-- ── Edit Modal ── -->
@@ -290,7 +336,7 @@
           <select id="voice-mode">
             <option value="smart">Smart — match to button label</option>
             <option value="command">Command — run transcript as shell command</option>
-            <option value="ai">AI — Claude interprets intent (requires API key)</option>
+            <option value="ai">AI — Claude interprets intent (Pro)</option>
           </select>
         </div>
         <div class="field-hint" style="padding:4px 0 8px">

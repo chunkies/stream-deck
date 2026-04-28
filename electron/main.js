@@ -3,6 +3,30 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, shell, dialog } = require('electron')
 const path      = require('path')
 const fs        = require('fs')
+const crypto    = require('crypto')
+
+// ── Pro license ────────────────────────────────────────
+const LICENSE_SECRET = 'REDACTED'
+
+function validateLicenseKey(key) {
+  if (!key || typeof key !== 'string') return false
+  // Format: SD-XXXXXXXX-XXXXXXXX-CHECKSUM (all uppercase)
+  const match = key.toUpperCase().match(/^SD-([A-Z0-9]{8})-([A-Z0-9]{8})-([A-Z0-9]{8})$/)
+  if (!match) return false
+  const [, a, b, check] = match
+  const expected = crypto.createHmac('sha256', LICENSE_SECRET)
+    .update(a + b)
+    .digest('hex')
+    .slice(0, 8)
+    .toUpperCase()
+  return check === expected
+}
+
+function getProStatus(cfg) {
+  if (!cfg?.pro?.license) return { active: false }
+  const valid = validateLicenseKey(cfg.pro.license)
+  return { active: valid, license: valid ? cfg.pro.license : null }
+}
 const os        = require('os')
 const QRCode    = require('qrcode')
 const server    = require('./server/index')
@@ -229,6 +253,24 @@ ipcMain.handle('mp:install', async (event, pluginId, downloadUrl) => {
 ipcMain.handle('mp:uninstall', (_, pluginId) => {
   installer.uninstallPlugin(pluginId, pluginsPath)
   server.reloadPlugins(pluginsPath)
+})
+
+// ── Pro IPC ────────────────────────────────────────────
+ipcMain.handle('get-pro-status', () => getProStatus(server.getConfig()))
+
+ipcMain.handle('activate-license', (_, key) => {
+  if (!validateLicenseKey(key)) return { ok: false, error: 'Invalid license key' }
+  const cfg = server.getConfig()
+  cfg.pro = { license: key.toUpperCase(), activatedAt: new Date().toISOString() }
+  server.setConfig(cfg)
+  return { ok: true }
+})
+
+ipcMain.handle('deactivate-license', () => {
+  const cfg = server.getConfig()
+  delete cfg.pro
+  server.setConfig(cfg)
+  return { ok: true }
 })
 
 ipcMain.handle('mp:load-local', async (event) => {
