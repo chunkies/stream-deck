@@ -1,12 +1,10 @@
-const https    = require('https')
+const https     = require('https')
 const WebSocket = require('ws')
-const express  = require('express')
-const path     = require('path')
-const fs       = require('fs')
-const { generateCert } = require('./cert')
-const { executeCommand } = require('./keyboard')
-
-const CONFIG_PATH = path.join(__dirname, '../../config.json')
+const express   = require('express')
+const path      = require('path')
+const fs        = require('fs')
+const { generateCert }                      = require('./cert')
+const { executeCommand, executeBuiltin }    = require('./keyboard')
 
 const DEFAULT_CONFIG = {
   grid: { cols: 3, rows: 4 },
@@ -15,42 +13,39 @@ const DEFAULT_CONFIG = {
       id: 'media',
       name: 'Media',
       slots: [
-        { icon: '⏮', label: 'Prev',       color: '#1e293b', action: { type: 'command', command: 'playerctl previous' } },
-        { icon: '⏯', label: 'Play/Pause', color: '#1e293b', action: { type: 'command', command: 'playerctl play-pause' } },
-        { icon: '⏭', label: 'Next',       color: '#1e293b', action: { type: 'command', command: 'playerctl next' } },
-        { icon: '🔉', label: 'Vol -',      color: '#1e293b', action: { type: 'command', command: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-' } },
-        { icon: '🔊', label: 'Vol +',      color: '#1e293b', action: { type: 'command', command: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+' } },
-        { icon: '🎵', label: 'Spotify',    color: '#14532d', action: { type: 'command', command: 'spotify' } },
-        null, null, null, null, null, null
-      ]
-    },
-    {
-      id: 'system',
-      name: 'System',
-      slots: [
-        { icon: '🎙', label: 'Discord Mute',   color: '#1e293b', action: { type: 'command', command: 'WIN=$(xdotool search --name "Discord" | head -1); [ -n "$WIN" ] && { PREV=$(xdotool getactivewindow 2>/dev/null); xdotool windowfocus --sync "$WIN"; xdotool key ctrl+shift+m; [ -n "$PREV" ] && xdotool windowfocus "$PREV"; }' } },
-        { icon: '🔇', label: 'Discord Deafen', color: '#1e293b', action: { type: 'command', command: 'WIN=$(xdotool search --name "Discord" | head -1); [ -n "$WIN" ] && { PREV=$(xdotool getactivewindow 2>/dev/null); xdotool windowfocus --sync "$WIN"; xdotool key ctrl+shift+d; [ -n "$PREV" ] && xdotool windowfocus "$PREV"; }' } },
-        { icon: '◀',  label: 'Desktop ←',     color: '#1e293b', action: { type: 'command', command: 'xdotool key ctrl+super+Up' } },
-        { icon: '▶',  label: 'Desktop →',     color: '#1e293b', action: { type: 'command', command: 'xdotool key ctrl+super+Down' } },
-        { icon: '🔒', label: 'Lock',           color: '#3b1f1f', action: { type: 'command', command: 'xdg-screensaver lock' } },
-        null, null, null, null, null, null, null
+        { icon: '⏮', label: 'Prev',       color: '#1e293b', action: { type: 'builtin', key: 'media.previous'  } },
+        { icon: '⏯', label: 'Play/Pause', color: '#1e293b', action: { type: 'builtin', key: 'media.playPause' } },
+        { icon: '⏭', label: 'Next',       color: '#1e293b', action: { type: 'builtin', key: 'media.next'      } },
+        { icon: '🔉', label: 'Vol -',      color: '#1e293b', action: { type: 'builtin', key: 'media.volumeDown'} },
+        { icon: '🔊', label: 'Vol +',      color: '#1e293b', action: { type: 'builtin', key: 'media.volumeUp'  } },
+        { icon: '🔇', label: 'Mute',       color: '#1e293b', action: { type: 'builtin', key: 'media.mute'      } },
+        { icon: '🔒', label: 'Lock',       color: '#3b1f1f', action: { type: 'builtin', key: 'system.lock'     } },
+        { icon: '💤', label: 'Sleep',      color: '#1e293b', action: { type: 'builtin', key: 'system.sleep'    } },
+        { icon: '📷', label: 'Screenshot', color: '#1e293b', action: { type: 'builtin', key: 'system.screenshot'} },
+        null, null, null
       ]
     }
   ]
 }
 
-let config       = loadConfig()
-let toggleStates = {}
-let serverInfo   = null
-let wss          = null
+let config          = null
+let configFilePath  = null
+let toggleStates    = {}
+let serverInfo      = null
+let wss             = null
 let connectedClients = 0
 
-function loadConfig() {
+function loadConfig(filePath) {
   try {
-    if (fs.existsSync(CONFIG_PATH)) return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'))
+    if (fs.existsSync(filePath)) return JSON.parse(fs.readFileSync(filePath, 'utf8'))
   } catch {}
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2))
-  return DEFAULT_CONFIG
+  saveConfig(filePath, DEFAULT_CONFIG)
+  return structuredClone(DEFAULT_CONFIG)
+}
+
+function saveConfig(filePath, cfg) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+  fs.writeFileSync(filePath, JSON.stringify(cfg, null, 2))
 }
 
 function broadcast(msg) {
@@ -69,12 +64,16 @@ function handlePress(pageId, slotIndex) {
   const { action } = slot
 
   switch (action.type) {
+    case 'builtin':
+      executeBuiltin(action.key)
+      break
+
     case 'command':
       executeCommand(action.command)
       break
 
     case 'toggle': {
-      const key = `${pageId}:${slotIndex}`
+      const key  = `${pageId}:${slotIndex}`
       toggleStates[key] = !toggleStates[key]
       const active = toggleStates[key]
       executeCommand(active ? action.on : action.off)
@@ -99,11 +98,15 @@ function getInfo()   { return serverInfo }
 function setConfig(newConfig) {
   config       = newConfig
   toggleStates = {}
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2))
+  saveConfig(configFilePath, config)
   broadcast({ type: 'config', config })
 }
 
-async function start(onEvent, port = 3000) {
+async function start(onEvent, port = 3000, paths = {}) {
+  const pwaPath  = paths.pwaPath  || path.join(__dirname, '../../pwa')
+  configFilePath = paths.configPath || path.join(__dirname, '../../config.json')
+  config = loadConfig(configFilePath)
+
   const { key, cert, ip } = generateCert()
 
   const app = express()
@@ -113,7 +116,7 @@ async function start(onEvent, port = 3000) {
     res.send(cert)
   })
   app.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next() })
-  app.use(express.static(path.join(__dirname, '../../pwa')))
+  app.use(express.static(pwaPath))
 
   const server = https.createServer({ key, cert }, app)
   wss = new WebSocket.Server({ server })

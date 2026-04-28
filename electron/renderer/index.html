@@ -21,8 +21,9 @@
       </div>
       <div class="url-row">
         <span class="label">Cert</span>
-        <a id="cert-url" class="url" href="#" target="_blank">Download</a>
+        <a id="cert-url" class="url cert-link" href="#" target="_blank">Download →</a>
       </div>
+      <div id="cert-hint" class="cert-hint"></div>
     </div>
 
     <div class="status-block">
@@ -31,7 +32,7 @@
         <span id="phone-status" class="badge disconnected">Disconnected</span>
       </div>
       <div class="status-row">
-        <span class="label">Last press</span>
+        <span class="label">Last</span>
         <span id="last-press" class="muted">—</span>
       </div>
     </div>
@@ -43,13 +44,10 @@
 
   <!-- ── Main ── -->
   <main class="main">
-
     <div class="page-tabs" id="page-tabs"></div>
-
     <div class="grid-wrap">
       <div class="grid" id="grid"></div>
     </div>
-
   </main>
 
 </div>
@@ -65,7 +63,7 @@
     <div class="modal-body">
       <div class="field-row">
         <label>Icon</label>
-        <input id="f-icon" type="text" maxlength="4" placeholder="emoji or text">
+        <input id="f-icon" type="text" maxlength="4" placeholder="emoji">
       </div>
       <div class="field-row">
         <label>Label</label>
@@ -78,6 +76,7 @@
       <div class="field-row">
         <label>Action</label>
         <select id="f-type">
+          <option value="builtin">Built-in</option>
           <option value="command">Command</option>
           <option value="toggle">Toggle</option>
           <option value="sequence">Sequence</option>
@@ -85,8 +84,16 @@
         </select>
       </div>
 
+      <!-- builtin -->
+      <div id="fields-builtin" class="action-fields">
+        <div class="field-row">
+          <label>Action</label>
+          <select id="f-builtin-key"></select>
+        </div>
+      </div>
+
       <!-- command -->
-      <div id="fields-command" class="action-fields">
+      <div id="fields-command" class="action-fields" style="display:none">
         <div class="field-row">
           <label>Command</label>
           <input id="f-command" type="text" placeholder="e.g. playerctl play-pause">
@@ -96,11 +103,11 @@
       <!-- toggle -->
       <div id="fields-toggle" class="action-fields" style="display:none">
         <div class="field-row">
-          <label>On command</label>
+          <label>On</label>
           <input id="f-toggle-on" type="text" placeholder="command when turning ON">
         </div>
         <div class="field-row">
-          <label>Off command</label>
+          <label>Off</label>
           <input id="f-toggle-off" type="text" placeholder="command when turning OFF">
         </div>
       </div>
@@ -127,7 +134,7 @@
     </div>
 
     <div class="modal-footer">
-      <button id="modal-delete" class="btn-danger">Remove Button</button>
+      <button id="modal-delete" class="btn-danger">Remove</button>
       <button id="modal-save"   class="btn-primary">Save</button>
     </div>
   </div>
@@ -142,7 +149,7 @@
     </div>
     <div class="modal-body">
       <div class="field-row">
-        <label>Page name</label>
+        <label>Name</label>
         <input id="f-page-name" type="text" placeholder="e.g. Gaming">
       </div>
     </div>

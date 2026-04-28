@@ -30,6 +30,13 @@ async function sendServerReady(info) {
 app.whenReady().then(async () => {
   createWindow()
 
+  // Resolve paths correctly for both dev and packaged app
+  const pwaPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'pwa')
+    : path.join(__dirname, '../pwa')
+
+  const configPath = path.join(app.getPath('userData'), 'config.json')
+
   let serverInfo  = null
   let windowReady = false
 
@@ -38,15 +45,18 @@ app.whenReady().then(async () => {
     if (serverInfo) await sendServerReady(serverInfo)
   })
 
-  serverInfo = await server.start((event) => {
-    mainWindow?.webContents.send('deck-event', event)
-  })
+  serverInfo = await server.start(
+    (event) => mainWindow?.webContents.send('deck-event', event),
+    3000,
+    { pwaPath, configPath }
+  )
 
   if (windowReady) await sendServerReady(serverInfo)
 })
 
-ipcMain.handle('get-config',    ()         => server.getConfig())
+ipcMain.handle('get-config',      ()       => server.getConfig())
 ipcMain.handle('get-server-info', ()       => server.getInfo())
-ipcMain.handle('set-config',    (_, cfg)   => server.setConfig(cfg))
+ipcMain.handle('set-config',      (_, cfg) => server.setConfig(cfg))
+ipcMain.handle('get-platform',    ()       => process.platform)
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
