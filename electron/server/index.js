@@ -139,38 +139,6 @@ function stopTilePollers() {
   tileTimers = {}
 }
 
-// ── OBS integration ────────────────────────────────────
-let obs      = null
-let obsReady = false
-
-async function connectOBS(host, port, password) {
-  if (obs) { try { await obs.disconnect() } catch {} }
-  obsReady = false
-  try {
-    const { OBSWebSocket } = require('obs-websocket-js')
-    obs = new OBSWebSocket()
-    obs.on('ConnectionClosed', () => { obsReady = false })
-    await obs.connect(`ws://${host}:${port}`, password || undefined)
-    obsReady = true
-    return true
-  } catch (err) {
-    console.error('OBS connect failed:', err.message)
-    obs = null
-    return false
-  }
-}
-
-async function handleOBSAction(action) {
-  if (!obs || !obsReady) { console.warn('OBS not connected'); return }
-  try {
-    switch (action.obsAction) {
-      case 'switchScene':      await obs.call('SetCurrentProgramScene', { sceneName: action.obsScene }); break
-      case 'toggleRecording':  await obs.call('ToggleRecord'); break
-      case 'toggleStreaming':  await obs.call('ToggleStream'); break
-      case 'muteToggle':       await obs.call('ToggleInputMute', { inputName: action.obsSource }); break
-    }
-  } catch (err) { console.error('OBS action failed:', err.message) }
-}
 
 // ── Spotify poller ─────────────────────────────────────
 let spotifyTimer    = null
@@ -291,9 +259,6 @@ function handlePress(pageId, slotIndex, hold = false) {
     case 'page':
       broadcast({ type: 'navigate', pageId: action.pageId })
       break
-    case 'obs':
-      handleOBSAction(action).catch(err => console.error('OBS:', err.message))
-      break
     case 'plugin': {
       const fn = pluginsMap[action.pluginKey]
       if (fn) {
@@ -408,7 +373,6 @@ async function handleVoiceCommand(transcript, pageId, slotIndex, voiceMode) {
 // ── Public API ─────────────────────────────────────────
 function getConfig()  { return config }
 function getInfo()    { return serverInfo }
-function isOBSReady() { return obsReady }
 
 function setConfig(newConfig) {
   config       = newConfig
@@ -499,13 +463,8 @@ async function start(onEvent, port = 3000, paths = {}) {
   startTilePollers()
   startSpotifyPoller()
 
-  // Auto-connect OBS if settings saved
-  if (config.obsSettings?.host) {
-    const { host: h, port: p, password: pw } = config.obsSettings
-    connectOBS(h, p || 4455, pw).catch(() => {})
-  }
 
   return serverInfo
 }
 
-module.exports = { start, getConfig, setConfig, getInfo, connectOBS, isOBSReady, getPlugins, reloadPlugins }
+module.exports = { start, getConfig, setConfig, getInfo, getPlugins, reloadPlugins }

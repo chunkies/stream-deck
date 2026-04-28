@@ -1,0 +1,45 @@
+{
+  "id": "obs",
+  "name": "OBS Studio",
+  "version": "1.0.0",
+  "description": "Control OBS Studio via WebSocket — switch scenes, toggle recording/streaming, mute sources.",
+  "author": "Stream Deck",
+  "actions": [
+    {
+      "key": "obs.connect",
+      "label": "Connect to OBS",
+      "description": "Save OBS connection settings and connect. Run this once to configure.",
+      "params": [
+        { "key": "host",     "label": "Host",     "type": "text",   "default": "localhost", "placeholder": "localhost" },
+        { "key": "port",     "label": "Port",     "type": "number", "default": 4455 },
+        { "key": "password", "label": "Password", "type": "text",   "placeholder": "leave blank if none" }
+      ]
+    },
+    {
+      "key": "obs.switchScene",
+      "label": "Switch Scene",
+      "description": "Switch OBS to a specific scene.",
+      "params": [
+        { "key": "scene", "label": "Scene name", "type": "text", "placeholder": "Gaming" }
+      ]
+    },
+    {
+      "key": "obs.toggleRecording",
+      "label": "Toggle Recording",
+      "description": "Start or stop recording."
+    },
+    {
+      "key": "obs.toggleStreaming",
+      "label": "Toggle Streaming",
+      "description": "Start or stop the stream."
+    },
+    {
+      "key": "obs.muteToggle",
+      "label": "Mute / Unmute Source",
+      "description": "Toggle mute on an audio input.",
+      "params": [
+        { "key": "source", "label": "Source name", "type": "text", "placeholder": "Mic/AUX" }
+      ]
+    }
+  ]
+}

@@ -8,8 +8,6 @@ contextBridge.exposeInMainWorld('api', {
   uploadMedia:   (filePath)     => ipcRenderer.invoke('upload-media', filePath),
   getAutostart:  ()             => ipcRenderer.invoke('get-autostart'),
   setAutostart:  (val)          => ipcRenderer.invoke('set-autostart', val),
-  connectOBS:    (opts)         => ipcRenderer.invoke('connect-obs', opts),
-  getOBSStatus:  ()             => ipcRenderer.invoke('get-obs-status'),
   getPlugins:      ()             => ipcRenderer.invoke('get-plugins'),
   reloadPlugins:   ()             => ipcRenderer.invoke('reload-plugins'),
   openMarketplace:    ()        => ipcRenderer.invoke('open-marketplace'),

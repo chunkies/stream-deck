@@ -25,18 +25,6 @@
       <div class="status-row"><span class="label">Last</span><span id="last-press" class="muted">—</span></div>
     </div>
 
-    <!-- OBS integration -->
-    <div class="obs-block">
-      <div class="section-label">OBS WebSocket</div>
-      <div class="obs-field"><label>Host</label><input id="obs-host" type="text" value="localhost" placeholder="localhost"></div>
-      <div class="obs-field"><label>Port</label><input id="obs-port" type="number" value="4455" min="1" max="65535"></div>
-      <div class="obs-field"><label>Password</label><input id="obs-password" type="password" placeholder="optional"></div>
-      <div class="obs-actions">
-        <button id="obs-connect-btn" class="btn-secondary">Connect</button>
-        <span id="obs-status-badge" class="obs-status-badge">Not connected</span>
-      </div>
-    </div>
-
     <!-- Startup -->
     <div class="status-block">
       <div class="status-row">
@@ -199,7 +187,6 @@
             <option value="command">Command</option>
             <option value="sequence">Sequence</option>
             <option value="page">Go to Page</option>
-            <option value="obs">OBS Action</option>
             <option value="plugin">Plugin</option>
           </select>
         </div>
@@ -231,19 +218,6 @@
             <span class="field-hint">Plugins live in <code>userData/plugins/</code></span>
           </div>
           <div id="plugin-params"></div>
-        </div>
-        <div id="action-obs" style="display:none">
-          <div class="field-row">
-            <label>OBS Action</label>
-            <select id="f-obs-action">
-              <option value="switchScene">Switch Scene</option>
-              <option value="toggleRecording">Toggle Recording</option>
-              <option value="toggleStreaming">Toggle Streaming</option>
-              <option value="muteToggle">Mute Toggle</option>
-            </select>
-          </div>
-          <div id="obs-scene-row" class="field-row" style="display:none"><label>Scene Name</label><input id="f-obs-scene" type="text" placeholder="Gaming"></div>
-          <div id="obs-source-row" class="field-row" style="display:none"><label>Source Name</label><input id="f-obs-source" type="text" placeholder="Mic/AUX"></div>
         </div>
 
         <!-- Hold action -->

@@ -50,19 +50,10 @@ async function init() {
 
   populateBuiltinSelect()
   wireImageUploads()
-  wireOBSActionSelect()
   wirePluginReload()
   await loadAndPopulatePlugins()
   renderAll()
 
-  // Load OBS settings (password not persisted)
-  if (config.obsSettings) {
-    document.getElementById('obs-host').value = config.obsSettings.host || 'localhost'
-    document.getElementById('obs-port').value = config.obsSettings.port || 4455
-  }
-  if (await window.api.getOBSStatus()) {
-    setOBSBadge(true)
-  }
 
   // Load autostart
   const autostart = await window.api.getAutostart()
@@ -120,12 +111,6 @@ function populateBuiltinSelect() {
   }
 }
 
-function setOBSBadge(connected) {
-  const el = document.getElementById('obs-status-badge')
-  el.textContent  = connected ? '● Connected' : '● Disconnected'
-  el.className    = 'obs-status-badge ' + (connected ? 'connected' : 'disconnected')
-}
-
 // ── Image uploads ─────────────────────────────────────
 function wireImageUploads() {
   const pairs = [
@@ -168,7 +153,6 @@ function setImageField(previewId, clearId, url) {
   else hideImagePreview(previewId, clearId)
 }
 
-// ── OBS action select ─────────────────────────────────
 // ── Plugin support ────────────────────────────────────
 let loadedPlugins = []
 
@@ -254,13 +238,6 @@ function wirePluginReload() {
   })
   document.getElementById('f-plugin-action').addEventListener('change', (e) => {
     renderPluginParams(e.target.value, {})
-  })
-}
-
-function wireOBSActionSelect() {
-  document.getElementById('f-obs-action').addEventListener('change', (e) => {
-    document.getElementById('obs-scene-row').style.display  = e.target.value === 'switchScene' ? 'grid' : 'none'
-    document.getElementById('obs-source-row').style.display = e.target.value === 'muteToggle'  ? 'grid' : 'none'
   })
 }
 
@@ -426,7 +403,7 @@ function setCompType(type) {
 }
 
 function showActionFields(type) {
-  for (const t of ['builtin', 'hotkey', 'command', 'sequence', 'page', 'obs', 'plugin']) {
+  for (const t of ['builtin', 'hotkey', 'command', 'sequence', 'page', 'plugin']) {
     document.getElementById(`action-${t}`).style.display = t === type ? 'block' : 'none'
   }
   if (type === 'page') populatePageTargets(document.getElementById('f-page-target').value || null)
@@ -463,12 +440,6 @@ function openModal(pageIdx, slotIdx) {
       document.getElementById('f-seq-delay').value = a.delay ?? 150
     }
     if (a?.type === 'page') populatePageTargets(a.pageId)
-    if (a?.type === 'obs') {
-      document.getElementById('f-obs-action').value = a.obsAction || 'switchScene'
-      document.getElementById('f-obs-scene').value  = a.obsScene  || ''
-      document.getElementById('f-obs-source').value = a.obsSource || ''
-      document.getElementById('f-obs-action').dispatchEvent(new Event('change'))
-    }
     if (a?.type === 'plugin') {
       document.getElementById('f-plugin-action').value = a.pluginKey || ''
       renderPluginParams(a.pluginKey || '', a.params || {})
@@ -559,7 +530,6 @@ function saveModal() {
       case 'command':  action = { type: 'command',  command:  document.getElementById('f-command').value.trim() }; break
       case 'sequence': action = { type: 'sequence', commands: document.getElementById('f-sequence').value.split('\n').map(s => s.trim()).filter(Boolean), delay: parseInt(document.getElementById('f-seq-delay').value) || 150 }; break
       case 'page':     action = { type: 'page',     pageId:   document.getElementById('f-page-target').value }; break
-      case 'obs':      action = { type: 'obs', obsAction: document.getElementById('f-obs-action').value, obsScene: document.getElementById('f-obs-scene').value.trim(), obsSource: document.getElementById('f-obs-source').value.trim() }; break
       case 'plugin':   action = { type: 'plugin', pluginKey: document.getElementById('f-plugin-action').value, params: collectPluginParams() }; break
     }
     const holdEnabled = document.getElementById('f-hold-enable').checked
@@ -697,22 +667,6 @@ document.getElementById('autostart-toggle').addEventListener('change', e => {
   window.api.setAutostart(e.target.checked)
 })
 
-document.getElementById('obs-connect-btn').addEventListener('click', async () => {
-  const host     = document.getElementById('obs-host').value.trim()     || 'localhost'
-  const port     = parseInt(document.getElementById('obs-port').value)  || 4455
-  const password = document.getElementById('obs-password').value
-
-  const btn = document.getElementById('obs-connect-btn')
-  btn.disabled = true; btn.textContent = 'Connecting…'
-
-  const ok = await window.api.connectOBS({ host, port, password })
-
-  btn.disabled = false; btn.textContent = 'Connect'
-  setOBSBadge(ok)
-
-  config.obsSettings = { host, port } // password not persisted — re-enter each session
-  pushConfig()
-})
 
 document.getElementById('claude-save-btn').addEventListener('click', () => {
   const key = document.getElementById('claude-api-key').value.trim()

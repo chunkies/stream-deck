@@ -57,6 +57,10 @@ function createSDK(pluginId, pluginsDataDir, broadcastFn) {
     // Broadcast a message to all connected PWA clients
     broadcast: (event) => broadcastFn({ type: 'pluginEvent', pluginId, ...event }),
 
+    // WebSocket constructor (ws package) — lets plugins open outbound WS connections
+    // without bundling ws themselves
+    ws: require('ws'),
+
     // Logging (prefixed so dev knows which plugin logged)
     log: {
       info:  (...args) => console.log(`[plugin:${pluginId}]`,  ...args),
