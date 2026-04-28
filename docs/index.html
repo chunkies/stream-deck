@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plugin SDK Docs — Stream Deck</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+
+    :root {
+      --bg:      #0a0f1e;
+      --surface: #111827;
+      --card:    #1e293b;
+      --border:  rgba(255,255,255,0.08);
+      --accent:  #7c3aed;
+      --accent2: #a78bfa;
+      --green:   #4ade80;
+      --blue:    #60a5fa;
+      --amber:   #fb923c;
+      --text:    #e2e8f0;
+      --muted:   #94a3b8;
+      --code-bg: #0d1117;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .sidebar-title {
+      padding: 0 20px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .sidebar-logo { font-size: 16px; font-weight: 700; color: var(--text); display: block; margin-bottom: 4px }
+    .sidebar-logo span { color: var(--accent2) }
+    .sidebar a {
+      display: block;
+      padding: 6px 20px;
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+    }
+    .sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.03) }
+    .sidebar a.active { color: var(--accent2); border-left-color: var(--accent2); background: rgba(124,58,237,0.08) }
+    .sidebar-group {
+      padding: 14px 20px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: rgba(148,163,184,0.5);
+    }
+
+    /* ── Content ── */
+    .content {
+      flex: 1;
+      max-width: 840px;
+      padding: 60px 56px;
+      overflow-x: hidden;
+    }
+
+    h1 { font-size: 36px; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 12px }
+    h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; margin: 56px 0 16px; padding-top: 56px; border-top: 1px solid var(--border) }
+    h2:first-of-type { border-top: none; padding-top: 0; margin-top: 36px }
+    h3 { font-size: 16px; font-weight: 600; margin: 28px 0 10px; color: var(--accent2) }
+    p { margin-bottom: 16px; color: var(--muted) }
+    p strong { color: var(--text) }
+    ul, ol { padding-left: 20px; margin-bottom: 16px; color: var(--muted) }
+    li { margin-bottom: 6px }
+    a { color: var(--accent2) }
+
+    .lead { font-size: 17px; color: var(--text); margin-bottom: 32px; line-height: 1.6 }
+
+    /* ── Code ── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px 24px;
+      overflow-x: auto;
+      margin: 16px 0 24px;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    code {
+      font-family: 'Fira Code', 'Cascadia Code', 'SF Mono', Menlo, monospace;
+    }
+    pre code { color: #93c5fd }
+    p code, li code {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 13px;
+      color: #93c5fd;
+    }
+
+    /* ── Syntax highlight classes ── */
+    .kw  { color: #c084fc }  /* keyword */
+    .str { color: #86efac }  /* string */
+    .cmt { color: #4b5563 }  /* comment */
+    .fn  { color: #60a5fa }  /* function */
+    .num { color: #fb923c }  /* number */
+    .key { color: #e2e8f0 }  /* object key */
+
+    /* ── Callout ── */
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: rgba(124,58,237,0.07);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 16px 0 24px;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .callout.tip  { border-color: var(--green);  background: rgba(74,222,128,0.06) }
+    .callout.warn { border-color: var(--amber); background: rgba(251,146,60,0.06) }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px }
+    th { text-align: left; padding: 10px 14px; background: var(--card); color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border) }
+    td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--muted) }
+    td:first-child { color: #93c5fd; font-family: monospace; font-size: 13px }
+    tr:hover td { background: rgba(255,255,255,0.02) }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+    .badge-required { background: rgba(248,113,113,0.2); color: #f87171 }
+    .badge-optional { background: rgba(148,163,184,0.15); color: var(--muted) }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none }
+      .content { padding: 32px 20px }
+      h1 { font-size: 28px }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sidebar-title">
+    <a href="../landing/" class="sidebar-logo">Stream<span>Deck</span></a>
+    Plugin SDK Docs
+  </div>
+  <div class="sidebar-group">Getting Started</div>
+  <a href="#overview">Overview</a>
+  <a href="#quickstart">Quick start</a>
+  <a href="#file-structure">File structure</a>
+
+  <div class="sidebar-group">Reference</div>
+  <a href="#manifest">manifest.json</a>
+  <a href="#index-js">index.js patterns</a>
+  <a href="#sdk-shell">sdk.shell</a>
+  <a href="#sdk-storage">sdk.storage</a>
+  <a href="#sdk-http">sdk.http</a>
+  <a href="#sdk-broadcast">sdk.broadcast</a>
+  <a href="#sdk-log">sdk.log</a>
+  <a href="#params">Plugin params (UI)</a>
+
+  <div class="sidebar-group">Publishing</div>
+  <a href="#publish">Publish to marketplace</a>
+  <a href="#local-dev">Local development</a>
+  <a href="#paid-plugins">Paid plugins</a>
+
+  <div class="sidebar-group">Examples</div>
+  <a href="#example-basic">Basic plugin</a>
+  <a href="#example-text-macro">Text Macro plugin</a>
+  <a href="#example-system-info">System Info plugin</a>
+</nav>
+
+<!-- Main content -->
+<main class="content">
+
+  <h1>Plugin SDK</h1>
+  <p class="lead">Build plugins for Stream Deck in two files. Your plugin gets a full SDK for running shell commands, persisting data, making HTTP requests, and pushing events to connected phones.</p>
+
+  <!-- ── Overview ── -->
+  <h2 id="overview">Overview</h2>
+  <p>Stream Deck plugins are Node.js modules that live in <code>userData/plugins/&lt;id&gt;/</code>. Each plugin exposes a map of <strong>action handlers</strong> — functions that fire when a button configured to that action is pressed on the phone.</p>
+  <p>Plugins run inside the same Electron process as the server, with access to Node.js built-ins and the Stream Deck SDK. They are loaded once at startup and hot-reloaded on demand without restarting the app.</p>
+
+  <!-- ── Quickstart ── -->
+  <h2 id="quickstart">Quick start</h2>
+  <p>Create a folder with two files:</p>
+  <pre><code>my-plugin/
+  manifest.json
+  index.js</code></pre>
+  <p>Minimal <code>manifest.json</code>:</p>
+  <pre><code><span class="key">{</span>
+  <span class="str">"id"</span><span class="key">:</span>      <span class="str">"my-plugin"</span>,
+  <span class="str">"name"</span><span class="key">:</span>    <span class="str">"My Plugin"</span>,
+  <span class="str">"version"</span><span class="key">:</span> <span class="str">"1.0.0"</span>,
+  <span class="str">"actions"</span><span class="key">:</span> [
+    <span class="key">{</span> <span class="str">"key"</span><span class="key">:</span> <span class="str">"my-plugin.doThing"</span>, <span class="str">"label"</span><span class="key">:</span> <span class="str">"Do thing"</span> <span class="key">}</span>
+  ]
+<span class="key">}</span></code></pre>
+
+  <p>Minimal <code>index.js</code> — factory pattern (recommended):</p>
+  <pre><code><span class="cmt">// index.js</span>
+<span class="kw">module</span>.<span class="fn">exports</span> = (<span class="key">sdk</span>) => ({
+
+  <span class="str">'my-plugin.doThing'</span>: <span class="kw">async</span> (<span class="key">params</span>) => {
+    <span class="kw">const</span> out = <span class="kw">await</span> sdk.shell.<span class="fn">execAsync</span>(<span class="str">'date'</span>)
+    sdk.log.<span class="fn">info</span>(<span class="str">'Current date: '</span> + out)
+  }
+
+})</code></pre>
+
+  <p>Load it in the app: open the Plugin Marketplace → Developer tab → "Load from folder".</p>
+
+  <!-- ── File structure ── -->
+  <h2 id="file-structure">File structure</h2>
+  <pre><code>my-plugin/
+  manifest.json   <span class="cmt">← required: metadata, actions list, pricing</span>
+  index.js        <span class="cmt">← required: action handlers</span>
+  icon.png        <span class="cmt">← optional: shown in marketplace (128×128)</span>
+  lib/            <span class="cmt">← optional: helper modules (require('./lib/...'))</span>
+  assets/         <span class="cmt">← optional: any other files your plugin needs</span></code></pre>
+
+  <div class="callout tip">Subdirectories are fully supported — both when loading from folder and when installed via zip from the marketplace.</div>
+
+  <!-- ── manifest.json ── -->
+  <h2 id="manifest">manifest.json</h2>
+  <p>Full reference of every supported field:</p>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+    <tr><td>id</td><td>string</td><td><span class="badge badge-required">required</span> Unique slug. Must match the folder name. Use <code>kebab-case</code>.</td></tr>
+    <tr><td>name</td><td>string</td><td><span class="badge badge-required">required</span> Human-readable name shown in the marketplace.</td></tr>
+    <tr><td>version</td><td>string</td><td><span class="badge badge-required">required</span> Semver string, e.g. <code>"1.2.0"</code>. Used for update checks.</td></tr>
+    <tr><td>actions</td><td>array</td><td><span class="badge badge-required">required</span> List of action definitions (see below).</td></tr>
+    <tr><td>description</td><td>string</td><td><span class="badge badge-optional">optional</span> Short description shown in the marketplace.</td></tr>
+    <tr><td>author</td><td>string</td><td><span class="badge badge-optional">optional</span> Your name or handle.</td></tr>
+    <tr><td>authorUrl</td><td>string</td><td><span class="badge badge-optional">optional</span> Link to your website or GitHub profile.</td></tr>
+    <tr><td>homepage</td><td>string</td><td><span class="badge badge-optional">optional</span> Docs or repo URL. Shown as "↗ Docs" link in marketplace.</td></tr>
+    <tr><td>icon</td><td>string</td><td><span class="badge badge-optional">optional</span> Path to icon image relative to plugin folder, or a URL.</td></tr>
+    <tr><td>price</td><td>number</td><td><span class="badge badge-optional">optional</span> Price in cents. <code>0</code> = free. Set to e.g. <code>800</code> for $8.</td></tr>
+    <tr><td>purchaseUrl</td><td>string</td><td><span class="badge badge-optional">optional</span> Your payment link (Stripe, Gumroad, LemonSqueezy). Required when <code>price &gt; 0</code>.</td></tr>
+    <tr><td>downloadUrl</td><td>string</td><td><span class="badge badge-optional">optional</span> Direct URL to a .zip of your plugin. Required for marketplace install.</td></tr>
+    <tr><td>license</td><td>string</td><td><span class="badge badge-optional">optional</span> e.g. <code>"MIT"</code></td></tr>
+    <tr><td>tags</td><td>string[]</td><td><span class="badge badge-optional">optional</span> Used for filtering in the marketplace browse tab.</td></tr>
+    <tr><td>minAppVersion</td><td>string</td><td><span class="badge badge-optional">optional</span> Minimum Stream Deck version required.</td></tr>
+  </table>
+
+  <h3>Action definition</h3>
+  <p>Each item in the <code>actions</code> array:</p>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+    <tr><td>key</td><td>string</td><td><span class="badge badge-required">required</span> Unique action identifier. Convention: <code>&lt;plugin-id&gt;.&lt;verb&gt;</code></td></tr>
+    <tr><td>label</td><td>string</td><td><span class="badge badge-required">required</span> Shown in the admin panel action dropdown.</td></tr>
+    <tr><td>params</td><td>array</td><td><span class="badge badge-optional">optional</span> Configurable inputs rendered in the admin panel (see Plugin params section).</td></tr>
+  </table>
+
+  <h3>Param definition</h3>
+  <table>
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>key</td><td>Used as the key in <code>params</code> object passed to your handler</td></tr>
+    <tr><td>label</td><td>Label shown above the input in the admin panel</td></tr>
+    <tr><td>type</td><td><code>text</code>, <code>number</code>, or <code>textarea</code></td></tr>
+    <tr><td>default</td><td>Default value pre-filled in the input</td></tr>
+    <tr><td>placeholder</td><td>Placeholder text for the input</td></tr>
+  </table>
+
+  <!-- ── index.js ── -->
+  <h2 id="index-js">index.js patterns</h2>
+
+  <h3>Factory function (recommended)</h3>
+  <p>Export a function that receives <code>sdk</code> and returns your handlers. This gives you full SDK access:</p>
+  <pre><code><span class="kw">module</span>.<span class="fn">exports</span> = (<span class="key">sdk</span>) => ({
+
+  <span class="str">'my-plugin.action'</span>: <span class="kw">async</span> (<span class="key">params</span>) => {
+    <span class="cmt">// params = values from admin panel inputs (if any)</span>
+    sdk.log.<span class="fn">info</span>(<span class="str">'action fired!'</span>)
+  }
+
+})</code></pre>
+
+  <h3>Plain object (simple plugins)</h3>
+  <p>For plugins that don't need the SDK — just export a plain object:</p>
+  <pre><code><span class="kw">const</span> { execSync } = <span class="fn">require</span>(<span class="str">'child_process'</span>)
+
+<span class="kw">module</span>.<span class="fn">exports</span> = {
+  <span class="str">'my-plugin.action'</span>: (<span class="key">params</span>) => {
+    execSync(<span class="str">'notify-send "hello"'</span>)
+  }
+}</code></pre>
+
+  <div class="callout">Action handlers can be async. They have a 10-second timeout — if they take longer, a warning is logged and the promise is dropped. Long-running tasks should be fire-and-forget (no await).</div>
+
+  <!-- ── sdk.shell ── -->
+  <h2 id="sdk-shell">sdk.shell</h2>
+  <p>Run shell commands. Uses <code>child_process</code> under the hood.</p>
+
+  <h3>sdk.shell.exec(command)</h3>
+  <p>Synchronous. Returns stdout as a string. Throws on non-zero exit.</p>
+  <pre><code><span class="kw">const</span> out = sdk.shell.<span class="fn">exec</span>(<span class="str">'cat /proc/loadavg'</span>)
+sdk.log.<span class="fn">info</span>(out) <span class="cmt">// "0.52 0.58 0.59 2/847 12345"</span></code></pre>
+
+  <h3>sdk.shell.execAsync(command)</h3>
+  <p>Async. Returns a Promise that resolves with stdout, rejects on non-zero exit.</p>
+  <pre><code><span class="kw">const</span> ip = <span class="kw">await</span> sdk.shell.<span class="fn">execAsync</span>(<span class="str">'hostname -I | awk \'{print $1}\''</span>)
+sdk.log.<span class="fn">info</span>(<span class="str">'Local IP: '</span> + ip.<span class="fn">trim</span>())</code></pre>
+
+  <div class="callout warn">Avoid using shell.exec/execAsync with raw user input — it runs in a shell. Use execFileSync/execFile from Node's child_process when you need to pass user-supplied arguments safely.</div>
+
+  <!-- ── sdk.storage ── -->
+  <h2 id="sdk-storage">sdk.storage</h2>
+  <p>Per-plugin persistent key/value storage. Data is saved to <code>userData/plugins-data/&lt;id&gt;.json</code>. Survives plugin reload and app restart. Uninstalling the plugin does <em>not</em> wipe the data file.</p>
+
+  <h3>Methods</h3>
+  <table>
+    <tr><th>Method</th><th>Description</th></tr>
+    <tr><td>storage.get(key)</td><td>Returns the stored value, or <code>undefined</code> if not set.</td></tr>
+    <tr><td>storage.set(key, value)</td><td>Stores any JSON-serialisable value.</td></tr>
+    <tr><td>storage.delete(key)</td><td>Removes the key.</td></tr>
+    <tr><td>storage.clear()</td><td>Wipes all data for this plugin.</td></tr>
+  </table>
+
+  <pre><code><span class="cmt">// Counter that persists across button presses</span>
+<span class="str">'my-plugin.count'</span>: <span class="kw">async</span> () => {
+  <span class="kw">const</span> n = (sdk.storage.<span class="fn">get</span>(<span class="str">'count'</span>) || <span class="num">0</span>) + <span class="num">1</span>
+  sdk.storage.<span class="fn">set</span>(<span class="str">'count'</span>, n)
+  sdk.log.<span class="fn">info</span>(<span class="str">`Pressed ${n} times`</span>)
+}</code></pre>
+
+  <!-- ── sdk.http ── -->
+  <h2 id="sdk-http">sdk.http</h2>
+  <p>HTTP helpers with a 15-second timeout. Responses are parsed as JSON by default.</p>
+
+  <h3>Methods</h3>
+  <table>
+    <tr><th>Method</th><th>Description</th></tr>
+    <tr><td>http.get(url, headers?)</td><td>GET request. Returns parsed JSON body.</td></tr>
+    <tr><td>http.post(url, body, headers?)</td><td>POST request. <code>body</code> is serialised to JSON. Returns parsed JSON.</td></tr>
+    <tr><td>http.request(url, options)</td><td>Full control. Options: <code>method</code>, <code>headers</code>, <code>body</code>, <code>timeout</code>.</td></tr>
+  </table>
+
+  <pre><code><span class="cmt">// GET JSON</span>
+<span class="kw">const</span> data = <span class="kw">await</span> sdk.http.<span class="fn">get</span>(<span class="str">'https://api.example.com/status'</span>)
+sdk.log.<span class="fn">info</span>(data.status)
+
+<span class="cmt">// POST JSON</span>
+<span class="kw">await</span> sdk.http.<span class="fn">post</span>(<span class="str">'https://webhook.site/my-hook'</span>, { event: <span class="str">'button_pressed'</span> })
+
+<span class="cmt">// Custom request</span>
+<span class="kw">const</span> res = <span class="kw">await</span> sdk.http.<span class="fn">request</span>(<span class="str">'https://api.example.com/data'</span>, {
+  method: <span class="str">'PUT'</span>,
+  headers: { <span class="str">'Authorization'</span>: <span class="str">'Bearer token123'</span> },
+  body: <span class="str">'raw body'</span>,
+  timeout: <span class="num">5000</span>
+})</code></pre>
+
+  <!-- ── sdk.broadcast ── -->
+  <h2 id="sdk-broadcast">sdk.broadcast</h2>
+  <p>Send a custom event to all connected phone clients over WebSocket. Use this to update the phone UI in real time from your plugin.</p>
+  <pre><code>sdk.<span class="fn">broadcast</span>({ event: <span class="str">'statusUpdate'</span>, value: <span class="str">'online'</span>, color: <span class="str">'#4ade80'</span> })</code></pre>
+
+  <p>On the phone (PWA), listen in your own injected JS or a future plugin UI hook:</p>
+  <pre><code><span class="cmt">// The WebSocket message shape:</span>
+<span class="key">{</span>
+  <span class="str">"type"</span>: <span class="str">"pluginEvent"</span>,
+  <span class="str">"pluginId"</span>: <span class="str">"my-plugin"</span>,
+  <span class="str">"event"</span>: <span class="str">"statusUpdate"</span>,
+  <span class="str">"value"</span>: <span class="str">"online"</span>,
+  <span class="str">"color"</span>: <span class="str">"#4ade80"</span>
+<span class="key">}</span></code></pre>
+
+  <!-- ── sdk.log ── -->
+  <h2 id="sdk-log">sdk.log</h2>
+  <p>Prefixed logging to the Electron console (visible in dev tools or terminal).</p>
+  <table>
+    <tr><th>Method</th><th>Description</th></tr>
+    <tr><td>log.info(...args)</td><td>console.log with plugin prefix</td></tr>
+    <tr><td>log.warn(...args)</td><td>console.warn with plugin prefix</td></tr>
+    <tr><td>log.error(...args)</td><td>console.error with plugin prefix</td></tr>
+  </table>
+  <pre><code>sdk.log.<span class="fn">info</span>(<span class="str">'Plugin started'</span>)
+sdk.log.<span class="fn">warn</span>(<span class="str">'Retrying...'</span>)
+sdk.log.<span class="fn">error</span>(<span class="str">'Failed:'</span>, err.message)</code></pre>
+
+  <!-- ── Plugin params ── -->
+  <h2 id="params">Plugin params (per-button config)</h2>
+  <p>Declare a <code>params</code> array on any action to let users configure values per button in the admin panel. When a button is pressed, the configured values arrive in your handler as the <code>params</code> object.</p>
+
+  <pre><code><span class="cmt">// manifest.json</span>
+<span class="str">"actions"</span>: [
+  {
+    <span class="str">"key"</span>: <span class="str">"my-plugin.greet"</span>,
+    <span class="str">"label"</span>: <span class="str">"Show greeting"</span>,
+    <span class="str">"params"</span>: [
+      {
+        <span class="str">"key"</span>:         <span class="str">"name"</span>,
+        <span class="str">"label"</span>:       <span class="str">"Person to greet"</span>,
+        <span class="str">"type"</span>:        <span class="str">"text"</span>,
+        <span class="str">"placeholder"</span>: <span class="str">"Alice"</span>
+      },
+      {
+        <span class="str">"key"</span>:     <span class="str">"delay"</span>,
+        <span class="str">"label"</span>:   <span class="str">"Delay (ms)"</span>,
+        <span class="str">"type"</span>:    <span class="str">"number"</span>,
+        <span class="str">"default"</span>: <span class="num">500</span>
+      }
+    ]
+  }
+]</code></pre>
+
+  <pre><code><span class="cmt">// index.js — params arrive in the handler</span>
+<span class="kw">module</span>.<span class="fn">exports</span> = (<span class="key">sdk</span>) => ({
+  <span class="str">'my-plugin.greet'</span>: <span class="kw">async</span> (<span class="key">params</span>) => {
+    <span class="kw">const</span> name  = params?.name  || <span class="str">'World'</span>
+    <span class="kw">const</span> delay = params?.delay || <span class="num">500</span>
+    <span class="kw">await</span> <span class="kw">new</span> <span class="fn">Promise</span>(r => <span class="fn">setTimeout</span>(r, delay))
+    sdk.log.<span class="fn">info</span>(<span class="str">`Hello, ${name}!`</span>)
+  }
+})</code></pre>
+
+  <p>The user fills in the inputs when configuring the button. Each button can have different param values for the same action.</p>
+
+  <!-- ── Publish ── -->
+  <h2 id="publish">Publish to marketplace</h2>
+  <ol>
+    <li>Create a <strong>GitHub release</strong> (or any public host) and upload a .zip of your plugin folder.</li>
+    <li>Set <code>downloadUrl</code> in your manifest to the direct download URL of the zip.</li>
+    <li>Fork <a href="https://github.com/chunkies/stream-deck" target="_blank">chunkies/stream-deck</a> and add your plugin to <code>registry/registry.json</code>.</li>
+    <li>Open a <strong>Pull Request</strong>. Once merged, your plugin appears in the marketplace for all users.</li>
+  </ol>
+
+  <h3>registry.json entry format</h3>
+  <pre><code>{
+  <span class="str">"id"</span>:             <span class="str">"my-plugin"</span>,
+  <span class="str">"name"</span>:           <span class="str">"My Plugin"</span>,
+  <span class="str">"version"</span>:        <span class="str">"1.0.0"</span>,
+  <span class="str">"description"</span>:   <span class="str">"What it does"</span>,
+  <span class="str">"author"</span>:         <span class="str">"Your Name"</span>,
+  <span class="str">"authorUrl"</span>:      <span class="str">"https://github.com/you"</span>,
+  <span class="str">"homepage"</span>:       <span class="str">"https://github.com/you/my-plugin"</span>,
+  <span class="str">"icon"</span>:           <span class="str">""</span>,
+  <span class="str">"price"</span>:          <span class="num">0</span>,
+  <span class="str">"purchaseUrl"</span>:    <span class="str">""</span>,
+  <span class="str">"downloadUrl"</span>:    <span class="str">"https://github.com/you/my-plugin/releases/download/v1.0.0/my-plugin.zip"</span>,
+  <span class="str">"license"</span>:        <span class="str">"MIT"</span>,
+  <span class="str">"tags"</span>:           [<span class="str">"productivity"</span>],
+  <span class="str">"downloads"</span>:      <span class="num">0</span>,
+  <span class="str">"minAppVersion"</span>:  <span class="str">"1.0.0"</span>
+}</code></pre>
+
+  <div class="callout tip">Your zip can use GitHub archive format — a single top-level folder wrapping your plugin files. The installer automatically flattens it.</div>
+
+  <!-- ── Local dev ── -->
+  <h2 id="local-dev">Local development</h2>
+  <p>You don't need to publish to test your plugin. In the marketplace:</p>
+  <ol>
+    <li>Go to the <strong>Developer</strong> tab.</li>
+    <li>Click <strong>"📂 Load from folder"</strong> and select your plugin directory.</li>
+    <li>The plugin is copied to <code>userData/plugins/</code> and loaded immediately.</li>
+    <li>Edit your <code>index.js</code>, then click <strong>"⟳ Reload plugins"</strong> in the admin panel — no restart needed.</li>
+  </ol>
+
+  <div class="callout">Plugins loaded this way are marked <code>_local: true</code> and skipped during update checks.</div>
+
+  <!-- ── Paid plugins ── -->
+  <h2 id="paid-plugins">Paid plugins</h2>
+  <p>Set <code>price</code> (in cents) and <code>purchaseUrl</code> in your manifest. The app shows a "Buy $X →" button that opens the user's browser to your URL. <strong>You keep 100% of revenue</strong> — use any payment provider (Stripe, Gumroad, LemonSqueezy, Paddle).</p>
+  <pre><code>{
+  <span class="str">"price"</span>:       <span class="num">800</span>,
+  <span class="str">"purchaseUrl"</span>: <span class="str">"https://buy.stripe.com/your-link"</span>
+}</code></pre>
+  <p>After purchase, direct the user to download the zip and load it manually (Developer tab), or provide a private <code>downloadUrl</code> in your delivery email.</p>
+
+  <!-- ── Example: basic ── -->
+  <h2 id="example-basic">Example: Basic plugin</h2>
+  <p>A minimal plugin that sends a desktop notification:</p>
+  <pre><code><span class="cmt">// manifest.json</span>
+{
+  <span class="str">"id"</span>:      <span class="str">"hello-world"</span>,
+  <span class="str">"name"</span>:    <span class="str">"Hello World"</span>,
+  <span class="str">"version"</span>: <span class="str">"1.0.0"</span>,
+  <span class="str">"actions"</span>: [
+    { <span class="str">"key"</span>: <span class="str">"hello-world.notify"</span>, <span class="str">"label"</span>: <span class="str">"Send notification"</span> }
+  ]
+}</code></pre>
+  <pre><code><span class="cmt">// index.js</span>
+<span class="kw">const</span> { execSync } = <span class="fn">require</span>(<span class="str">'child_process'</span>)
+
+<span class="kw">module</span>.<span class="fn">exports</span> = {
+  <span class="str">'hello-world.notify'</span>: () => {
+    execSync(<span class="str">'notify-send "Stream Deck" "Hello from your macro pad!"'</span>)
+  }
+}</code></pre>
+
+  <!-- ── Example: text-macro ── -->
+  <h2 id="example-text-macro">Example: Text Macro plugin</h2>
+  <p>Types a configurable text snippet, pauses, then fires a hotkey — all from one button press. This plugin demonstrates <strong>per-button params</strong>, cross-platform shell commands, and the SDK log.</p>
+
+  <pre><code><span class="cmt">// manifest.json (relevant section)</span>
+<span class="str">"actions"</span>: [{
+  <span class="str">"key"</span>:    <span class="str">"text-macro.run"</span>,
+  <span class="str">"label"</span>:  <span class="str">"Type text + hotkey"</span>,
+  <span class="str">"params"</span>: [
+    { <span class="str">"key"</span>: <span class="str">"text"</span>,   <span class="str">"label"</span>: <span class="str">"Text to type"</span>,              <span class="str">"type"</span>: <span class="str">"textarea"</span> },
+    { <span class="str">"key"</span>: <span class="str">"delay"</span>,  <span class="str">"label"</span>: <span class="str">"Pause before hotkey (ms)"</span>,  <span class="str">"type"</span>: <span class="str">"number"</span>, <span class="str">"default"</span>: <span class="num">1000</span> },
+    { <span class="str">"key"</span>: <span class="str">"hotkey"</span>, <span class="str">"label"</span>: <span class="str">"Hotkey after pause"</span>,         <span class="str">"type"</span>: <span class="str">"text"</span>, <span class="str">"placeholder"</span>: <span class="str">"ctrl+Return"</span> }
+  ]
+}]</code></pre>
+
+  <pre><code><span class="cmt">// index.js (simplified)</span>
+<span class="kw">const</span> { execFileSync } = <span class="fn">require</span>(<span class="str">'child_process'</span>)
+<span class="kw">const</span> os = <span class="fn">require</span>(<span class="str">'os'</span>)
+
+<span class="kw">module</span>.<span class="fn">exports</span> = (<span class="key">sdk</span>) => ({
+  <span class="str">'text-macro.run'</span>: <span class="kw">async</span> (<span class="key">params</span>) => {
+    <span class="kw">const</span> text   = params?.text   || <span class="str">''</span>
+    <span class="kw">const</span> delay  = parseInt(params?.delay ?? <span class="num">1000</span>) || <span class="num">0</span>
+    <span class="kw">const</span> hotkey = (params?.hotkey || <span class="str">''</span>).<span class="fn">trim</span>()
+
+    <span class="cmt">// Type the text</span>
+    <span class="kw">if</span> (text) {
+      <span class="kw">if</span> (os.<span class="fn">platform</span>() === <span class="str">'darwin'</span>) {
+        execFileSync(<span class="str">'osascript'</span>, [<span class="str">'-e'</span>, `tell application "System Events" to keystroke "${text}"`])
+      } <span class="kw">else</span> {
+        execFileSync(<span class="str">'xdotool'</span>, [<span class="str">'type'</span>, <span class="str">'--clearmodifiers'</span>, <span class="str">'--delay'</span>, <span class="str">'20'</span>, <span class="str">'--'</span>, text])
+      }
+    }
+
+    <span class="cmt">// Wait</span>
+    <span class="kw">if</span> (delay > <span class="num">0</span>) <span class="kw">await new</span> <span class="fn">Promise</span>(r => <span class="fn">setTimeout</span>(r, delay))
+
+    <span class="cmt">// Fire the hotkey</span>
+    <span class="kw">if</span> (hotkey) {
+      execFileSync(<span class="str">'xdotool'</span>, [<span class="str">'key'</span>, <span class="str">'--clearmodifiers'</span>, hotkey])
+    }
+  }
+})</code></pre>
+
+  <!-- ── Example: system-info ── -->
+  <h2 id="example-system-info">Example: System Info plugin</h2>
+  <p>Demonstrates every SDK method — shell, storage, http, broadcast, and log:</p>
+  <pre><code><span class="kw">module</span>.<span class="fn">exports</span> = (<span class="key">sdk</span>) => ({
+
+  <span class="cmt">// sdk.shell.execAsync</span>
+  <span class="str">'system-info.cpu'</span>: <span class="kw">async</span> () => {
+    <span class="kw">const</span> raw = <span class="kw">await</span> sdk.shell.<span class="fn">execAsync</span>(
+      <span class="str">"grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$3+$4+$5)} END {printf \"%.1f\", usage}'"</span>
+    )
+    sdk.broadcast({ event: <span class="str">'cpu'</span>, value: raw.<span class="fn">trim</span>() })
+  },
+
+  <span class="cmt">// sdk.storage</span>
+  <span class="str">'system-info.count'</span>: () => {
+    <span class="kw">const</span> n = (sdk.storage.<span class="fn">get</span>(<span class="str">'presses'</span>) || <span class="num">0</span>) + <span class="num">1</span>
+    sdk.storage.<span class="fn">set</span>(<span class="str">'presses'</span>, n)
+    sdk.log.<span class="fn">info</span>(<span class="str">`${n} presses so far`</span>)
+  },
+
+  <span class="cmt">// sdk.http</span>
+  <span class="str">'system-info.ip'</span>: <span class="kw">async</span> () => {
+    <span class="kw">const</span> data = <span class="kw">await</span> sdk.http.<span class="fn">get</span>(<span class="str">'https://api.ipify.org?format=json'</span>)
+    sdk.log.<span class="fn">info</span>(<span class="str">'Public IP:'</span>, data.ip)
+  }
+
+})</code></pre>
+
+</main>
+
+<script>
+  // Highlight active sidebar link on scroll
+  const headings = document.querySelectorAll('h2[id], h3[id]')
+  const links    = document.querySelectorAll('.sidebar a[href^="#"]')
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id))
+      }
+    })
+  }, { rootMargin: '-10% 0px -80% 0px' })
+  headings.forEach(h => obs.observe(h))
+</script>
+
+</body>
+</html>

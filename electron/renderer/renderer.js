@@ -145,19 +145,23 @@ function setImageField(previewId, clearId, url) {
 
 // ── OBS action select ─────────────────────────────────
 // ── Plugin support ────────────────────────────────────
+let loadedPlugins = []
+
 async function loadAndPopulatePlugins() {
   const plugins = await window.api.getPlugins()
   populatePluginSelect(plugins)
 }
 
 function populatePluginSelect(plugins) {
+  loadedPlugins = plugins || []
   const sel = document.getElementById('f-plugin-action')
   sel.innerHTML = ''
-  if (!plugins || plugins.length === 0) {
+  if (!loadedPlugins.length) {
     sel.innerHTML = '<option value="">— no plugins installed —</option>'
+    renderPluginParams('', {})
     return
   }
-  for (const plugin of plugins) {
+  for (const plugin of loadedPlugins) {
     const og = document.createElement('optgroup')
     og.label = plugin.name
     for (const action of plugin.actions) {
@@ -168,12 +172,63 @@ function populatePluginSelect(plugins) {
     }
     sel.appendChild(og)
   }
+  renderPluginParams(sel.value, {})
+}
+
+function renderPluginParams(actionKey, existingParams) {
+  const container = document.getElementById('plugin-params')
+  if (!container) return
+  container.innerHTML = ''
+
+  const action = loadedPlugins.flatMap(p => p.actions || []).find(a => a.key === actionKey)
+  if (!action?.params?.length) return
+
+  for (const param of action.params) {
+    const row = document.createElement('div')
+    row.className = 'field-row'
+
+    const label = document.createElement('label')
+    label.textContent = param.label
+
+    let input
+    if (param.type === 'textarea') {
+      input = document.createElement('textarea')
+      input.rows = 3
+    } else {
+      input = document.createElement('input')
+      input.type = param.type === 'number' ? 'number' : 'text'
+    }
+    input.id          = `pp-${param.key}`
+    input.className   = 'plugin-param-input'
+    input.dataset.key = param.key
+    input.dataset.typ = param.type || 'text'
+    const existing = existingParams?.[param.key]
+    input.value = existing !== undefined ? existing : (param.default ?? '')
+    if (param.placeholder) input.placeholder = param.placeholder
+
+    row.appendChild(label)
+    row.appendChild(input)
+    container.appendChild(row)
+  }
+}
+
+function collectPluginParams() {
+  const params = {}
+  document.querySelectorAll('.plugin-param-input').forEach(el => {
+    params[el.dataset.key] = el.dataset.typ === 'number'
+      ? (parseFloat(el.value) || 0)
+      : el.value
+  })
+  return params
 }
 
 function wirePluginReload() {
   document.getElementById('plugin-reload-btn').addEventListener('click', async () => {
     const plugins = await window.api.reloadPlugins()
     populatePluginSelect(plugins)
+  })
+  document.getElementById('f-plugin-action').addEventListener('change', (e) => {
+    renderPluginParams(e.target.value, {})
   })
 }
 
@@ -354,6 +409,7 @@ function openModal(pageIdx, slotIdx) {
     }
     if (a?.type === 'plugin') {
       document.getElementById('f-plugin-action').value = a.pluginKey || ''
+      renderPluginParams(a.pluginKey || '', a.params || {})
     }
 
     // Hold action
@@ -427,7 +483,7 @@ function saveModal() {
       case 'sequence': action = { type: 'sequence', commands: document.getElementById('f-sequence').value.split('\n').map(s => s.trim()).filter(Boolean), delay: parseInt(document.getElementById('f-seq-delay').value) || 150 }; break
       case 'page':     action = { type: 'page',     pageId:   document.getElementById('f-page-target').value }; break
       case 'obs':      action = { type: 'obs', obsAction: document.getElementById('f-obs-action').value, obsScene: document.getElementById('f-obs-scene').value.trim(), obsSource: document.getElementById('f-obs-source').value.trim() }; break
-      case 'plugin':   action = { type: 'plugin', pluginKey: document.getElementById('f-plugin-action').value }; break
+      case 'plugin':   action = { type: 'plugin', pluginKey: document.getElementById('f-plugin-action').value, params: collectPluginParams() }; break
     }
     const holdEnabled = document.getElementById('f-hold-enable').checked
     const holdCmd     = document.getElementById('f-hold-command').value.trim()

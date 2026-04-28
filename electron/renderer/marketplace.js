@@ -1,16 +1,21 @@
 'use strict'
 
-let registry      = null
-let installed     = []
-let activeTab     = 'browse'
-let activeTag     = ''
-let searchQuery   = ''
+let registry         = null
+let installed        = []
+let activeTab        = 'browse'
+let activeTag        = ''
+let searchQuery      = ''
+let progressCallback = null   // single global slot — avoids listener leak
 
 // ── Init ───────────────────────────────────────────────
 async function init() {
   wireTabs()
   wireSearch()
   wireDevTab()
+  wireInstalledTab()
+
+  // Single progress listener registered once here
+  window.mp.onProgress(d => { if (progressCallback) progressCallback(d) })
 
   // Load installed first (fast, local)
   installed = await window.mp.getInstalled()
@@ -85,16 +90,18 @@ function renderBrowse() {
 }
 
 function buildCard(plugin) {
-  const isInstalled = installed.some(i => i.id === plugin.id)
-  const hasUpdate   = installed.some(i => i.id === plugin.id && i._updateAvailable)
-  const isFree      = !plugin.price || plugin.price === 0
-  const price       = isFree ? 'Free' : `$${(plugin.price / 100).toFixed(2)}`
+  const isInstalled   = installed.some(i => i.id === plugin.id)
+  const hasUpdate     = installed.some(i => i.id === plugin.id && i._updateAvailable)
+  const isFree        = !plugin.price || plugin.price === 0
+  const price         = isFree ? 'Free' : `$${(plugin.price / 100).toFixed(2)}`
+  const hasDownload   = !!plugin.downloadUrl
+  const hasPurchase   = !!plugin.purchaseUrl
 
   const card = document.createElement('div')
   card.className = 'mp-card'
   card.innerHTML = `
     <div class="mp-card-header">
-      <div class="mp-card-icon">${plugin.icon ? `<img src="${plugin.icon}" onerror="this.textContent='🔌';this.tagName='span'">` : '🔌'}</div>
+      <div class="mp-card-icon">${plugin.icon ? `<img src="${esc(plugin.icon)}" onerror="this.style.display='none'">` : '🔌'}</div>
       <div class="mp-card-meta">
         <div class="mp-card-name">${esc(plugin.name)}</div>
         <div class="mp-card-author">by ${esc(plugin.author || 'Unknown')}</div>
@@ -106,46 +113,51 @@ function buildCard(plugin) {
     <div class="mp-card-footer">
       ${plugin.homepage ? `<a href="#" class="mp-link mp-homepage" data-url="${esc(plugin.homepage)}">↗ Docs</a>` : '<span></span>'}
       <div class="mp-card-actions">
-        ${hasUpdate ? `<button class="mp-install-btn update" data-id="${esc(plugin.id)}" data-url="${esc(plugin.downloadUrl)}">↑ Update</button>` : ''}
-        ${isInstalled
+        ${hasUpdate && hasDownload ? `<button class="mp-install-btn update" data-action="install" data-id="${esc(plugin.id)}" data-url="${esc(plugin.downloadUrl)}">↑ Update</button>` : ''}
+        ${isInstalled && !hasUpdate
           ? `<button class="mp-install-btn installed" disabled>✓ Installed</button>`
-          : isFree
-            ? `<button class="mp-install-btn" data-id="${esc(plugin.id)}" data-url="${esc(plugin.downloadUrl)}">Install</button>`
-            : `<button class="mp-install-btn paid" data-id="${esc(plugin.id)}" data-url="${esc(plugin.purchaseUrl)}">Buy ${esc(price)} →</button>`
+          : !isInstalled && isFree && hasDownload
+            ? `<button class="mp-install-btn" data-action="install" data-id="${esc(plugin.id)}" data-url="${esc(plugin.downloadUrl)}">Install</button>`
+            : !isInstalled && !isFree && hasPurchase
+              ? `<button class="mp-install-btn paid" data-action="buy" data-url="${esc(plugin.purchaseUrl)}">Buy ${esc(price)} →</button>`
+              : !isInstalled
+                ? `<button class="mp-install-btn" disabled title="No download URL">Unavailable</button>`
+                : ''
         }
       </div>
     </div>
   `
 
-  // Wire install / buy buttons
-  card.querySelectorAll('.mp-install-btn[data-id]').forEach(btn => {
+  // Wire action buttons — uses global progressCallback (no listener leak)
+  card.querySelectorAll('[data-action]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const id  = btn.dataset.id
-      const url = btn.dataset.url
-
-      if (btn.classList.contains('paid')) {
-        window.mp.openExternal(url)
+      if (btn.dataset.action === 'buy') {
+        window.mp.openExternal(btn.dataset.url)
         return
       }
 
+      const id  = btn.dataset.id
+      const url = btn.dataset.url
       btn.disabled    = true
       btn.textContent = 'Downloading…'
-      window.mp.onProgress(d => {
+
+      progressCallback = (d) => {
         if (d.status === 'downloading') btn.textContent = `${d.pct}%`
         if (d.status === 'extracting') btn.textContent = 'Installing…'
-        if (d.status === 'done')       btn.textContent = '✓ Installed'
-      })
+      }
 
       try {
         await window.mp.install(id, url)
+        progressCallback = null
         installed = await window.mp.getInstalled()
         renderInstalled()
         updateInstalledCount()
         renderBrowse()
       } catch (err) {
-        btn.disabled    = false
-        btn.textContent = 'Install'
-        alert(`Install failed: ${err.message}`)
+        progressCallback   = null
+        btn.disabled       = false
+        btn.textContent    = 'Install'
+        showToast(`Install failed: ${err.message}`, 'error')
       }
     })
   })
@@ -249,6 +261,29 @@ function wireSearch() {
   input.addEventListener('input', () => { searchQuery = input.value.trim(); renderBrowse() })
 }
 
+// ── Installed tab controls ─────────────────────────────
+function wireInstalledTab() {
+  document.getElementById('check-updates-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('check-updates-btn')
+    btn.disabled = true; btn.textContent = 'Checking…'
+    try {
+      const updates = await window.mp.checkUpdates()
+      btn.disabled = false; btn.textContent = 'Check for updates'
+      if (!updates.length) {
+        const s = document.getElementById('installed-status')
+        s.style.display = 'block'; s.textContent = 'All plugins up to date'; s.className = 'mp-status'
+      } else {
+        markUpdates(updates)
+      }
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'Check for updates'
+      showToast(`Update check failed: ${err.message}`, 'error')
+    }
+  })
+
+  document.getElementById('open-dir-btn').addEventListener('click', () => window.mp.openPluginsDir())
+}
+
 // ── Dev tab ────────────────────────────────────────────
 function wireDevTab() {
   document.getElementById('load-local-btn').addEventListener('click', async () => {
@@ -266,21 +301,6 @@ function wireDevTab() {
     }
   })
 
-  document.getElementById('check-updates-btn').addEventListener('click', async () => {
-    const btn = document.getElementById('check-updates-btn')
-    btn.disabled = true; btn.textContent = 'Checking…'
-    const updates = await window.mp.checkUpdates()
-    btn.disabled = false; btn.textContent = 'Check for updates'
-    if (!updates.length) {
-      const s = document.getElementById('installed-status')
-      s.style.display = 'block'; s.textContent = 'All plugins up to date'; s.className = 'mp-status'
-    } else {
-      markUpdates(updates)
-    }
-  })
-
-  document.getElementById('open-dir-btn').addEventListener('click', () => window.mp.openPluginsDir())
-
   document.getElementById('registry-link').addEventListener('click', e => {
     e.preventDefault()
     window.mp.openExternal('https://github.com/chunkies/stream-deck/tree/master/registry')
@@ -292,4 +312,19 @@ function esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
-init()
+let toastTimer = null
+function showToast(msg, type = 'info') {
+  let toast = document.getElementById('mp-toast')
+  if (!toast) {
+    toast = document.createElement('div')
+    toast.id = 'mp-toast'
+    document.body.appendChild(toast)
+  }
+  toast.textContent = msg
+  toast.className   = `mp-toast ${type}`
+  toast.style.opacity = '1'
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toast.style.opacity = '0' }, 3000)
+}
+
+init().catch(console.error)

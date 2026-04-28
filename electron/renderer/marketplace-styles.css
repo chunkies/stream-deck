@@ -338,3 +338,24 @@ code {
 }
 
 .mp-hint { font-size: 12px; color: var(--muted); line-height: 1.5 }
+
+/* ── Toast ── */
+.mp-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 10px 18px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s;
+  z-index: 1000;
+  white-space: nowrap;
+}
+.mp-toast.error { border-color: var(--red); color: var(--red) }
+.mp-toast.info  { border-color: var(--accent) }
