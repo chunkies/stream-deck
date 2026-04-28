@@ -148,9 +148,9 @@ html, body {
 }
 
 .btn.pressed {
-  transform: scale(0.91);
-  opacity: 0.72;
-  transition: transform 0.07s ease, opacity 0.07s ease;
+  transform: scale(0.88);
+  opacity: 0.65;
+  transition: transform 0.06s ease, opacity 0.06s ease;
 }
 
 .btn.holding {
