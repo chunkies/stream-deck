@@ -16,10 +16,9 @@ const BUILTIN_ACTIONS = [
 let config          = null
 let serverInfo      = null
 let currentPageIdx  = 0
-let editingSlot     = null
+let editingComp     = null
 let currentCompType = 'button'
 let pendingImages   = {}
-let dragSrc         = null
 let proStatus       = { active: false }
 
 const PURCHASE_URL = 'https://chunkies.gumroad.com/l/streamdeck-pro'
@@ -89,10 +88,10 @@ async function init() {
     }
     if (event.type === 'press' || event.type === 'slide') {
       const page = config?.pages.find(p => p.id === event.pageId)
-      const slot = page?.slots[event.slot]
-      if (slot) {
+      const comp = page?.components?.find(c => c.id === event.compId)
+      if (comp) {
         const val = event.type === 'slide' ? ` → ${Math.round(event.value)}` : ''
-        document.getElementById('last-press').textContent = `${slot.icon || slot.label || '?'}${val}`
+        document.getElementById('last-press').textContent = `${comp.icon || comp.label || '?'}${val}`
       }
     }
   })
@@ -289,104 +288,161 @@ function saveRename() {
   closeRenameModal()
 }
 
+// Convert pointer position to grid cell (1-indexed)
+function ptrToCell(e, gridEl, cols, rows) {
+  const r = gridEl.getBoundingClientRect()
+  return {
+    col: Math.max(1, Math.min(cols, Math.ceil((e.clientX - r.left) / r.width  * cols))),
+    row: Math.max(1, Math.min(rows, Math.ceil((e.clientY - r.top)  / r.height * rows)))
+  }
+}
+
 function renderGrid() {
-  const grid = document.getElementById('grid')
-  const page = config.pages[currentPageIdx]
-  const cols = page.cols || config.grid.cols
-  const rows = config.grid.rows
-  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`
-  grid.style.gridTemplateRows    = `repeat(${rows}, 1fr)`
-  grid.innerHTML = ''
-  dragSrc = null
+  const gridEl = document.getElementById('grid')
+  const page   = config.pages[currentPageIdx]
+  const cols   = page.cols || config.grid.cols
+  const rows   = config.grid.rows
+  gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`
+  gridEl.style.gridTemplateRows    = `repeat(${rows}, 1fr)`
+  gridEl.innerHTML = ''
 
-  for (let i = 0; i < cols * rows; i++) {
-    const slot = page.slots[i] ?? null
-    const cell = document.createElement('div')
+  // Ghost cells — background grid, click to add
+  for (let r = 1; r <= rows; r++) {
+    for (let c = 1; c <= cols; c++) {
+      const ghost = document.createElement('div')
+      ghost.className        = 'ghost-cell'
+      ghost.style.gridColumn = c
+      ghost.style.gridRow    = r
+      ghost.innerHTML        = '<div class="cell-add">+</div>'
+      ghost.addEventListener('click', () => openModal(currentPageIdx, null, c, r))
+      gridEl.appendChild(ghost)
+    }
+  }
 
-    if (!slot) {
-      cell.className = 'cell empty'
-      cell.innerHTML = '<div class="cell-add">+</div>'
-    } else {
-      cell.className = 'cell filled'
-      cell.style.background = slot.color || '#1e293b'
-      if (slot.image && serverInfo) {
-        cell.style.backgroundImage = `url(https://${serverInfo.ip}:${serverInfo.port}${slot.image})`
-        cell.style.backgroundSize  = 'cover'
-      }
-
-      switch (slot.componentType) {
-        case 'slider':
-          cell.innerHTML = `
-            <div class="cell-type-badge">slider</div>
-            <div class="cell-slider-preview">
-              <div class="cell-slider-fill" style="height:${((slot.defaultValue - slot.min) / (slot.max - slot.min)) * 100}%"></div>
-            </div>
-            <div class="cell-label">${slot.label || ''}</div>`
-          break
-        case 'toggle':
-          cell.innerHTML = `
-            <div class="cell-type-badge">toggle</div>
-            <div class="cell-icon">${slot.icon || ''}</div>
-            <div class="cell-label">${slot.label || ''}</div>`
-          break
-        case 'tile':
-          cell.innerHTML = `
-            <div class="cell-type-badge">tile</div>
-            <div class="cell-tile-cmd">${(slot.pollCommand || '').substring(0, 22)}</div>
-            <div class="cell-label">${slot.label || ''}</div>`
-          break
-        case 'spotify':
-          cell.innerHTML = `
-            <div class="cell-type-badge">spotify</div>
-            <div class="cell-icon">🎵</div>
-            <div class="cell-label">Spotify tile</div>`
-          break
-        case 'voice':
-          cell.innerHTML = `
-            <div class="cell-type-badge">voice</div>
-            <div class="cell-icon">${slot.icon || '🎤'}</div>
-            <div class="cell-label">${slot.label || 'Voice'}</div>`
-          break
-        case 'plugin-tile':
-          cell.innerHTML = `
-            <div class="cell-type-badge">plugin</div>
-            <div class="cell-tile-cmd">${slot.pluginTileId || ''}:${slot.pluginTileEvent || ''}</div>
-            <div class="cell-label">${slot.label || ''}</div>`
-          break
-        default:
-          cell.innerHTML = `
-            <div class="cell-icon">${slot.icon || ''}</div>
-            <div class="cell-label">${slot.label || ''}</div>
-            ${slot.holdAction ? '<div class="cell-hold-badge">⟳</div>' : ''}`
-      }
+  // Component cards — placed on top of ghost cells
+  for (const comp of (page.components || [])) {
+    const card = document.createElement('div')
+    card.className         = 'comp-card'
+    card.style.gridColumn  = `${comp.col} / span ${comp.colSpan || 1}`
+    card.style.gridRow     = `${comp.row} / span ${comp.rowSpan || 1}`
+    card.style.background  = comp.color || '#1e293b'
+    if (comp.image && serverInfo) {
+      card.style.backgroundImage    = `url(https://${serverInfo.ip}:${serverInfo.port}${comp.image})`
+      card.style.backgroundSize     = 'cover'
+      card.style.backgroundPosition = 'center'
     }
 
-    // Click to edit
-    cell.addEventListener('click', () => openModal(currentPageIdx, i))
+    switch (comp.componentType) {
+      case 'slider':
+        card.innerHTML = `
+          <div class="cell-type-badge">slider</div>
+          <div class="cell-slider-preview">
+            <div class="cell-slider-fill" style="height:${((comp.defaultValue - comp.min) / (comp.max - comp.min)) * 100}%"></div>
+          </div>
+          <div class="cell-label">${comp.label || ''}</div>
+          <div class="resize-handle"></div>`
+        break
+      case 'toggle':
+        card.innerHTML = `
+          <div class="cell-type-badge">toggle</div>
+          <div class="cell-icon">${comp.icon || ''}</div>
+          <div class="cell-label">${comp.label || ''}</div>
+          <div class="resize-handle"></div>`
+        break
+      case 'tile':
+        card.innerHTML = `
+          <div class="cell-type-badge">tile</div>
+          <div class="cell-tile-cmd">${(comp.pollCommand || '').substring(0, 26)}</div>
+          <div class="cell-label">${comp.label || ''}</div>
+          <div class="resize-handle"></div>`
+        break
+      case 'spotify':
+        card.innerHTML = `
+          <div class="cell-type-badge">spotify</div>
+          <div class="cell-icon">🎵</div>
+          <div class="cell-label">Spotify tile</div>
+          <div class="resize-handle"></div>`
+        break
+      case 'voice':
+        card.innerHTML = `
+          <div class="cell-type-badge">voice</div>
+          <div class="cell-icon">${comp.icon || '🎤'}</div>
+          <div class="cell-label">${comp.label || 'Voice'}</div>
+          <div class="resize-handle"></div>`
+        break
+      case 'plugin-tile':
+        card.innerHTML = `
+          <div class="cell-type-badge">plugin</div>
+          <div class="cell-tile-cmd">${comp.pluginTileId || ''}:${comp.pluginTileEvent || ''}</div>
+          <div class="cell-label">${comp.label || ''}</div>
+          <div class="resize-handle"></div>`
+        break
+      default:
+        card.innerHTML = `
+          <div class="cell-icon">${comp.icon || ''}</div>
+          <div class="cell-label">${comp.label || ''}</div>
+          ${comp.holdAction ? '<div class="cell-hold-badge">⟳</div>' : ''}
+          <div class="resize-handle"></div>`
+    }
 
-    // Drag-to-reorder
-    cell.draggable = true
-    cell.addEventListener('dragstart', e => {
-      dragSrc = i
-      e.dataTransfer.effectAllowed = 'move'
-      setTimeout(() => cell.classList.add('dragging'), 0)
-    })
-    cell.addEventListener('dragend',  () => cell.classList.remove('dragging'))
-    cell.addEventListener('dragover',  e => { e.preventDefault(); cell.classList.add('drag-over') })
-    cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'))
-    cell.addEventListener('drop', e => {
+    // ── Resize handle (bottom-right corner drag) ──
+    const handle = card.querySelector('.resize-handle')
+    handle.addEventListener('pointerdown', (e) => {
+      e.stopPropagation()
       e.preventDefault()
-      cell.classList.remove('drag-over')
-      if (dragSrc === null || dragSrc === i) { dragSrc = null; return }
-      const slots = config.pages[currentPageIdx].slots
-      const tmp   = slots[dragSrc]
-      slots[dragSrc] = slots[i]
-      slots[i]       = tmp
-      dragSrc = null
-      pushConfig(); renderGrid()
+      handle.setPointerCapture(e.pointerId)
+
+      function onMove(e) {
+        const cell     = ptrToCell(e, gridEl, cols, rows)
+        comp.colSpan   = Math.max(1, Math.min(cols - comp.col + 1, cell.col - comp.col + 1))
+        comp.rowSpan   = Math.max(1, Math.min(rows - comp.row + 1, cell.row - comp.row + 1))
+        card.style.gridColumn = `${comp.col} / span ${comp.colSpan}`
+        card.style.gridRow    = `${comp.row} / span ${comp.rowSpan}`
+      }
+      function onUp() {
+        pushConfig()
+        handle.removeEventListener('pointermove', onMove)
+        handle.removeEventListener('pointerup', onUp)
+      }
+      handle.addEventListener('pointermove', onMove)
+      handle.addEventListener('pointerup', onUp)
     })
 
-    grid.appendChild(cell)
+    // ── Drag to move (pointer events on card body) ──
+    let moved = false, startX = 0, startY = 0
+
+    card.addEventListener('pointerdown', (e) => {
+      if (e.target === handle || handle.contains(e.target)) return
+      e.preventDefault()
+      card.setPointerCapture(e.pointerId)
+      moved  = false
+      startX = e.clientX
+      startY = e.clientY
+      card.style.cursor = 'grabbing'
+
+      function onMove(e) {
+        const dx = e.clientX - startX, dy = e.clientY - startY
+        if (!moved && dx * dx + dy * dy < 36) return
+        moved = true
+        const cell   = ptrToCell(e, gridEl, cols, rows)
+        const newCol = Math.max(1, Math.min(cols - (comp.colSpan || 1) + 1, cell.col))
+        const newRow = Math.max(1, Math.min(rows - (comp.rowSpan || 1) + 1, cell.row))
+        comp.col = newCol; comp.row = newRow
+        card.style.gridColumn = `${newCol} / span ${comp.colSpan || 1}`
+        card.style.gridRow    = `${newRow} / span ${comp.rowSpan || 1}`
+      }
+      function onUp() {
+        card.style.cursor = ''
+        if (moved) pushConfig()
+        else openModal(currentPageIdx, comp.id, comp.col, comp.row)
+        card.removeEventListener('pointermove', onMove)
+        card.removeEventListener('pointerup', onUp)
+      }
+      card.addEventListener('pointermove', onMove)
+      card.addEventListener('pointerup', onUp)
+    })
+
+    gridEl.appendChild(card)
   }
 }
 
@@ -410,28 +466,31 @@ function showActionFields(type) {
 }
 
 // ── Modal ─────────────────────────────────────────────
-function openModal(pageIdx, slotIdx) {
-  editingSlot   = { pageIdx, slotIdx }
+function openModal(pageIdx, compId, col, row) {
+  editingComp   = { pageIdx, compId, col: col || 1, row: row || 1 }
   pendingImages = {}
-  const slot    = config.pages[pageIdx].slots[slotIdx]
+  const comp    = compId ? config.pages[pageIdx].components.find(c => c.id === compId) : null
 
-  document.getElementById('modal-title').textContent        = slot ? 'Edit' : 'Add'
-  document.getElementById('modal-delete').style.display     = slot ? 'block' : 'none'
+  document.getElementById('modal-title').textContent    = comp ? 'Edit' : 'Add'
+  document.getElementById('modal-delete').style.display = comp ? 'block' : 'none'
 
-  const compType = slot?.componentType || 'button'
+  document.getElementById('f-col-span').value = comp?.colSpan || 1
+  document.getElementById('f-row-span').value = comp?.rowSpan || 1
+
+  const compType = comp?.componentType || 'button'
   setCompType(compType)
 
   if (compType === 'button' || !compType) {
-    document.getElementById('f-icon').value  = slot?.icon  || ''
-    document.getElementById('f-label').value = slot?.label || ''
-    document.getElementById('f-color').value = slot?.color || '#1e293b'
-    setImageField('img-preview', 'img-clear-btn', slot?.image)
+    document.getElementById('f-icon').value  = comp?.icon  || ''
+    document.getElementById('f-label').value = comp?.label || ''
+    document.getElementById('f-color').value = comp?.color || '#1e293b'
+    setImageField('img-preview', 'img-clear-btn', comp?.image)
 
-    const at = slot?.action?.type || 'builtin'
+    const at = comp?.action?.type || 'builtin'
     document.getElementById('f-action-type').value = at
     showActionFields(at)
 
-    const a = slot?.action
+    const a = comp?.action
     if (a?.type === 'builtin')  document.getElementById('f-builtin-key').value = a.key || BUILTIN_ACTIONS[0].key
     if (a?.type === 'hotkey')   document.getElementById('f-hotkey').value       = a.combo || ''
     if (a?.type === 'command')  document.getElementById('f-command').value      = a.command || ''
@@ -445,66 +504,65 @@ function openModal(pageIdx, slotIdx) {
       renderPluginParams(a.pluginKey || '', a.params || {})
     }
 
-    // Hold action
-    const holdCmd = slot?.holdAction?.command || ''
-    document.getElementById('f-hold-enable').checked       = !!holdCmd
-    document.getElementById('hold-fields').style.display   = holdCmd ? 'block' : 'none'
-    document.getElementById('f-hold-command').value        = holdCmd
+    const holdCmd = comp?.holdAction?.command || ''
+    document.getElementById('f-hold-enable').checked     = !!holdCmd
+    document.getElementById('hold-fields').style.display = holdCmd ? 'block' : 'none'
+    document.getElementById('f-hold-command').value      = holdCmd
   }
 
   if (compType === 'toggle') {
-    document.getElementById('t-icon').value         = slot?.icon        || ''
-    document.getElementById('t-label').value        = slot?.label       || ''
-    document.getElementById('t-color').value        = slot?.color       || '#1e293b'
-    document.getElementById('t-active-icon').value  = slot?.activeIcon  || ''
-    document.getElementById('t-active-label').value = slot?.activeLabel || ''
-    document.getElementById('t-active-color').value = slot?.activeColor || '#4f46e5'
-    document.getElementById('t-off-cmd').value      = slot?.action?.off || ''
-    document.getElementById('t-on-cmd').value       = slot?.action?.on  || ''
-    setImageField('t-img-preview',        't-img-clear-btn',        slot?.image)
-    setImageField('t-active-img-preview', 't-active-img-clear-btn', slot?.activeImage)
+    document.getElementById('t-icon').value         = comp?.icon        || ''
+    document.getElementById('t-label').value        = comp?.label       || ''
+    document.getElementById('t-color').value        = comp?.color       || '#1e293b'
+    document.getElementById('t-active-icon').value  = comp?.activeIcon  || ''
+    document.getElementById('t-active-label').value = comp?.activeLabel || ''
+    document.getElementById('t-active-color').value = comp?.activeColor || '#4f46e5'
+    document.getElementById('t-off-cmd').value      = comp?.action?.off || ''
+    document.getElementById('t-on-cmd').value       = comp?.action?.on  || ''
+    setImageField('t-img-preview',        't-img-clear-btn',        comp?.image)
+    setImageField('t-active-img-preview', 't-active-img-clear-btn', comp?.activeImage)
   }
 
   if (compType === 'slider') {
-    document.getElementById('s-label').value   = slot?.label        || ''
-    document.getElementById('s-color').value   = slot?.color        || '#1e293b'
-    document.getElementById('s-min').value     = slot?.min          ?? 0
-    document.getElementById('s-max').value     = slot?.max          ?? 100
-    document.getElementById('s-step').value    = slot?.step         ?? 5
-    document.getElementById('s-default').value = slot?.defaultValue ?? 50
-    document.getElementById('s-command').value = slot?.action?.command || ''
+    document.getElementById('s-label').value   = comp?.label        || ''
+    document.getElementById('s-color').value   = comp?.color        || '#1e293b'
+    document.getElementById('s-min').value     = comp?.min          ?? 0
+    document.getElementById('s-max').value     = comp?.max          ?? 100
+    document.getElementById('s-step').value    = comp?.step         ?? 5
+    document.getElementById('s-default').value = comp?.defaultValue ?? 50
+    document.getElementById('s-command').value = comp?.action?.command || ''
   }
 
   if (compType === 'tile') {
-    document.getElementById('tile-label').value    = slot?.label        || ''
-    document.getElementById('tile-color').value    = slot?.color        || '#0f172a'
-    document.getElementById('tile-command').value  = slot?.pollCommand  || ''
-    document.getElementById('tile-interval').value = slot?.pollInterval ?? 5
+    document.getElementById('tile-label').value    = comp?.label        || ''
+    document.getElementById('tile-color').value    = comp?.color        || '#0f172a'
+    document.getElementById('tile-command').value  = comp?.pollCommand  || ''
+    document.getElementById('tile-interval').value = comp?.pollInterval ?? 5
   }
 
   if (compType === 'spotify') {
-    document.getElementById('sp-color').value = slot?.color || '#0f172a'
+    document.getElementById('sp-color').value = comp?.color || '#0f172a'
   }
 
   if (compType === 'voice') {
-    document.getElementById('voice-icon').value  = slot?.icon      || '🎤'
-    document.getElementById('voice-label').value = slot?.label     || 'Voice'
-    document.getElementById('voice-color').value = slot?.color     || '#1e293b'
-    document.getElementById('voice-mode').value  = slot?.voiceMode || 'smart'
+    document.getElementById('voice-icon').value  = comp?.icon      || '🎤'
+    document.getElementById('voice-label').value = comp?.label     || 'Voice'
+    document.getElementById('voice-color').value = comp?.color     || '#1e293b'
+    document.getElementById('voice-mode').value  = comp?.voiceMode || 'smart'
   }
 
   if (compType === 'plugin-tile') {
-    document.getElementById('ptile-label').value     = slot?.label           || ''
-    document.getElementById('ptile-color').value     = slot?.color           || '#0f172a'
-    document.getElementById('ptile-plugin-id').value = slot?.pluginTileId    || ''
-    document.getElementById('ptile-event').value     = slot?.pluginTileEvent || ''
-    document.getElementById('ptile-field').value     = slot?.pluginTileField || 'value'
+    document.getElementById('ptile-label').value     = comp?.label           || ''
+    document.getElementById('ptile-color').value     = comp?.color           || '#0f172a'
+    document.getElementById('ptile-plugin-id').value = comp?.pluginTileId    || ''
+    document.getElementById('ptile-event').value     = comp?.pluginTileEvent || ''
+    document.getElementById('ptile-field').value     = comp?.pluginTileField || 'value'
   }
 
   document.getElementById('modal').style.display = 'flex'
 }
 
-function closeModal() { document.getElementById('modal').style.display = 'none'; editingSlot = null }
+function closeModal() { document.getElementById('modal').style.display = 'none'; editingComp = null }
 
 function populatePageTargets(selectedId = null) {
   const sel = document.getElementById('f-page-target')
@@ -517,9 +575,13 @@ function populatePageTargets(selectedId = null) {
 }
 
 function saveModal() {
-  const { pageIdx, slotIdx } = editingSlot
-  const existing = config.pages[pageIdx].slots[slotIdx]
-  let slot = {}
+  const { pageIdx, compId, col, row } = editingComp
+  const components = config.pages[pageIdx].components
+  const existing   = compId ? components.find(c => c.id === compId) : null
+
+  const colSpan = Math.max(1, parseInt(document.getElementById('f-col-span').value) || 1)
+  const rowSpan = Math.max(1, parseInt(document.getElementById('f-row-span').value) || 1)
+  let fields = {}
 
   if (currentCompType === 'button') {
     const at = document.getElementById('f-action-type').value
@@ -530,11 +592,11 @@ function saveModal() {
       case 'command':  action = { type: 'command',  command:  document.getElementById('f-command').value.trim() }; break
       case 'sequence': action = { type: 'sequence', commands: document.getElementById('f-sequence').value.split('\n').map(s => s.trim()).filter(Boolean), delay: parseInt(document.getElementById('f-seq-delay').value) || 150 }; break
       case 'page':     action = { type: 'page',     pageId:   document.getElementById('f-page-target').value }; break
-      case 'plugin':   action = { type: 'plugin', pluginKey: document.getElementById('f-plugin-action').value, params: collectPluginParams() }; break
+      case 'plugin':   action = { type: 'plugin',   pluginKey: document.getElementById('f-plugin-action').value, params: collectPluginParams() }; break
     }
     const holdEnabled = document.getElementById('f-hold-enable').checked
     const holdCmd     = document.getElementById('f-hold-command').value.trim()
-    slot = {
+    fields = {
       componentType: 'button',
       icon:      document.getElementById('f-icon').value.trim(),
       label:     document.getElementById('f-label').value.trim(),
@@ -546,7 +608,7 @@ function saveModal() {
   }
 
   if (currentCompType === 'toggle') {
-    slot = {
+    fields = {
       componentType: 'toggle',
       icon:        document.getElementById('t-icon').value.trim(),
       label:       document.getElementById('t-label').value.trim(),
@@ -561,7 +623,7 @@ function saveModal() {
   }
 
   if (currentCompType === 'slider') {
-    slot = {
+    fields = {
       componentType: 'slider',
       label:        document.getElementById('s-label').value.trim(),
       color:        document.getElementById('s-color').value,
@@ -574,7 +636,7 @@ function saveModal() {
   }
 
   if (currentCompType === 'tile') {
-    slot = {
+    fields = {
       componentType: 'tile',
       label:        document.getElementById('tile-label').value.trim(),
       color:        document.getElementById('tile-color').value,
@@ -584,7 +646,7 @@ function saveModal() {
   }
 
   if (currentCompType === 'spotify') {
-    slot = {
+    fields = {
       componentType: 'spotify',
       color:  document.getElementById('sp-color').value,
       action: { type: 'builtin', key: 'media.playPause' }
@@ -593,11 +655,8 @@ function saveModal() {
 
   if (currentCompType === 'voice') {
     const mode = document.getElementById('voice-mode').value
-    if (mode === 'ai' && !proStatus.active) {
-      showUpgradeModal()
-      return
-    }
-    slot = {
+    if (mode === 'ai' && !proStatus.active) { showUpgradeModal(); return }
+    fields = {
       componentType: 'voice',
       icon:      document.getElementById('voice-icon').value.trim() || '🎤',
       label:     document.getElementById('voice-label').value.trim() || 'Voice',
@@ -607,7 +666,7 @@ function saveModal() {
   }
 
   if (currentCompType === 'plugin-tile') {
-    slot = {
+    fields = {
       componentType:   'plugin-tile',
       label:           document.getElementById('ptile-label').value.trim(),
       color:           document.getElementById('ptile-color').value,
@@ -617,12 +676,19 @@ function saveModal() {
     }
   }
 
-  config.pages[pageIdx].slots[slotIdx] = slot
+  if (existing) {
+    Object.assign(existing, fields, { colSpan, rowSpan })
+  } else {
+    const id = `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    components.push({ id, col, row, colSpan, rowSpan, ...fields })
+  }
+
   pushConfig(); renderGrid(); closeModal()
 }
 
-function deleteSlot() {
-  config.pages[editingSlot.pageIdx].slots[editingSlot.slotIdx] = null
+function deleteComp() {
+  const { pageIdx, compId } = editingComp
+  config.pages[pageIdx].components = config.pages[pageIdx].components.filter(c => c.id !== compId)
   pushConfig(); renderGrid(); closeModal()
 }
 
@@ -631,10 +697,8 @@ function closePageModal() { document.getElementById('page-modal').style.display 
 function saveNewPage() {
   const name    = document.getElementById('f-page-name').value.trim()
   if (!name) return
-  const { cols, rows } = config.grid
   const pageCols = parseInt(document.getElementById('f-page-cols').value) || undefined
-  const total    = (pageCols || cols) * rows
-  const page     = { id: 'page-' + Date.now(), name, slots: Array(total).fill(null) }
+  const page     = { id: 'page-' + Date.now(), name, components: [] }
   if (pageCols) page.cols = pageCols
   config.pages.push(page)
   currentPageIdx = config.pages.length - 1
@@ -654,7 +718,7 @@ document.getElementById('f-action-type').addEventListener('change', e => showAct
 document.getElementById('f-hold-enable').addEventListener('change', e => { document.getElementById('hold-fields').style.display = e.target.checked ? 'block' : 'none' })
 document.getElementById('modal-close').addEventListener('click', closeModal)
 document.getElementById('modal-save').addEventListener('click', saveModal)
-document.getElementById('modal-delete').addEventListener('click', deleteSlot)
+document.getElementById('modal-delete').addEventListener('click', deleteComp)
 document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal() })
 document.getElementById('add-page-btn').addEventListener('click', openPageModal)
 document.getElementById('marketplace-btn').addEventListener('click', () => window.api.openMarketplace())

@@ -16,21 +16,39 @@ const DEFAULT_CONFIG = {
     {
       id: 'media',
       name: 'Media',
-      slots: [
-        { componentType: 'button', icon: '⏮', label: 'Prev',       color: '#1e293b', action: { type: 'builtin', key: 'media.previous'  } },
-        { componentType: 'button', icon: '⏯', label: 'Play/Pause', color: '#1e293b', action: { type: 'builtin', key: 'media.playPause' } },
-        { componentType: 'button', icon: '⏭', label: 'Next',       color: '#1e293b', action: { type: 'builtin', key: 'media.next'      } },
-        { componentType: 'slider', label: 'Volume', color: '#1e293b', min: 0, max: 100, step: 5, defaultValue: 50, action: { type: 'command', command: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ {value}%' } },
-        { componentType: 'toggle', icon: '🔇', activeIcon: '🔊', label: 'Muted', activeLabel: 'Unmuted', color: '#1e293b', activeColor: '#4f46e5', action: { type: 'toggle', on: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 1', off: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 0' } },
-        { componentType: 'button', icon: '🎵', label: 'Spotify',    color: '#14532d', action: { type: 'command', command: 'spotify' } },
-        { componentType: 'button', icon: '🔒', label: 'Lock',       color: '#3b1f1f', action: { type: 'builtin', key: 'system.lock' } },
-        { componentType: 'button', icon: '💤', label: 'Sleep',      color: '#1e293b', action: { type: 'builtin', key: 'system.sleep' } },
-        { componentType: 'button', icon: '📷', label: 'Screenshot', color: '#1e293b', action: { type: 'builtin', key: 'system.screenshot' } },
-        { componentType: 'tile', label: 'Now Playing', color: '#0f172a', pollCommand: 'playerctl metadata title 2>/dev/null || echo "Nothing"', pollInterval: 3 },
-        null, null
+      components: [
+        { id: 'c-prev', col: 1, row: 1, colSpan: 1, rowSpan: 1, componentType: 'button', icon: '⏮', label: 'Prev',       color: '#1e293b', action: { type: 'builtin', key: 'media.previous'  } },
+        { id: 'c-play', col: 2, row: 1, colSpan: 1, rowSpan: 1, componentType: 'button', icon: '⏯', label: 'Play/Pause', color: '#1e293b', action: { type: 'builtin', key: 'media.playPause' } },
+        { id: 'c-next', col: 3, row: 1, colSpan: 1, rowSpan: 1, componentType: 'button', icon: '⏭', label: 'Next',       color: '#1e293b', action: { type: 'builtin', key: 'media.next'      } },
+        { id: 'c-vol',  col: 1, row: 2, colSpan: 1, rowSpan: 2, componentType: 'slider', label: 'Volume', color: '#1e293b', min: 0, max: 100, step: 5, defaultValue: 50, action: { type: 'command', command: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ {value}%' } },
+        { id: 'c-mute', col: 2, row: 2, colSpan: 2, rowSpan: 1, componentType: 'toggle', icon: '🔇', activeIcon: '🔊', label: 'Muted', activeLabel: 'Unmuted', color: '#1e293b', activeColor: '#4f46e5', action: { type: 'toggle', on: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 1', off: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 0' } },
+        { id: 'c-spty', col: 2, row: 3, colSpan: 2, rowSpan: 1, componentType: 'button', icon: '🎵', label: 'Spotify',   color: '#14532d', action: { type: 'command', command: 'spotify'      } },
+        { id: 'c-tile', col: 1, row: 4, colSpan: 3, rowSpan: 1, componentType: 'tile',   label: 'Now Playing', color: '#0f172a', pollCommand: 'playerctl metadata title 2>/dev/null || echo "Nothing"', pollInterval: 3 }
       ]
     }
   ]
+}
+
+function migrateConfig(cfg) {
+  const defaultCols = cfg.grid?.cols || 3
+  for (const page of (cfg.pages || [])) {
+    if (page.components) continue
+    const cols = page.cols || defaultCols
+    const components = []
+    ;(page.slots || []).forEach((slot, i) => {
+      if (!slot) return
+      components.push({
+        id: `cm${i}-${page.id}`,
+        col: (i % cols) + 1,
+        row: Math.floor(i / cols) + 1,
+        colSpan: 1, rowSpan: 1,
+        ...slot
+      })
+    })
+    page.components = components
+    delete page.slots
+  }
+  return cfg
 }
 
 let config          = null
@@ -112,14 +130,14 @@ function startTilePollers() {
   stopTilePollers()
   if (!config) return
   config.pages.forEach(page => {
-    page.slots.forEach((slot, i) => {
-      if (slot?.componentType !== 'tile' || !slot.pollCommand) return
-      const key      = `${page.id}:${i}`
-      const interval = Math.max(1, slot.pollInterval || 5) * 1000
+    ;(page.components || []).forEach(comp => {
+      if (comp?.componentType !== 'tile' || !comp.pollCommand) return
+      const key      = `${page.id}:${comp.id}`
+      const interval = Math.max(1, comp.pollInterval || 5) * 1000
 
       function poll() {
         try {
-          const text = execSync(slot.pollCommand, {
+          const text = execSync(comp.pollCommand, {
             shell: OS === 'win32' ? 'cmd.exe' : '/bin/sh',
             timeout: 3000
           }).toString().trim().split('\n')[0]
@@ -197,7 +215,7 @@ function pollSpotify() {
 }
 
 function hasSpotifyTile() {
-  return config?.pages.some(p => p.slots.some(s => s?.componentType === 'spotify'))
+  return config?.pages.some(p => (p.components || []).some(c => c?.componentType === 'spotify'))
 }
 
 function startSpotifyPoller() {
@@ -214,7 +232,7 @@ function stopSpotifyPoller() {
 // ── Config ─────────────────────────────────────────────
 function loadConfig(filePath) {
   try {
-    if (fs.existsSync(filePath)) return JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    if (fs.existsSync(filePath)) return migrateConfig(JSON.parse(fs.readFileSync(filePath, 'utf8')))
   } catch {}
   saveConfig(filePath, DEFAULT_CONFIG)
   return JSON.parse(JSON.stringify(DEFAULT_CONFIG))
@@ -234,19 +252,19 @@ function broadcast(msg) {
 }
 
 // ── Press / Slide ──────────────────────────────────────
-function handlePress(pageId, slotIndex, hold = false) {
+function handlePress(pageId, compId, hold = false) {
   const page = config.pages.find(p => p.id === pageId)
-  const slot = page?.slots[slotIndex]
-  if (!slot?.action) return
+  const comp = page?.components.find(c => c.id === compId)
+  if (!comp?.action) return
 
-  const action = (hold && slot.holdAction) ? slot.holdAction : slot.action
+  const action = (hold && comp.holdAction) ? comp.holdAction : comp.action
 
   switch (action.type) {
     case 'builtin':  executeBuiltin(action.key); break
     case 'command':  executeCommand(action.command); break
     case 'hotkey':   executeHotkey(action.combo); break
     case 'toggle': {
-      const key    = `${pageId}:${slotIndex}`
+      const key    = `${pageId}:${compId}`
       toggleStates[key] = !toggleStates[key]
       const active = toggleStates[key]
       executeCommand(active ? action.on : action.off)
@@ -274,17 +292,17 @@ function handlePress(pageId, slotIndex, hold = false) {
   }
 }
 
-function handleSlide(pageId, slotIndex, value) {
+function handleSlide(pageId, compId, value) {
   const page = config.pages.find(p => p.id === pageId)
-  const slot = page?.slots[slotIndex]
-  if (!slot?.action) return
-  if (slot.action.type === 'command') {
-    executeCommand(slot.action.command.replace(/{value}/g, String(Math.round(value))))
+  const comp = page?.components.find(c => c.id === compId)
+  if (!comp?.action) return
+  if (comp.action.type === 'command') {
+    executeCommand(comp.action.command.replace(/{value}/g, String(Math.round(value))))
   }
 }
 
 // ── Voice command ──────────────────────────────────────
-async function handleVoiceCommand(transcript, pageId, slotIndex, voiceMode) {
+async function handleVoiceCommand(transcript, pageId, compId, voiceMode) {
   if (!transcript) return
   const mode = voiceMode || 'smart'
   console.log(`Voice [${mode}]: "${transcript}"`)
@@ -295,14 +313,14 @@ async function handleVoiceCommand(transcript, pageId, slotIndex, voiceMode) {
   }
 
   if (mode === 'smart') {
-    const allSlots = config.pages.flatMap(pg =>
-      (pg.slots || []).filter(Boolean).map((s, idx) => ({ slot: s, page: pg, idx }))
-    ).filter(e => e.slot.label)
+    const allComps = config.pages.flatMap(pg =>
+      (pg.components || []).map(c => ({ comp: c, page: pg }))
+    ).filter(e => e.comp.label)
 
     const q = transcript.toLowerCase()
     let best = null; let bestScore = 0
-    for (const entry of allSlots) {
-      const label = entry.slot.label.toLowerCase()
+    for (const entry of allComps) {
+      const label = entry.comp.label.toLowerCase()
       const words = q.split(/\s+/)
       const hits  = words.filter(w => w.length > 2 && label.includes(w)).length
       const score = hits / words.length
@@ -310,8 +328,8 @@ async function handleVoiceCommand(transcript, pageId, slotIndex, voiceMode) {
     }
 
     if (best && bestScore >= 0.3) {
-      handlePress(best.page.id, best.idx, false)
-      broadcast({ type: 'voiceResult', matched: best.slot.label, transcript })
+      handlePress(best.page.id, best.comp.id, false)
+      broadcast({ type: 'voiceResult', matched: best.comp.label, transcript })
     } else {
       broadcast({ type: 'voiceResult', matched: null, transcript })
     }
@@ -320,11 +338,11 @@ async function handleVoiceCommand(transcript, pageId, slotIndex, voiceMode) {
 
   if (mode === 'ai' && config.claudeApiKey) {
     try {
-      const allSlots = config.pages.flatMap(pg =>
-        (pg.slots || []).filter(Boolean).map((s, idx) => ({ label: s.label, pageId: pg.id, idx }))
-      ).filter(e => e.label)
+      const allComps = config.pages.flatMap(pg =>
+        (pg.components || []).map(c => ({ comp: c, page: pg }))
+      ).filter(e => e.comp.label)
 
-      const buttonList = allSlots.map((e, i) => `${i}: ${e.label}`).join('\n')
+      const buttonList = allComps.map((e, i) => `${i}: ${e.comp.label}`).join('\n')
 
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -349,10 +367,10 @@ async function handleVoiceCommand(transcript, pageId, slotIndex, voiceMode) {
       const text   = data.content?.[0]?.text?.trim() || '{}'
       const result = JSON.parse(text)
 
-      if (result.button !== undefined && allSlots[result.button]) {
-        const target = allSlots[result.button]
-        handlePress(target.pageId, target.idx, false)
-        broadcast({ type: 'voiceResult', matched: target.label, transcript })
+      if (result.button !== undefined && allComps[result.button]) {
+        const target = allComps[result.button]
+        handlePress(target.page.id, target.comp.id, false)
+        broadcast({ type: 'voiceResult', matched: target.comp.label, transcript })
       } else if (result.command) {
         executeCommand(result.command)
         broadcast({ type: 'voiceResult', matched: result.command, transcript })
@@ -367,7 +385,7 @@ async function handleVoiceCommand(transcript, pageId, slotIndex, voiceMode) {
   }
 
   // AI mode but no key — fall back to smart
-  handleVoiceCommand(transcript, pageId, slotIndex, 'smart')
+  handleVoiceCommand(transcript, pageId, compId, 'smart')
 }
 
 // ── Public API ─────────────────────────────────────────
@@ -375,7 +393,7 @@ function getConfig()  { return config }
 function getInfo()    { return serverInfo }
 
 function setConfig(newConfig) {
-  config       = newConfig
+  config       = migrateConfig(newConfig)
   toggleStates = {}
   saveConfig(configFilePath, config)
   broadcast({ type: 'config', config })
@@ -443,9 +461,9 @@ async function start(onEvent, port = 3000, paths = {}) {
     ws.on('message', (data) => {
       try {
         const event = JSON.parse(data.toString())
-        if (event.type === 'press')        { handlePress(event.pageId, event.slot, event.hold || false); onEvent(event) }
-        if (event.type === 'slide')        { handleSlide(event.pageId, event.slot, event.value); onEvent(event) }
-        if (event.type === 'voiceCommand') { handleVoiceCommand(event.transcript, event.pageId, event.slot, event.voiceMode) }
+        if (event.type === 'press')        { handlePress(event.pageId, event.compId, event.hold || false); onEvent(event) }
+        if (event.type === 'slide')        { handleSlide(event.pageId, event.compId, event.value); onEvent(event) }
+        if (event.type === 'voiceCommand') { handleVoiceCommand(event.transcript, event.pageId, event.compId, event.voiceMode) }
       } catch {}
     })
 

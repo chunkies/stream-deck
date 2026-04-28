@@ -63,20 +63,20 @@ function renderGrid() {
   grid.innerHTML = ''
   pageNameEl.textContent = page.name
 
-  const total = cols * rows
-  for (let i = 0; i < total; i++) {
-    const slot = page.slots[i] ?? null
-    if (!slot) { const el = document.createElement('div'); el.className = 'btn empty'; grid.appendChild(el); continue }
-
-    switch (slot.componentType) {
-      case 'slider':      grid.appendChild(createSlider(slot, page, i));      break
-      case 'toggle':      grid.appendChild(createToggle(slot, page, i));      break
-      case 'tile':        grid.appendChild(createTile(slot, page, i));        break
-      case 'spotify':     grid.appendChild(createSpotifyTile(slot, page, i)); break
-      case 'voice':       grid.appendChild(createVoiceButton(slot, page, i)); break
-      case 'plugin-tile': grid.appendChild(createPluginTile(slot, page, i));  break
-      default:            grid.appendChild(createButton(slot, page, i));      break
+  for (const comp of (page.components || [])) {
+    let el
+    switch (comp.componentType) {
+      case 'slider':      el = createSlider(comp, page);      break
+      case 'toggle':      el = createToggle(comp, page);      break
+      case 'tile':        el = createTile(comp, page);        break
+      case 'spotify':     el = createSpotifyTile(comp, page); break
+      case 'voice':       el = createVoiceButton(comp, page); break
+      case 'plugin-tile': el = createPluginTile(comp, page);  break
+      default:            el = createButton(comp, page);      break
     }
+    el.style.gridColumn = `${comp.col} / span ${comp.colSpan || 1}`
+    el.style.gridRow    = `${comp.row} / span ${comp.rowSpan || 1}`
+    grid.appendChild(el)
   }
 }
 
@@ -91,20 +91,20 @@ function renderDots() {
 }
 
 // ── Button ────────────────────────────────────────────
-function createButton(slot, page, i) {
+function createButton(comp, page) {
   const btn = document.createElement('div')
   btn.className = 'btn'
-  applyBg(btn, slot.color, slot.image)
-  btn.innerHTML = `<div class="btn-icon">${slot.icon || ''}</div><div class="btn-label">${slot.label || ''}</div>`
+  applyBg(btn, comp.color, comp.image)
+  btn.innerHTML = `<div class="btn-icon">${comp.icon || ''}</div><div class="btn-label">${comp.label || ''}</div>`
 
-  const hasHold = !!slot.holdAction
+  const hasHold = !!comp.holdAction
 
   if (!hasHold) {
     btn.addEventListener('pointerdown', () => {
       navigator.vibrate?.(30)
       btn.classList.add('pressed')
       setTimeout(() => btn.classList.remove('pressed'), 150)
-      send({ type: 'press', pageId: page.id, slot: i, hold: false })
+      send({ type: 'press', pageId: page.id, compId: comp.id, hold: false })
     })
   } else {
     let holdTimer = null
@@ -118,7 +118,7 @@ function createButton(slot, page, i) {
         navigator.vibrate?.([50, 50, 50])
         btn.classList.add('holding')
         setTimeout(() => btn.classList.remove('holding'), 400)
-        send({ type: 'press', pageId: page.id, slot: i, hold: true })
+        send({ type: 'press', pageId: page.id, compId: comp.id, hold: true })
       }, 500)
     })
 
@@ -128,7 +128,7 @@ function createButton(slot, page, i) {
         navigator.vibrate?.(30)
         btn.classList.add('pressed')
         setTimeout(() => btn.classList.remove('pressed'), 150)
-        send({ type: 'press', pageId: page.id, slot: i, hold: false })
+        send({ type: 'press', pageId: page.id, compId: comp.id, hold: false })
       }
     })
 
@@ -141,32 +141,32 @@ function createButton(slot, page, i) {
 }
 
 // ── Toggle ────────────────────────────────────────────
-function createToggle(slot, page, i) {
-  const key    = `${page.id}:${i}`
+function createToggle(comp, page) {
+  const key    = `${page.id}:${comp.id}`
   const active = toggleStates[key] || false
   const btn    = document.createElement('div')
 
-  btn.className    = 'btn toggle-btn' + (active ? ' active' : '')
-  btn.dataset.key  = key
-  btn.dataset.slot = i
+  btn.className      = 'btn toggle-btn' + (active ? ' active' : '')
+  btn.dataset.key    = key
+  btn.dataset.compId = comp.id
   btn.dataset.pageId = page.id
 
-  refreshToggleVisual(btn, slot, active)
+  refreshToggleVisual(btn, comp, active)
 
   btn.addEventListener('pointerdown', () => {
     navigator.vibrate?.(30)
     btn.classList.add('pressed')
     setTimeout(() => btn.classList.remove('pressed'), 150)
-    send({ type: 'press', pageId: page.id, slot: i, hold: false })
+    send({ type: 'press', pageId: page.id, compId: comp.id, hold: false })
   })
   return btn
 }
 
-function refreshToggleVisual(btn, slot, active) {
-  const icon  = active ? (slot.activeIcon  || slot.icon)  : slot.icon
-  const label = active ? (slot.activeLabel || slot.label) : slot.label
-  const color = active ? (slot.activeColor || slot.color) : slot.color
-  const image = active ? (slot.activeImage || slot.image) : slot.image
+function refreshToggleVisual(btn, comp, active) {
+  const icon  = active ? (comp.activeIcon  || comp.icon)  : comp.icon
+  const label = active ? (comp.activeLabel || comp.label) : comp.label
+  const color = active ? (comp.activeColor || comp.color) : comp.color
+  const image = active ? (comp.activeImage || comp.image) : comp.image
   applyBg(btn, color, image)
   btn.innerHTML = `<div class="btn-icon">${icon || ''}</div><div class="btn-label">${label || ''}</div>`
 }
@@ -175,22 +175,20 @@ function updateToggleBtn(key, active) {
   const btn = grid.querySelector(`[data-key="${key}"]`)
   if (!btn) return
   btn.classList.toggle('active', active)
-  const parts   = key.split(':')
-  const pageId  = parts[0]
-  const slotIdx = parseInt(parts[1])
-  const pg      = config.pages.find(p => p.id === pageId)
-  const slot    = pg?.slots[slotIdx]
-  if (slot) refreshToggleVisual(btn, slot, active)
+  const [pageId, compId] = key.split(':')
+  const pg   = config.pages.find(p => p.id === pageId)
+  const comp = pg?.components?.find(c => c.id === compId)
+  if (comp) refreshToggleVisual(btn, comp, active)
 }
 
 // ── Tile ──────────────────────────────────────────────
-function createTile(slot, page, i) {
+function createTile(comp, page) {
   const cell = document.createElement('div')
   cell.className = 'tile-cell'
-  cell.style.background = slot.color || '#0f172a'
-  cell.dataset.key = `${page.id}:${i}`
+  cell.style.background = comp.color || '#0f172a'
+  cell.dataset.key = `${page.id}:${comp.id}`
   cell.innerHTML = `
-    <div class="tile-label">${slot.label || ''}</div>
+    <div class="tile-label">${comp.label || ''}</div>
     <div class="tile-value">—</div>
   `
   return cell
@@ -202,15 +200,15 @@ function updateTile(key, text) {
 }
 
 // ── Plugin tile ───────────────────────────────────────
-function createPluginTile(slot, page, i) {
+function createPluginTile(comp, page) {
   const cell = document.createElement('div')
   cell.className = 'tile-cell plugin-tile-cell'
-  cell.style.background = slot.color || '#0f172a'
-  cell.dataset.pluginId  = slot.pluginTileId    || ''
-  cell.dataset.eventName = slot.pluginTileEvent || ''
-  cell.dataset.field     = slot.pluginTileField || 'value'
+  cell.style.background  = comp.color           || '#0f172a'
+  cell.dataset.pluginId  = comp.pluginTileId    || ''
+  cell.dataset.eventName = comp.pluginTileEvent || ''
+  cell.dataset.field     = comp.pluginTileField || 'value'
   cell.innerHTML = `
-    <div class="tile-label">${slot.label || ''}</div>
+    <div class="tile-label">${comp.label || ''}</div>
     <div class="tile-value">—</div>
   `
   return cell
@@ -228,10 +226,10 @@ function updatePluginTile(pluginId, eventName, msg) {
 }
 
 // ── Spotify tile ──────────────────────────────────────
-function createSpotifyTile(slot, page, i) {
+function createSpotifyTile(comp, page) {
   const cell = document.createElement('div')
   cell.className = 'spotify-cell'
-  cell.style.background = slot.color || '#0f172a'
+  cell.style.background = comp.color || '#0f172a'
   cell.innerHTML = `
     <div class="spotify-art"></div>
     <div class="spotify-overlay">
@@ -244,7 +242,7 @@ function createSpotifyTile(slot, page, i) {
     navigator.vibrate?.(30)
     cell.classList.add('pressed')
     setTimeout(() => cell.classList.remove('pressed'), 150)
-    send({ type: 'press', pageId: page.id, slot: i, hold: false })
+    send({ type: 'press', pageId: page.id, compId: comp.id, hold: false })
   })
   return cell
 }
@@ -271,27 +269,27 @@ function updateSpotifyTile(state) {
 // ── Voice button ──────────────────────────────────────
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
 
-function createVoiceButton(slot, page, i) {
+function createVoiceButton(comp, page) {
   const btn = document.createElement('div')
   btn.className = 'btn voice-btn'
-  applyBg(btn, slot.color, slot.image)
+  applyBg(btn, comp.color, comp.image)
 
   if (!SpeechRecognition) {
-    btn.innerHTML = `<div class="btn-icon">${slot.icon || '🎤'}</div><div class="btn-label">${slot.label || 'Voice'}</div><div class="voice-unsupported">Not supported</div>`
+    btn.innerHTML = `<div class="btn-icon">${comp.icon || '🎤'}</div><div class="btn-label">${comp.label || 'Voice'}</div><div class="voice-unsupported">Not supported</div>`
     btn.style.opacity = '0.5'
     return btn
   }
 
   btn.innerHTML = `
-    <div class="btn-icon">${slot.icon || '🎤'}</div>
-    <div class="btn-label voice-label">${slot.label || 'Voice'}</div>
+    <div class="btn-icon">${comp.icon || '🎤'}</div>
+    <div class="btn-label voice-label">${comp.label || 'Voice'}</div>
     <div class="voice-ring"></div>
   `
 
   const rec = new SpeechRecognition()
   rec.continuous     = false
   rec.interimResults = false
-  rec.lang           = slot.voiceLang || 'en-US'
+  rec.lang           = comp.voiceLang || 'en-US'
 
   let listening = false
 
@@ -299,15 +297,15 @@ function createVoiceButton(slot, page, i) {
     const transcript = e.results[0][0].transcript.trim()
     stopListening()
     const labelEl = btn.querySelector('.voice-label')
-    if (labelEl) { labelEl.textContent = `"${transcript}"`; setTimeout(() => { labelEl.textContent = slot.label || 'Voice' }, 3000) }
-    send({ type: 'voiceCommand', transcript, pageId: page.id, slot: i, voiceMode: slot.voiceMode || 'smart' })
+    if (labelEl) { labelEl.textContent = `"${transcript}"`; setTimeout(() => { labelEl.textContent = comp.label || 'Voice' }, 3000) }
+    send({ type: 'voiceCommand', transcript, pageId: page.id, compId: comp.id, voiceMode: comp.voiceMode || 'smart' })
   }
 
   rec.onerror = (e) => {
     stopListening()
     if (e.error === 'not-allowed') {
       const labelEl = btn.querySelector('.voice-label')
-      if (labelEl) { labelEl.textContent = 'Mic blocked'; setTimeout(() => { labelEl.textContent = slot.label || 'Voice' }, 3000) }
+      if (labelEl) { labelEl.textContent = 'Mic blocked'; setTimeout(() => { labelEl.textContent = comp.label || 'Voice' }, 3000) }
     }
   }
 
@@ -340,19 +338,19 @@ function showVoiceResult(matched, transcript) {
 }
 
 // ── Slider ────────────────────────────────────────────
-function createSlider(slot, page, i) {
+function createSlider(comp, page) {
   const cell = document.createElement('div')
   cell.className = 'slider-cell'
-  cell.style.background = slot.color || '#1e293b'
+  cell.style.background = comp.color || '#1e293b'
 
-  const min  = slot.min          ?? 0
-  const max  = slot.max          ?? 100
-  const step = slot.step         ?? 1
-  let value  = slot.defaultValue ?? 50
+  const min  = comp.min          ?? 0
+  const max  = comp.max          ?? 100
+  const step = comp.step         ?? 1
+  let value  = comp.defaultValue ?? 50
 
   const pct = valueToPct(value, min, max)
   cell.innerHTML = `
-    <div class="slider-label">${slot.label || ''}</div>
+    <div class="slider-label">${comp.label || ''}</div>
     <div class="slider-track">
       <div class="slider-fill" style="height:${pct}%"></div>
       <div class="slider-thumb" style="bottom:calc(${pct}% - 10px)"></div>
@@ -384,7 +382,7 @@ function createSlider(slot, page, i) {
     dragging = false
     update(e.changedTouches[0])
     navigator.vibrate?.(20)
-    send({ type: 'slide', pageId: page.id, slot: i, value })
+    send({ type: 'slide', pageId: page.id, compId: comp.id, value })
   })
 
   return cell

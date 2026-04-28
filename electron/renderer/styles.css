@@ -174,37 +174,87 @@ body {
   aspect-ratio: 3 / 4;
 }
 
-.cell {
+/* Ghost cells — empty grid slots, click to add */
+.ghost-cell {
   border-radius: var(--radius);
-  cursor: pointer;
+  background: rgba(255,255,255,0.012);
+  border: 1px dashed rgba(255,255,255,0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: crosshair;
+  z-index: 1;
+  transition: border-color 0.15s, background 0.15s;
+  min-height: 0;
+}
+.ghost-cell:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.cell-add {
+  font-size: 20px;
+  color: rgba(255,255,255,0.1);
+  font-weight: 300;
+  line-height: 1;
+  pointer-events: none;
+  transition: color 0.15s;
+}
+.ghost-cell:hover .cell-add { color: var(--accent) }
+
+/* Component cards — placed components, draggable + resizable */
+.comp-card {
+  border-radius: var(--radius);
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  transition: transform 0.12s, box-shadow 0.12s;
-  border: 1px solid var(--border);
   padding: 8px;
   overflow: hidden;
-  position: relative;
+  cursor: grab;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+  user-select: none;
+  min-height: 0;
+  transition: box-shadow 0.15s;
 }
-.cell:hover { transform: scale(1.04); box-shadow: 0 4px 16px rgba(0,0,0,0.4) }
-.cell:active { transform: scale(0.96) }
+.comp-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.05) }
 
-.cell.empty {
-  background: rgba(255,255,255,0.015);
-  border: 1px dashed rgba(255,255,255,0.08);
-  box-shadow: none;
-}
-.cell.empty:hover { border-color: var(--accent); background: var(--accent-soft) }
-.cell-add { font-size: 18px; color: var(--text-muted); transition: color 0.15s }
-.cell.empty:hover .cell-add { color: var(--accent) }
-
-.cell.filled { box-shadow: 0 2px 10px rgba(0,0,0,0.35) }
-
-.cell-icon  { font-size: 22px; line-height: 1 }
-.cell-label { font-size: 11px; color: rgba(255,255,255,0.88); text-align: center; font-weight: 500; line-height: 1.2 }
+.cell-icon  { font-size: clamp(16px, 2vw, 22px); line-height: 1; pointer-events: none }
+.cell-label { font-size: clamp(9px, 1.2vw, 12px); color: rgba(255,255,255,0.88); text-align: center; font-weight: 500; line-height: 1.2; pointer-events: none }
 .cell-type  { font-size: 9px; color: rgba(255,255,255,0.28); text-transform: uppercase; letter-spacing: 0.05em }
+
+/* Resize handle — bottom-right corner */
+.resize-handle {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  cursor: se-resize;
+  opacity: 0;
+  transition: opacity 0.15s;
+  border-right: 2px solid rgba(255,255,255,0.4);
+  border-bottom: 2px solid rgba(255,255,255,0.4);
+  border-radius: 0 0 3px 0;
+  z-index: 3;
+}
+.comp-card:hover .resize-handle { opacity: 1 }
+
+/* Size inputs in modal */
+.size-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.size-input {
+  width: 52px !important;
+  text-align: center;
+}
+.size-sep  { color: var(--text-muted); font-weight: 600 }
+.size-hint { font-size: 11px; color: var(--text-muted) }
 
 /* ──────────────── Modal ──────────────── */
 .modal-overlay {
@@ -413,8 +463,6 @@ body {
 .cell-hold-badge { font-size: 8px; color: var(--accent); position: absolute; bottom: 4px; right: 4px }
 
 /* ──────────────── Drag and drop ──────────────── */
-.cell.dragging  { opacity: 0.35 }
-.cell.drag-over { border: 2px solid var(--accent) !important; background: var(--accent-soft) !important }
 
 /* ──────────────── Toggle switch ──────────────── */
 .sw { display: inline-flex; align-items: center; cursor: pointer }
