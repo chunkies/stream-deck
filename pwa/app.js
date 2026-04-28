@@ -62,6 +62,9 @@ function renderGrid() {
   grid.style.gridTemplateRows    = `repeat(${rows}, 1fr)`
   grid.innerHTML = ''
   pageNameEl.textContent = page.name
+  grid.classList.remove('page-in')
+  void grid.offsetWidth
+  grid.classList.add('page-in')
 
   for (const comp of (page.components || [])) {
     let el
@@ -196,7 +199,11 @@ function createTile(comp, page) {
 
 function updateTile(key, text) {
   const el = grid.querySelector(`[data-key="${key}"] .tile-value`)
-  if (el) el.textContent = text
+  if (!el) return
+  el.textContent = text
+  el.classList.remove('flash')
+  void el.offsetWidth
+  el.classList.add('flash')
 }
 
 // ── Plugin tile ───────────────────────────────────────
@@ -221,7 +228,11 @@ function updatePluginTile(pluginId, eventName, msg) {
     const field = cell.dataset.field || 'value'
     const val = msg[field] ?? msg.value ?? JSON.stringify(msg)
     const el = cell.querySelector('.tile-value')
-    if (el) el.textContent = val
+    if (!el) return
+    el.textContent = val
+    el.classList.remove('flash')
+    void el.offsetWidth
+    el.classList.add('flash')
   })
 }
 
@@ -375,11 +386,12 @@ function createSlider(comp, page) {
     valueEl.textContent = value
   }
 
-  track.addEventListener('touchstart', e => { dragging = true; update(e.touches[0]); e.preventDefault() }, { passive: false })
+  track.addEventListener('touchstart', e => { dragging = true; cell.classList.add('dragging'); update(e.touches[0]); e.preventDefault() }, { passive: false })
   track.addEventListener('touchmove',  e => { if (dragging) { update(e.touches[0]); e.preventDefault() } }, { passive: false })
   track.addEventListener('touchend',   e => {
     if (!dragging) return
     dragging = false
+    cell.classList.remove('dragging')
     update(e.changedTouches[0])
     navigator.vibrate?.(20)
     send({ type: 'slide', pageId: page.id, compId: comp.id, value })
@@ -411,7 +423,7 @@ grid.addEventListener('touchend', e => {
   const dx = e.changedTouches[0].clientX - touchStartX
   if (Math.abs(dx) < 60) return
   if (dx < 0 && currentPageIdx < config.pages.length - 1) { currentPageIdx++; render() }
-  if (dx > 0 && currentPageIdx > 0)                       { currentPageIdx--; render() }
+  else if (dx > 0 && currentPageIdx > 0)                  { currentPageIdx--; render() }
 })
 
 // ── Init ─────────────────────────────────────────────
