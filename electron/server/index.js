@@ -58,6 +58,7 @@ function migrateConfig(cfg) {
 let config          = null
 let configFilePath  = null
 let toggleStates    = {}
+let slideLastValues = {}
 let serverInfo      = null
 let wss             = null
 let connectedClients = 0
@@ -318,9 +319,39 @@ function handleSlide(pageId, compId, value) {
   const page = config.pages.find(p => p.id === pageId)
   const comp = page?.components.find(c => c.id === compId)
   if (!comp?.action) return
-  const a   = comp.action
-  const val = String(Math.round(value))
+  const a    = comp.action
+  const val  = String(Math.round(value))
+  const key  = `${pageId}:${compId}`
+
   switch (a.type) {
+    case 'volume': {
+      const v = Math.round(value)
+      if (OS === 'linux')  executeCommand(`wpctl set-volume @DEFAULT_AUDIO_SINK@ ${v}%`)
+      else if (OS === 'darwin') executeCommand(`osascript -e 'set volume output volume ${v}'`)
+      else executeCommand(`powershell -c "$vol=[math]::Round(${v}/100,2); (New-Object -ComObject WScript.Shell).SendKeys([char]174)"`)
+      break
+    }
+    case 'scroll': {
+      const last  = slideLastValues[key] ?? value
+      const raw   = value - last
+      slideLastValues[key] = value
+      // Ignore large jumps (infinite scroll reset: slider snapping back to center)
+      if (Math.abs(raw) > 15) break
+      const delta = Math.round(raw)
+      if (delta === 0) break
+      const speed = a.speed || 2
+      const steps = Math.min(Math.abs(delta) * speed, 12)
+      const dir   = a.direction || 'vertical'
+      if (OS === 'linux') {
+        // xdotool: 4=up 5=down 6=left 7=right
+        const btn = dir === 'horizontal' ? (delta > 0 ? 7 : 6) : (delta > 0 ? 5 : 4)
+        for (let i = 0; i < steps; i++) executeCommand(`xdotool click --clearmodifiers ${btn}`)
+      } else if (OS === 'darwin') {
+        const amount = delta > 0 ? -steps : steps
+        executeCommand(`osascript -e 'tell application "System Events" to scroll ${dir === 'horizontal' ? 'left' : 'up'} by ${Math.abs(amount)}'`)
+      }
+      break
+    }
     case 'command':  executeCommand(a.command.replace(/{value}/g, val)); break
     case 'builtin':  executeBuiltin(a.key); break
     case 'hotkey':   executeHotkey(a.combo); break

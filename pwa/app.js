@@ -252,6 +252,11 @@ function createKnob(comp, page) {
       pct                 = valueToPct(value, min, max) / 100
       ringEl.innerHTML    = knobSVG(pct)
       valueEl.textContent = value
+      // In infinite scroll mode, send continuously during drag
+      if (comp.infiniteScroll && value !== lastSentValue) {
+        send({ type: 'slide', pageId: page.id, compId: comp.id, value })
+        lastSentValue = value
+      }
     }
   })
 
@@ -259,8 +264,19 @@ function createKnob(comp, page) {
     if (!dragging) return
     dragging = false
     cell.classList.remove('dragging')
-    lastSentValue = value
-    send({ type: 'slide', pageId: page.id, compId: comp.id, value })
+    if (comp.infiniteScroll) {
+      // Reset to center so next drag starts fresh
+      const center = comp.defaultValue ?? Math.round((min + max) / 2)
+      value             = center
+      pct               = valueToPct(center, min, max) / 100
+      ringEl.innerHTML  = knobSVG(pct)
+      valueEl.textContent = '·'
+      send({ type: 'slide', pageId: page.id, compId: comp.id, value: center })
+      lastSentValue = center
+    } else {
+      lastSentValue = value
+      send({ type: 'slide', pageId: page.id, compId: comp.id, value })
+    }
   })
 
   cell.addEventListener('pointercancel', () => {
@@ -495,15 +511,66 @@ function createSlider(comp, page) {
     valueEl.textContent = value
   }
 
-  track.addEventListener('touchstart', e => { dragging = true; cell.classList.add('dragging'); update(e.touches[0]); e.preventDefault() }, { passive: false })
-  track.addEventListener('touchmove',  e => { if (dragging) { update(e.touches[0], true); e.preventDefault() } }, { passive: false })
-  track.addEventListener('touchend',   e => {
-    if (!dragging) return
-    dragging = false
-    cell.classList.remove('dragging')
-    update(e.changedTouches[0])
-    send({ type: 'slide', pageId: page.id, compId: comp.id, value })
-  })
+  if (comp.infiniteScroll) {
+    // ── Infinite scroll mode: send during drag, reset visual on release ──
+    let lastSentValue = comp.defaultValue ?? 50
+
+    function getTrackValue(touch) {
+      const rect = track.getBoundingClientRect()
+      const p = horiz
+        ? Math.max(0, Math.min(1, (touch.clientX - rect.left)  / rect.width))
+        : Math.max(0, Math.min(1, (rect.bottom - touch.clientY) / rect.height))
+      return Math.max(min, Math.min(max, Math.round((min + p * (max - min)) / step) * step))
+    }
+
+    function applyPct(pct) {
+      if (horiz) { fill.style.width = `${pct}%`; thumb.style.left = `calc(${pct}% - 10px)` }
+      else        { fill.style.height = `${pct}%`; thumb.style.bottom = `calc(${pct}% - 10px)` }
+    }
+
+    track.addEventListener('touchstart', e => {
+      dragging = true; cell.classList.add('dragging')
+      const v = getTrackValue(e.touches[0])
+      applyPct(valueToPct(v, min, max)); valueEl.textContent = v
+      e.preventDefault()
+    }, { passive: false })
+
+    track.addEventListener('touchmove', e => {
+      if (!dragging) return
+      const v = getTrackValue(e.touches[0])
+      applyPct(valueToPct(v, min, max)); valueEl.textContent = v
+      if (v !== lastSentValue) {
+        navigator.vibrate?.(8)
+        send({ type: 'slide', pageId: page.id, compId: comp.id, value: v })
+        lastSentValue = v
+      }
+      e.preventDefault()
+    }, { passive: false })
+
+    track.addEventListener('touchend', e => {
+      if (!dragging) return
+      dragging = false; cell.classList.remove('dragging')
+      // Reset visual to center, send center value so server resets its delta tracking
+      const center = comp.defaultValue ?? 50
+      const centerPct = valueToPct(center, min, max)
+      applyPct(centerPct); valueEl.textContent = '·'
+      // Large jump → server ignores for scroll delta, just resets tracking value
+      send({ type: 'slide', pageId: page.id, compId: comp.id, value: center })
+      lastSentValue = center
+    })
+
+  } else {
+    // ── Normal mode ──
+    track.addEventListener('touchstart', e => { dragging = true; cell.classList.add('dragging'); update(e.touches[0]); e.preventDefault() }, { passive: false })
+    track.addEventListener('touchmove',  e => { if (dragging) { update(e.touches[0], true); e.preventDefault() } }, { passive: false })
+    track.addEventListener('touchend',   e => {
+      if (!dragging) return
+      dragging = false
+      cell.classList.remove('dragging')
+      update(e.changedTouches[0])
+      send({ type: 'slide', pageId: page.id, compId: comp.id, value })
+    })
+  }
 
   return cell
 }

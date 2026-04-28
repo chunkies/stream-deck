@@ -215,16 +215,44 @@
         <div class="field-row"><label>Step</label><input id="s-step" type="number" value="5" min="1"></div>
         <div class="field-row"><label>Default</label><input id="s-default" type="number" value="50"></div>
         <div class="field-row">
+          <label>Infinite</label>
+          <div>
+            <label class="sw sw-sm"><input type="checkbox" id="s-infinite"><span class="sw-track"><span class="sw-thumb"></span></span></label>
+            <div class="field-hint">Resets to center each drag — unlimited range</div>
+          </div>
+        </div>
+        <div class="field-row">
           <label>Action</label>
           <select id="s-action-type">
-            <option value="builtin">Built-in</option>
+            <option value="volume">System Volume</option>
+            <option value="scroll">Mouse Scroll</option>
             <option value="hotkey">Hotkey</option>
             <option value="command">Command</option>
             <option value="sequence">Sequence</option>
           </select>
         </div>
       </div>
-      <div id="s-action-builtin" style="display:none"><div class="field-row"><label>Action</label><select id="s-builtin-key"></select></div></div>
+      <div id="s-action-volume" style="display:none">
+        <div class="field-hint" style="padding:4px 0">Maps slider 0–100 directly to system audio volume.</div>
+      </div>
+      <div id="s-action-scroll" style="display:none">
+        <div class="field-row">
+          <label>Direction</label>
+          <select id="s-scroll-dir">
+            <option value="vertical">Vertical ↑↓</option>
+            <option value="horizontal">Horizontal ←→</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Speed</label>
+          <select id="s-scroll-speed">
+            <option value="1">Slow (1×)</option>
+            <option value="2" selected>Normal (2×)</option>
+            <option value="4">Fast (4×)</option>
+          </select>
+        </div>
+        <div class="field-hint" style="padding:4px 0">Sends mouse scroll events. Best with Infinite enabled.</div>
+      </div>
       <div id="s-action-hotkey" style="display:none">
         <div class="field-row"><label>Keys</label><div><input id="s-hotkey" type="text" placeholder="ctrl+shift+f5"><div class="field-hint">Fired on release</div></div></div>
       </div>
@@ -253,16 +281,44 @@
         <div class="field-row"><label>Step</label><input id="k-step" type="number" value="1" min="1"></div>
         <div class="field-row"><label>Default</label><input id="k-default" type="number" value="50"></div>
         <div class="field-row">
+          <label>Infinite</label>
+          <div>
+            <label class="sw sw-sm"><input type="checkbox" id="k-infinite"><span class="sw-track"><span class="sw-thumb"></span></span></label>
+            <div class="field-hint">Resets to center each drag — unlimited range</div>
+          </div>
+        </div>
+        <div class="field-row">
           <label>Action</label>
           <select id="k-action-type">
-            <option value="builtin">Built-in</option>
+            <option value="volume">System Volume</option>
+            <option value="scroll">Mouse Scroll</option>
             <option value="hotkey">Hotkey</option>
             <option value="command">Command</option>
             <option value="sequence">Sequence</option>
           </select>
         </div>
       </div>
-      <div id="k-action-builtin" style="display:none"><div class="field-row"><label>Action</label><select id="k-builtin-key"></select></div></div>
+      <div id="k-action-volume" style="display:none">
+        <div class="field-hint" style="padding:4px 0">Maps knob 0–100 directly to system audio volume.</div>
+      </div>
+      <div id="k-action-scroll" style="display:none">
+        <div class="field-row">
+          <label>Direction</label>
+          <select id="k-scroll-dir">
+            <option value="vertical">Vertical ↑↓</option>
+            <option value="horizontal">Horizontal ←→</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Speed</label>
+          <select id="k-scroll-speed">
+            <option value="1">Slow (1×)</option>
+            <option value="2" selected>Normal (2×)</option>
+            <option value="4">Fast (4×)</option>
+          </select>
+        </div>
+        <div class="field-hint" style="padding:4px 0">Sends mouse scroll events. Best with Infinite enabled.</div>
+      </div>
       <div id="k-action-hotkey" style="display:none">
         <div class="field-row"><label>Keys</label><div><input id="k-hotkey" type="text" placeholder="ctrl+shift+f5"><div class="field-hint">Fired on release</div></div></div>
       </div>
@@ -271,7 +327,7 @@
           <label>Command</label>
           <div>
             <input id="k-command" type="text" placeholder="e.g. amixer set Master {value}%">
-            <div class="field-hint">Use <code>{value}</code>. Drag up/down to adjust.</div>
+            <div class="field-hint">Use <code>{value}</code>. Rotate to adjust.</div>
           </div>
         </div>
       </div>

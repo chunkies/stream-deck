@@ -237,12 +237,12 @@ function collectPluginParams() {
 }
 
 function showSliderActionFields(type) {
-  for (const t of ['builtin', 'hotkey', 'command', 'sequence']) {
+  for (const t of ['volume', 'scroll', 'hotkey', 'command', 'sequence']) {
     document.getElementById(`s-action-${t}`).style.display = t === type ? '' : 'none'
   }
 }
 function showKnobActionFields(type) {
-  for (const t of ['builtin', 'hotkey', 'command', 'sequence']) {
+  for (const t of ['volume', 'scroll', 'hotkey', 'command', 'sequence']) {
     document.getElementById(`k-action-${t}`).style.display = t === type ? '' : 'none'
   }
 }
@@ -681,11 +681,15 @@ function openModal(pageIdx, compId, col, row) {
     document.getElementById('s-max').value         = comp?.max          ?? 100
     document.getElementById('s-step').value        = comp?.step         ?? 5
     document.getElementById('s-default').value     = comp?.defaultValue ?? 50
-    const sAt = comp?.action?.type || 'command'
+    document.getElementById('s-infinite').checked  = !!comp?.infiniteScroll
+    const sAt = comp?.action?.type || 'volume'
     document.getElementById('s-action-type').value = sAt
     showSliderActionFields(sAt)
     document.getElementById('s-command').value = comp?.action?.command || ''
-    if (sAt === 'builtin')  document.getElementById('s-builtin-key').value = comp?.action?.key || BUILTIN_ACTIONS[0].key
+    if (sAt === 'scroll') {
+      document.getElementById('s-scroll-dir').value   = comp?.action?.direction || 'vertical'
+      document.getElementById('s-scroll-speed').value = comp?.action?.speed     || '2'
+    }
     if (sAt === 'hotkey')   document.getElementById('s-hotkey').value       = comp?.action?.combo || ''
     if (sAt === 'sequence') {
       document.getElementById('s-sequence').value  = (comp?.action?.commands || []).join('\n')
@@ -694,17 +698,21 @@ function openModal(pageIdx, compId, col, row) {
   }
 
   if (uiType === 'knob') {
-    document.getElementById('k-label').value   = comp?.label        || ''
-    document.getElementById('k-color').value   = comp?.color        || '#1e293b'
-    document.getElementById('k-min').value     = comp?.min          ?? 0
-    document.getElementById('k-max').value     = comp?.max          ?? 100
-    document.getElementById('k-step').value    = comp?.step         ?? 1
-    document.getElementById('k-default').value = comp?.defaultValue ?? 50
-    const kAt = comp?.action?.type || 'command'
+    document.getElementById('k-label').value      = comp?.label        || ''
+    document.getElementById('k-color').value      = comp?.color        || '#1e293b'
+    document.getElementById('k-min').value        = comp?.min          ?? 0
+    document.getElementById('k-max').value        = comp?.max          ?? 100
+    document.getElementById('k-step').value       = comp?.step         ?? 1
+    document.getElementById('k-default').value    = comp?.defaultValue ?? 50
+    document.getElementById('k-infinite').checked = !!comp?.infiniteScroll
+    const kAt = comp?.action?.type || 'volume'
     document.getElementById('k-action-type').value = kAt
     showKnobActionFields(kAt)
     document.getElementById('k-command').value = comp?.action?.command || ''
-    if (kAt === 'builtin')  document.getElementById('k-builtin-key').value = comp?.action?.key || BUILTIN_ACTIONS[0].key
+    if (kAt === 'scroll') {
+      document.getElementById('k-scroll-dir').value   = comp?.action?.direction || 'vertical'
+      document.getElementById('k-scroll-speed').value = comp?.action?.speed     || '2'
+    }
     if (kAt === 'hotkey')   document.getElementById('k-hotkey').value       = comp?.action?.combo || ''
     if (kAt === 'sequence') {
       document.getElementById('k-sequence').value  = (comp?.action?.commands || []).join('\n')
@@ -814,21 +822,23 @@ function saveModal() {
     const sAt = document.getElementById('s-action-type').value
     let sAction
     switch (sAt) {
-      case 'builtin':  sAction = { type: 'builtin',  key:      document.getElementById('s-builtin-key').value }; break
+      case 'volume':   sAction = { type: 'volume' }; break
+      case 'scroll':   sAction = { type: 'scroll', direction: document.getElementById('s-scroll-dir').value, speed: parseInt(document.getElementById('s-scroll-speed').value) || 2 }; break
       case 'hotkey':   sAction = { type: 'hotkey',   combo:    document.getElementById('s-hotkey').value.trim() }; break
       case 'sequence': sAction = { type: 'sequence', commands: document.getElementById('s-sequence').value.split('\n').map(s => s.trim()).filter(Boolean), delay: parseInt(document.getElementById('s-seq-delay').value) || 150 }; break
       default:         sAction = { type: 'command',  command:  document.getElementById('s-command').value.trim() }
     }
     fields = {
-      componentType: 'slider',
-      label:        document.getElementById('s-label').value.trim(),
-      color:        document.getElementById('s-color').value,
-      orientation:  existing?.orientation || 'vertical',
-      min:          parseFloat(document.getElementById('s-min').value)     || 0,
-      max:          parseFloat(document.getElementById('s-max').value)     || 100,
-      step:         parseFloat(document.getElementById('s-step').value)    || 5,
-      defaultValue: parseFloat(document.getElementById('s-default').value) || 50,
-      action:       sAction
+      componentType:  'slider',
+      label:          document.getElementById('s-label').value.trim(),
+      color:          document.getElementById('s-color').value,
+      orientation:    existing?.orientation || 'vertical',
+      min:            parseFloat(document.getElementById('s-min').value)     || 0,
+      max:            parseFloat(document.getElementById('s-max').value)     || 100,
+      step:           parseFloat(document.getElementById('s-step').value)    || 5,
+      defaultValue:   parseFloat(document.getElementById('s-default').value) || 50,
+      infiniteScroll: document.getElementById('s-infinite').checked,
+      action:         sAction
     }
   }
 
@@ -836,20 +846,22 @@ function saveModal() {
     const kAt = document.getElementById('k-action-type').value
     let kAction
     switch (kAt) {
-      case 'builtin':  kAction = { type: 'builtin',  key:      document.getElementById('k-builtin-key').value }; break
+      case 'volume':   kAction = { type: 'volume' }; break
+      case 'scroll':   kAction = { type: 'scroll', direction: document.getElementById('k-scroll-dir').value, speed: parseInt(document.getElementById('k-scroll-speed').value) || 2 }; break
       case 'hotkey':   kAction = { type: 'hotkey',   combo:    document.getElementById('k-hotkey').value.trim() }; break
       case 'sequence': kAction = { type: 'sequence', commands: document.getElementById('k-sequence').value.split('\n').map(s => s.trim()).filter(Boolean), delay: parseInt(document.getElementById('k-seq-delay').value) || 150 }; break
       default:         kAction = { type: 'command',  command:  document.getElementById('k-command').value.trim() }
     }
     fields = {
-      componentType: 'knob',
-      label:        document.getElementById('k-label').value.trim(),
-      color:        document.getElementById('k-color').value,
-      min:          parseFloat(document.getElementById('k-min').value)     || 0,
-      max:          parseFloat(document.getElementById('k-max').value)     || 100,
-      step:         parseFloat(document.getElementById('k-step').value)    || 1,
-      defaultValue: parseFloat(document.getElementById('k-default').value) || 50,
-      action:       kAction
+      componentType:  'knob',
+      label:          document.getElementById('k-label').value.trim(),
+      color:          document.getElementById('k-color').value,
+      min:            parseFloat(document.getElementById('k-min').value)     || 0,
+      max:            parseFloat(document.getElementById('k-max').value)     || 100,
+      step:           parseFloat(document.getElementById('k-step').value)    || 1,
+      defaultValue:   parseFloat(document.getElementById('k-default').value) || 50,
+      infiniteScroll: document.getElementById('k-infinite').checked,
+      action:         kAction
     }
   }
 
@@ -943,8 +955,8 @@ function compDefaults(compType) {
   switch (compType) {
     case 'button':      return { ...base, icon: '', action: { type: 'builtin', key: 'media.playPause' }, holdAction: null }
     case 'switch':      return { ...base, action: { type: 'toggle', on: '', off: '' } }
-    case 'slider':      return { ...base, orientation: 'vertical', min: 0, max: 100, step: 5, defaultValue: 50, action: { type: 'command', command: '' } }
-    case 'knob':        return { ...base, min: 0, max: 100, step: 1, defaultValue: 50, action: { type: 'command', command: '' } }
+    case 'slider':      return { ...base, orientation: 'vertical', min: 0, max: 100, step: 5, defaultValue: 50, infiniteScroll: false, action: { type: 'volume' } }
+    case 'knob':        return { ...base, min: 0, max: 100, step: 1, defaultValue: 50, infiniteScroll: false, action: { type: 'volume' } }
     case 'tile':        return { ...base, color: '#0f172a', pollCommand: '', pollInterval: 5 }
     case 'spotify':     return { color: '#0f172a', label: '', action: { type: 'builtin', key: 'media.playPause' } }
     case 'voice':       return { icon: '🎤', label: 'Voice', color: '#1e293b', voiceMode: 'smart' }
