@@ -605,3 +605,42 @@ html, body {
 /* ── Plugin tile ── */
 .plugin-tile-cell .tile-label { color: rgba(167,139,250,0.8) }
 .plugin-tile-cell .tile-value { color: rgba(199,210,254,0.95) }
+
+/* ── Back button ── */
+.back-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(255,255,255,0.07);
+  color: var(--text-soft);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+  -webkit-appearance: none;
+}
+.back-btn:active { background: rgba(255,255,255,0.14); color: var(--text); }
+.back-btn.hidden { display: none; }
+
+/* ── Folder ── */
+.folder-btn { position: relative; }
+.folder-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 1px 5px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1.5;
+  pointer-events: none;
+}

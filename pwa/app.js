@@ -4,8 +4,14 @@ let ws             = null
 let config         = null
 let currentPageIdx = 0
 let toggleStates   = {}
-let touchStartX    = 0
 let reconnectTimer = null
+let currentPages   = null   // active pages array (config.pages or folder sub-pages)
+let navStack       = []     // [{pages, pageIdx}] folder breadcrumb stack
+let swipeStartX    = 0
+let swipeStartY    = 0
+let swipeStartTime = 0
+let swipeTracking  = false
+let swipeActive    = false
 
 const grid         = document.getElementById('grid')
 const pageDots     = document.getElementById('page-dots')
@@ -36,13 +42,14 @@ function connect() {
 
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data)
-    if (msg.type === 'config')        { config = msg.config; currentPageIdx = 0; toggleStates = {}; render() }
+    if (msg.type === 'config')        { config = msg.config; currentPages = config.pages; currentPageIdx = 0; navStack = []; toggleStates = {}; render() }
     if (msg.type === 'toggleState')   { toggleStates[msg.key] = msg.active; updateToggleBtn(msg.key, msg.active) }
     if (msg.type === 'tileUpdate')    { updateTile(msg.key, msg.text) }
     if (msg.type === 'spotifyUpdate') { updateSpotifyTile(msg) }
     if (msg.type === 'voiceResult')   { showVoiceResult(msg.matched, msg.transcript) }
     if (msg.type === 'pluginEvent')   { updatePluginTile(msg.pluginId, msg.event, msg) }
     if (msg.type === 'navigate') {
+      navStack = []; currentPages = config.pages
       const idx = config?.pages.findIndex(p => p.id === msg.pageId)
       if (idx >= 0) { currentPageIdx = idx; render() }
     }
@@ -55,7 +62,7 @@ function send(data) { if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.string
 function render() { if (!config) return; renderGrid(); renderDots() }
 
 function renderGrid() {
-  const page = config.pages[currentPageIdx]
+  const page = currentPages[currentPageIdx]
   const cols = page.cols || config.grid.cols
   const rows = config.grid.rows
   grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`
@@ -77,6 +84,7 @@ function renderGrid() {
       case 'spotify':     el = createSpotifyTile(comp, page); break
       case 'voice':       el = createVoiceButton(comp, page); break
       case 'plugin-tile': el = createPluginTile(comp, page);  break
+      case 'folder':      el = createFolder(comp, page);      break
       default:            el = createButton(comp, page);      break
     }
     el.style.gridColumn = `${comp.col} / span ${comp.colSpan || 1}`
@@ -87,12 +95,13 @@ function renderGrid() {
 
 function renderDots() {
   pageDots.innerHTML = ''
-  config.pages.forEach((_, i) => {
+  currentPages.forEach((_, i) => {
     const dot = document.createElement('div')
     dot.className = 'page-dot' + (i === currentPageIdx ? ' active' : '')
     dot.addEventListener('click', () => { currentPageIdx = i; render() })
     pageDots.appendChild(dot)
   })
+  document.getElementById('back-btn')?.classList.toggle('hidden', navStack.length === 0)
 }
 
 // ── Button ────────────────────────────────────────────
@@ -590,17 +599,125 @@ function applyBg(el, color, image) {
   }
 }
 
-// ── Swipe between pages ───────────────────────────────
-grid.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX }, { passive: true })
-grid.addEventListener('touchend', e => {
+// ── Folder ────────────────────────────────────────────
+function createFolder(comp, page) {
+  const btn = document.createElement('div')
+  btn.className = 'btn folder-btn'
+  applyBg(btn, comp.color, comp.image)
+  const pageCount = (comp.pages || []).length
+  btn.innerHTML = `
+    <div class="btn-icon">${comp.icon || '📁'}</div>
+    <div class="btn-label">${comp.label || 'Folder'}</div>
+    ${pageCount > 0 ? `<div class="folder-badge">${pageCount}</div>` : ''}
+  `
+  btn.addEventListener('pointerdown', () => {
+    if (!comp.pages?.length) return
+    Haptic.tap()
+    btn.classList.add('pressed')
+    setTimeout(() => btn.classList.remove('pressed'), 150)
+    setTimeout(() => {
+      navStack.push({ pages: currentPages, pageIdx: currentPageIdx })
+      currentPages = comp.pages
+      currentPageIdx = 0
+      render()
+    }, 80)
+  })
+  return btn
+}
+
+function goBack() {
+  if (!navStack.length) return
+  const prev = navStack.pop()
+  currentPages = prev.pages
+  currentPageIdx = prev.pageIdx
+  render()
+}
+
+// ── Swipe between pages ────────────────────────────────
+const appEl = document.querySelector('.app')
+
+appEl.addEventListener('touchstart', e => {
   if (!config) return
-  if (e.target.closest('.slider-cell') || e.target.closest('.knob-cell') || e.target.closest('.tile-cell') || e.target.closest('.spotify-cell') || e.target.closest('.voice-btn')) return
-  const dx = e.changedTouches[0].clientX - touchStartX
-  if (Math.abs(dx) < 60) return
-  if (dx < 0 && currentPageIdx < config.pages.length - 1) { currentPageIdx++; render() }
-  else if (dx > 0 && currentPageIdx > 0)                  { currentPageIdx--; render() }
-})
+  const t        = e.touches[0]
+  swipeStartX    = t.clientX
+  swipeStartY    = t.clientY
+  swipeStartTime = Date.now()
+  swipeTracking  = !e.target.closest('.slider-cell, .knob-cell')
+  swipeActive    = false
+}, { passive: true })
+
+appEl.addEventListener('touchmove', e => {
+  if (!swipeTracking || !config) return
+  const dx = e.touches[0].clientX - swipeStartX
+  const dy = e.touches[0].clientY - swipeStartY
+
+  if (!swipeActive) {
+    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
+    if (Math.abs(dy) > Math.abs(dx) * 0.85) { swipeTracking = false; return }
+    swipeActive = true
+  }
+
+  e.preventDefault()
+
+  const atStart = currentPageIdx === 0 && navStack.length === 0
+  const atEnd   = currentPageIdx === currentPages.length - 1
+  const tx = (dx > 0 && atStart) || (dx < 0 && atEnd) ? dx * 0.22 : dx
+  grid.style.transition = 'none'
+  grid.style.transform  = `translateX(${tx}px)`
+}, { passive: false })
+
+appEl.addEventListener('touchend', e => {
+  if (!swipeActive) { swipeTracking = false; return }
+  swipeTracking = false
+  swipeActive   = false
+
+  const dx       = e.changedTouches[0].clientX - swipeStartX
+  const dt       = Math.max(1, Date.now() - swipeStartTime)
+  const velocity = dx / dt
+
+  const canGoNext = currentPageIdx < currentPages.length - 1
+  const canGoPrev = currentPageIdx > 0 || navStack.length > 0
+  const goNext    = dx < 0 && (Math.abs(velocity) > 0.35 || Math.abs(dx) > 55) && canGoNext
+  const goPrev    = dx > 0 && (Math.abs(velocity) > 0.35 || Math.abs(dx) > 55) && canGoPrev
+
+  if (goNext) {
+    Haptic.ratchet()
+    grid.style.transition = 'transform 0.16s ease-in'
+    grid.style.transform  = 'translateX(-110%)'
+    setTimeout(() => {
+      grid.style.transition = ''
+      grid.style.transform  = ''
+      currentPageIdx++
+      render()
+    }, 160)
+  } else if (goPrev) {
+    Haptic.ratchet()
+    grid.style.transition = 'transform 0.16s ease-in'
+    grid.style.transform  = 'translateX(110%)'
+    setTimeout(() => {
+      grid.style.transition = ''
+      grid.style.transform  = ''
+      if (currentPageIdx > 0) { currentPageIdx--; render() }
+      else { goBack() }
+    }, 160)
+  } else {
+    grid.style.transition = 'transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+    grid.style.transform  = ''
+    setTimeout(() => { grid.style.transition = '' }, 280)
+  }
+}, { passive: true })
+
+appEl.addEventListener('touchcancel', () => {
+  if (swipeActive) {
+    grid.style.transition = 'transform 0.22s ease'
+    grid.style.transform  = ''
+    setTimeout(() => { grid.style.transition = '' }, 220)
+  }
+  swipeTracking = false
+  swipeActive   = false
+}, { passive: true })
 
 // ── Init ─────────────────────────────────────────────
+document.getElementById('back-btn')?.addEventListener('pointerdown', () => { Haptic.tap(); goBack() })
 try { navigator.wakeLock.request('screen') } catch {}
 connect()
