@@ -7,7 +7,7 @@ const multer    = require('multer')
 const path      = require('path')
 const fs        = require('fs')
 const { execSync, exec }                               = require('child_process')
-const { generateCert }                                 = require('./cert')
+const { getCert }                                      = require('./cert')
 const { executeCommand, executeBuiltin, executeHotkey, OS } = require('./keyboard')
 
 const DEFAULT_CONFIG = {
@@ -435,7 +435,7 @@ async function start(onEvent, port = 3000, paths = {}) {
   spotifyMediaPath = mediaPath
   loadPlugins(pluginsDir)
 
-  const { key, cert, ip } = generateCert(certDir)
+  const { key, cert, ip, host, mode } = await getCert(certDir)
   const app = express()
 
   const upload = multer({
@@ -492,8 +492,8 @@ async function start(onEvent, port = 3000, paths = {}) {
   })
 
   await new Promise(resolve => server.listen(port, resolve))
-  serverInfo = { ip, port }
-  console.log(`Stream Deck running at https://${ip}:${port}`)
+  serverInfo = { ip, host, port, mode }
+  console.log(`Stream Deck running at https://${host}:${port} (${mode})`)
 
   // Start tile pollers after server is up
   startTilePollers()

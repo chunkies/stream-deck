@@ -12,11 +12,6 @@ const BUILTIN_ACTIONS = [
   { group: 'System', key: 'system.screenshot',  label: '📷  Screenshot'     },
 ]
 
-const CERT_HINTS = {
-  linux:  'Download cert → trust in browser cert manager',
-  darwin: 'Download cert → Keychain Access → Always Trust',
-  win32:  'Download cert → Install → Trusted Root CA',
-}
 
 let config          = null
 let serverInfo      = null
@@ -29,11 +24,27 @@ let proStatus       = { active: false }
 
 const PURCHASE_URL = 'https://chunkies.gumroad.com/l/streamdeck-pro'
 
+// ── Server info display ───────────────────────────────
+function applyServerInfo(info) {
+  document.getElementById('server-url').textContent = info.url
+  document.getElementById('server-url').href        = info.url
+  const certRow  = document.getElementById('cert-row')
+  const certHint = document.getElementById('cert-hint')
+  if (info.mode === 'traefik') {
+    if (certRow)  certRow.style.display  = 'none'
+    if (certHint) certHint.textContent   = 'Trusted cert via traefik.me — just scan and go'
+  } else {
+    if (certRow)  certRow.style.display  = ''
+    document.getElementById('cert-url').href = `${info.url}/cert.crt`
+  }
+  const qr = document.getElementById('qr-img')
+  if (info.qr) { qr.src = info.qr; qr.style.display = 'block' }
+}
+
 // ── Init ──────────────────────────────────────────────
 async function init() {
-  ;[config, , serverInfo] = await Promise.all([
+  ;[config, serverInfo] = await Promise.all([
     window.api.getConfig(),
-    window.api.getPlatform().then(p => { document.getElementById('cert-hint').textContent = CERT_HINTS[p] || CERT_HINTS.linux }),
     window.api.getServerInfo()
   ])
 
@@ -71,14 +82,11 @@ async function init() {
   renderProStatus()
   wireProSection()
 
+  if (serverInfo?.url) applyServerInfo(serverInfo)
+
   window.api.onServerReady((info) => {
     serverInfo = info
-    const url  = `https://${info.ip}:${info.port}`
-    document.getElementById('server-url').textContent = url
-    document.getElementById('server-url').href        = url
-    document.getElementById('cert-url').href          = `${url}/cert.crt`
-    const qr = document.getElementById('qr-img')
-    qr.src = info.qr; qr.style.display = 'block'
+    applyServerInfo(info)
     renderGrid()
   })
 

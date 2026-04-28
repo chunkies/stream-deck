@@ -156,11 +156,15 @@ function createWindow() {
   })
 }
 
+async function buildServerPayload(info) {
+  const url = `https://${info.host}:${info.port}`
+  const qr  = await QRCode.toDataURL(url, { width: 180, margin: 2, color: { dark: '#e0e0e0', light: '#1a1a1a' } })
+  return { ...info, url, qr }
+}
+
 async function sendServerReady(info) {
   if (!mainWindow || mainWindow.isDestroyed()) return
-  const url = `https://${info.ip}:${info.port}`
-  const qr  = await QRCode.toDataURL(url, { width: 180, margin: 2, color: { dark: '#e0e0e0', light: '#1a1a1a' } })
-  mainWindow.webContents.send('server-ready', { ...info, qr })
+  mainWindow.webContents.send('server-ready', await buildServerPayload(info))
 }
 
 // ── Init ───────────────────────────────────────────────
@@ -221,7 +225,7 @@ function openMarketplace() {
 
 // ── IPC ────────────────────────────────────────────────
 ipcMain.handle('get-config',           ()           => server.getConfig())
-ipcMain.handle('get-server-info',      ()           => server.getInfo())
+ipcMain.handle('get-server-info',      async ()     => { const i = server.getInfo(); return i ? buildServerPayload(i) : null })
 ipcMain.handle('set-config',           (_, cfg)     => server.setConfig(cfg))
 ipcMain.handle('get-platform',         ()           => process.platform)
 ipcMain.handle('get-autostart',        ()           => getAutostart())
