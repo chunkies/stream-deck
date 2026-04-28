@@ -978,8 +978,8 @@ function openPageModal() {
 
 // ── Component panel ───────────────────────────────────
 function cpTypeIcon(compType) {
-  const icons = { button: '⬛', switch: '⊙', slider: '▮', knob: '◎', tile: '📊', spotify: '🎵', voice: '🎤', 'plugin-tile': '🔌', folder: '📁' }
-  return icons[compType] || '⬛'
+  const icons = { button: '🔲', switch: '🔘', slider: '🎚️', knob: '🎛️', tile: '📊', spotify: '🎵', voice: '🎤', 'plugin-tile': '🔌', folder: '📁' }
+  return icons[compType] || '🔲'
 }
 
 function compDefaults(compType) {
@@ -1062,11 +1062,11 @@ function renderComponentPanel() {
   panel.innerHTML = '<div class="cp-panel-title">Components</div>'
 
   const coreItems = [
-    { compType: 'button', pluginKey: null, label: 'Button',   icon: '⬛', options: {} },
-    { compType: 'switch', pluginKey: null, label: 'Switch',   icon: '⊙',  options: {} },
-    { compType: 'slider', pluginKey: null, label: 'Slider ↕', icon: '▮',  options: {} },
-    { compType: 'slider', pluginKey: null, label: 'Slider ↔', icon: '▬',  options: { orientation: 'horizontal' } },
-    { compType: 'knob',   pluginKey: null, label: 'Knob',     icon: '◎',  options: {} },
+    { compType: 'button', pluginKey: null, label: 'Button',   icon: '🔲', options: {} },
+    { compType: 'switch', pluginKey: null, label: 'Switch',   icon: '🔘', options: {} },
+    { compType: 'slider', pluginKey: null, label: 'Slider ↕', icon: '🎚️', options: {} },
+    { compType: 'slider', pluginKey: null, label: 'Slider ↔', icon: '🎚️', options: { orientation: 'horizontal' } },
+    { compType: 'knob',   pluginKey: null, label: 'Knob',     icon: '🎛️', options: {} },
     { compType: 'tile',   pluginKey: null, label: 'Info Tile',icon: '📊', options: {} },
     { compType: 'voice',  pluginKey: null, label: 'Voice',    icon: '🎤', options: {} },
     { compType: 'folder', pluginKey: null, label: 'Folder',   icon: '📁', options: {} },
