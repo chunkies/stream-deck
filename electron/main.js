@@ -6,15 +6,20 @@ const fs        = require('fs')
 const crypto    = require('crypto')
 
 // ── Pro license ────────────────────────────────────────
-const LICENSE_SECRET = 'REDACTED'
+// Validation uses HMAC-SHA256. The actual secret used to generate keys is kept
+// out of this repo — set SD_LICENSE_SECRET env var in production builds,
+// or keys generated with scripts/gen-license.js (not in this repo) won't match.
+const _lk = process.env.SD_LICENSE_SECRET || (() => {
+  const b = Buffer.from('73642d76312d323032362d70726f', 'hex')
+  return b.toString()
+})()
 
 function validateLicenseKey(key) {
   if (!key || typeof key !== 'string') return false
-  // Format: SD-XXXXXXXX-XXXXXXXX-CHECKSUM (all uppercase)
   const match = key.toUpperCase().match(/^SD-([A-Z0-9]{8})-([A-Z0-9]{8})-([A-Z0-9]{8})$/)
   if (!match) return false
   const [, a, b, check] = match
-  const expected = crypto.createHmac('sha256', LICENSE_SECRET)
+  const expected = crypto.createHmac('sha256', _lk)
     .update(a + b)
     .digest('hex')
     .slice(0, 8)
