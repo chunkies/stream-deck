@@ -4,11 +4,13 @@ const https     = require('https')
 const WebSocket = require('ws')
 const express   = require('express')
 const multer    = require('multer')
+const crypto    = require('crypto')
 const path      = require('path')
 const fs        = require('fs')
 const { execSync, exec }                               = require('child_process')
 const { getCert }                                      = require('./cert')
 const { executeCommand, executeBuiltin, executeHotkey, OS } = require('./keyboard')
+const { PLATFORMS, ACTION_TYPES, COMPONENT_TYPES, MESSAGE_TYPES, TIMINGS } = require('./constants')
 
 const DEFAULT_CONFIG = {
   grid: { cols: 3, rows: 4 },
@@ -17,13 +19,13 @@ const DEFAULT_CONFIG = {
       id: 'media',
       name: 'Media',
       components: [
-        { id: 'c-prev', col: 1, row: 1, colSpan: 1, rowSpan: 1, componentType: 'button', icon: '⏮', label: 'Prev',       color: '#1e293b', action: { type: 'builtin', key: 'media.previous'  } },
-        { id: 'c-play', col: 2, row: 1, colSpan: 1, rowSpan: 1, componentType: 'button', icon: '⏯', label: 'Play/Pause', color: '#1e293b', action: { type: 'builtin', key: 'media.playPause' } },
-        { id: 'c-next', col: 3, row: 1, colSpan: 1, rowSpan: 1, componentType: 'button', icon: '⏭', label: 'Next',       color: '#1e293b', action: { type: 'builtin', key: 'media.next'      } },
-        { id: 'c-vol',  col: 1, row: 2, colSpan: 1, rowSpan: 2, componentType: 'slider', label: 'Volume', color: '#1e293b', min: 0, max: 100, step: 5, defaultValue: 50, action: { type: 'command', command: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ {value}%' } },
-        { id: 'c-mute', col: 2, row: 2, colSpan: 2, rowSpan: 1, componentType: 'switch', label: 'Mute', color: '#1e293b', action: { type: 'toggle', on: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 1', off: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 0' } },
-        { id: 'c-spty', col: 2, row: 3, colSpan: 2, rowSpan: 1, componentType: 'button', icon: '🎵', label: 'Spotify',   color: '#14532d', action: { type: 'command', command: 'spotify'      } },
-        { id: 'c-tile', col: 1, row: 4, colSpan: 3, rowSpan: 1, componentType: 'tile',   label: 'Now Playing', color: '#0f172a', pollCommand: 'playerctl metadata title 2>/dev/null || echo "Nothing"', pollInterval: 3 }
+        { id: 'c-prev', col: 1, row: 1, colSpan: 1, rowSpan: 1, componentType: COMPONENT_TYPES.BUTTON, icon: '⏮', label: 'Prev',       color: '#1e293b', action: { type: ACTION_TYPES.BUILTIN, key: 'media.previous'  } },
+        { id: 'c-play', col: 2, row: 1, colSpan: 1, rowSpan: 1, componentType: COMPONENT_TYPES.BUTTON, icon: '⏯', label: 'Play/Pause', color: '#1e293b', action: { type: ACTION_TYPES.BUILTIN, key: 'media.playPause' } },
+        { id: 'c-next', col: 3, row: 1, colSpan: 1, rowSpan: 1, componentType: COMPONENT_TYPES.BUTTON, icon: '⏭', label: 'Next',       color: '#1e293b', action: { type: ACTION_TYPES.BUILTIN, key: 'media.next'      } },
+        { id: 'c-vol',  col: 1, row: 2, colSpan: 1, rowSpan: 2, componentType: COMPONENT_TYPES.SLIDER, label: 'Volume', color: '#1e293b', min: 0, max: 100, step: 5, defaultValue: 50, action: { type: ACTION_TYPES.COMMAND, command: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ {value}%' } },
+        { id: 'c-mute', col: 2, row: 2, colSpan: 2, rowSpan: 1, componentType: COMPONENT_TYPES.SWITCH, label: 'Mute', color: '#1e293b', action: { type: ACTION_TYPES.TOGGLE, on: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 1', off: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 0' } },
+        { id: 'c-spty', col: 2, row: 3, colSpan: 2, rowSpan: 1, componentType: COMPONENT_TYPES.BUTTON, icon: '🎵', label: 'Spotify',   color: '#14532d', action: { type: ACTION_TYPES.COMMAND, command: 'spotify'      } },
+        { id: 'c-tile', col: 1, row: 4, colSpan: 3, rowSpan: 1, componentType: COMPONENT_TYPES.TILE,   label: 'Now Playing', color: '#0f172a', pollCommand: 'playerctl metadata title 2>/dev/null || echo "Nothing"', pollInterval: 3 }
       ]
     }
   ]
@@ -49,10 +51,21 @@ function migrateConfig(cfg) {
       delete page.slots
     }
     for (const comp of page.components) {
-      if (comp.componentType === 'toggle') comp.componentType = 'switch'
+      if (comp.componentType === 'toggle') comp.componentType = COMPONENT_TYPES.SWITCH
     }
   }
   return cfg
+}
+
+function validateConfig(cfg) {
+  return Boolean(
+    cfg !== null &&
+    typeof cfg === 'object' &&
+    cfg.grid &&
+    typeof cfg.grid.cols === 'number' &&
+    typeof cfg.grid.rows === 'number' &&
+    Array.isArray(cfg.pages)
+  )
 }
 
 let config          = null
@@ -130,7 +143,7 @@ function loadPlugins(pluginsDir) {
 }
 
 function getPlugins() { return pluginsMeta }
-function reloadPlugins(pluginsDir) { loadPlugins(pluginsDir); broadcast({ type: 'pluginsReloaded' }) }
+function reloadPlugins(pluginsDir) { loadPlugins(pluginsDir); broadcast({ type: MESSAGE_TYPES.PLUGINS_RELOAD }) }
 
 // ── Tile polling ───────────────────────────────────────
 let tileTimers = {}
@@ -141,19 +154,21 @@ function startTilePollers() {
   if (!config) return
   config.pages.forEach(page => {
     ;(page.components || []).forEach(comp => {
-      if (comp?.componentType !== 'tile' || !comp.pollCommand) return
+      if (comp?.componentType !== COMPONENT_TYPES.TILE || !comp.pollCommand) return
       const key      = `${page.id}:${comp.id}`
-      const interval = Math.max(1, comp.pollInterval || 5) * 1000
+      const interval = Math.max(TIMINGS.TILE_POLL_MIN_MS, (comp.pollInterval || 5) * 1000)
 
       function poll() {
         try {
           const text = execSync(comp.pollCommand, {
-            shell: OS === 'win32' ? 'cmd.exe' : '/bin/sh',
-            timeout: 3000
+            shell: OS === PLATFORMS.WINDOWS ? 'cmd.exe' : '/bin/sh',
+            timeout: TIMINGS.TILE_POLL_CMD_MS
           }).toString().trim().split('\n')[0]
           tileCache[key] = text
-          broadcast({ type: 'tileUpdate', key, text })
-        } catch {}
+          broadcast({ type: MESSAGE_TYPES.TILE_UPDATE, key, text })
+        } catch (err) {
+          console.error(`Tile poll "${key}" failed:`, err.message)
+        }
       }
 
       poll()
@@ -173,9 +188,17 @@ let spotifyTimer    = null
 let spotifyState    = { title: '', artist: '', isPlaying: false, artUrl: '', artVersion: 0 }
 let spotifyMediaPath = null
 
+// Safe base directories for MPRIS file:// art paths
+const SAFE_ART_PREFIXES = ['/home', '/tmp', '/var/folders', '/private/var/folders']
+
+function isArtPathSafe(filePath) {
+  const resolved = path.resolve(filePath)
+  return SAFE_ART_PREFIXES.some(prefix => resolved.startsWith(prefix))
+}
+
 function spotifyCommand() {
-  if (OS === 'linux')  return 'playerctl metadata --format "{{status}}\t{{title}}\t{{artist}}\t{{mpris:artUrl}}" 2>/dev/null'
-  if (OS === 'darwin') return `osascript -e 'tell application "Spotify" to return (player state as string)&"\\t"&(name of current track)&"\\t"&(artist of current track)&"\\t"&(artwork url of current track)' 2>/dev/null`
+  if (OS === PLATFORMS.LINUX)  return 'playerctl metadata --format "{{status}}\t{{title}}\t{{artist}}\t{{mpris:artUrl}}" 2>/dev/null'
+  if (OS === PLATFORMS.DARWIN) return `osascript -e 'tell application "Spotify" to return (player state as string)&"\\t"&(name of current track)&"\\t"&(artist of current track)&"\\t"&(artwork url of current track)' 2>/dev/null`
   return null
 }
 
@@ -185,10 +208,14 @@ async function downloadSpotifyArt(url) {
     const dest = path.join(spotifyMediaPath, 'spotify-art.jpg')
     if (url.startsWith('file://')) {
       const src = decodeURIComponent(url.slice(7))
+      if (!isArtPathSafe(src)) {
+        console.warn('Rejected Spotify art path outside safe directories:', src)
+        return false
+      }
       if (fs.existsSync(src)) { fs.copyFileSync(src, dest); return true }
       return false
     }
-    const res = await fetch(url, { signal: AbortSignal.timeout(4000) })
+    const res = await fetch(url, { signal: AbortSignal.timeout(TIMINGS.SPOTIFY_ART_FETCH_MS) })
     if (!res.ok) return false
     fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()))
     return true
@@ -199,11 +226,11 @@ function pollSpotify() {
   const cmd = spotifyCommand()
   if (!cmd) return
 
-  exec(cmd, { timeout: 2000 }, async (err, stdout) => {
+  exec(cmd, { timeout: TIMINGS.SPOTIFY_POLL_MS }, async (err, stdout) => {
     if (err || !stdout.trim()) {
       if (spotifyState.title) {
         spotifyState = { title: '', artist: '', isPlaying: false, artUrl: '', artVersion: spotifyState.artVersion }
-        broadcast({ type: 'spotifyUpdate', ...spotifyState })
+        broadcast({ type: MESSAGE_TYPES.SPOTIFY_UPDATE, ...spotifyState })
       }
       return
     }
@@ -220,19 +247,19 @@ function pollSpotify() {
                   || isPlaying !== spotifyState.isPlaying || artVersion !== spotifyState.artVersion
 
     spotifyState = { title, artist, isPlaying, artUrl, artVersion }
-    if (changed) broadcast({ type: 'spotifyUpdate', title, artist, isPlaying, artVersion })
+    if (changed) broadcast({ type: MESSAGE_TYPES.SPOTIFY_UPDATE, title, artist, isPlaying, artVersion })
   })
 }
 
 function hasSpotifyTile() {
-  return config?.pages.some(p => (p.components || []).some(c => c?.componentType === 'spotify'))
+  return config?.pages.some(p => (p.components || []).some(c => c?.componentType === COMPONENT_TYPES.SPOTIFY))
 }
 
 function startSpotifyPoller() {
   stopSpotifyPoller()
   if (!hasSpotifyTile()) return
   pollSpotify()
-  spotifyTimer = setInterval(pollSpotify, 2000)
+  spotifyTimer = setInterval(pollSpotify, TIMINGS.SPOTIFY_POLL_MS)
 }
 
 function stopSpotifyPoller() {
@@ -261,11 +288,19 @@ function broadcast(msg) {
   }
 }
 
+// ── Plugin call helper ─────────────────────────────────
+function callPluginWithTimeout(fn, params) {
+  const timeout = new Promise((_, rej) =>
+    setTimeout(() => rej(new Error('Plugin action timed out')), TIMINGS.PLUGIN_TIMEOUT_MS)
+  )
+  return Promise.race([Promise.resolve().then(() => fn(params)), timeout])
+}
+
 // ── Press / Slide ──────────────────────────────────────
 function handlePress(pageId, compId, hold = false) {
   const page = config.pages.find(p => p.id === pageId)
   const comp = page?.components.find(c => c.id === compId)
-  if (comp?.componentType === 'tile' && comp.tileTapCmd) {
+  if (comp?.componentType === COMPONENT_TYPES.TILE && comp.tileTapCmd) {
     executeCommand(comp.tileTapCmd)
     return
   }
@@ -274,38 +309,34 @@ function handlePress(pageId, compId, hold = false) {
   const action = (hold && comp.holdAction) ? comp.holdAction : comp.action
 
   switch (action.type) {
-    case 'builtin':  executeBuiltin(action.key); break
-    case 'command':  executeCommand(action.command); break
-    case 'hotkey':   executeHotkey(action.combo); break
-    case 'toggle': {
+    case ACTION_TYPES.BUILTIN:  executeBuiltin(action.key); break
+    case ACTION_TYPES.COMMAND:  executeCommand(action.command); break
+    case ACTION_TYPES.HOTKEY:   executeHotkey(action.combo); break
+    case ACTION_TYPES.TOGGLE: {
       const key    = `${pageId}:${compId}`
       toggleStates[key] = !toggleStates[key]
       const active = toggleStates[key]
       executeCommand(active ? action.on : action.off)
-      broadcast({ type: 'toggleState', key, active })
+      broadcast({ type: MESSAGE_TYPES.TOGGLE_STATE, key, active })
       break
     }
-    case 'sequence':
-      action.commands.forEach((cmd, idx) => setTimeout(() => executeCommand(cmd), idx * (action.delay ?? 150)))
+    case ACTION_TYPES.SEQUENCE:
+      action.commands.forEach((cmd, idx) => setTimeout(() => executeCommand(cmd), idx * (action.delay ?? TIMINGS.SEQUENCE_DEFAULT_MS)))
       break
-    case 'page':
-      broadcast({ type: 'navigate', pageId: action.pageId })
+    case ACTION_TYPES.PAGE:
+      broadcast({ type: MESSAGE_TYPES.NAVIGATE, pageId: action.pageId })
       break
-    case 'plugin': {
+    case ACTION_TYPES.PLUGIN: {
       const fn = pluginsMap[action.pluginKey]
       if (fn) {
-        const isSwitch = comp?.componentType === 'switch'
         let callParams = { ...(action.params || {}) }
-        if (isSwitch) {
+        if (comp?.componentType === COMPONENT_TYPES.SWITCH) {
           const key = `${pageId}:${compId}`
           toggleStates[key] = !toggleStates[key]
-          const active = toggleStates[key]
-          callParams.value = active
-          broadcast({ type: 'toggleState', key, active })
+          callParams.value = toggleStates[key]
+          broadcast({ type: MESSAGE_TYPES.TOGGLE_STATE, key, active: toggleStates[key] })
         }
-        const TIMEOUT = 10000
-        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Plugin action timed out')), TIMEOUT))
-        Promise.race([Promise.resolve().then(() => fn(callParams)), timeout])
+        callPluginWithTimeout(fn, callParams)
           .catch(err => console.error(`Plugin "${action.pluginKey}" error:`, err.message))
       } else {
         console.warn('Unknown plugin action:', action.pluginKey)
@@ -324,14 +355,14 @@ function handleSlide(pageId, compId, value) {
   const key  = `${pageId}:${compId}`
 
   switch (a.type) {
-    case 'volume': {
+    case ACTION_TYPES.VOLUME: {
       const v = Math.round(value)
-      if (OS === 'linux')  executeCommand(`wpctl set-volume @DEFAULT_AUDIO_SINK@ ${v}%`)
-      else if (OS === 'darwin') executeCommand(`osascript -e 'set volume output volume ${v}'`)
+      if (OS === PLATFORMS.LINUX)  executeCommand(`wpctl set-volume @DEFAULT_AUDIO_SINK@ ${v}%`)
+      else if (OS === PLATFORMS.DARWIN) executeCommand(`osascript -e 'set volume output volume ${v}'`)
       else executeCommand(`powershell -c "$vol=[math]::Round(${v}/100,2); (New-Object -ComObject WScript.Shell).SendKeys([char]174)"`)
       break
     }
-    case 'scroll': {
+    case ACTION_TYPES.SCROLL: {
       const last  = slideLastValues[key] ?? value
       const raw   = value - last
       slideLastValues[key] = value
@@ -342,29 +373,27 @@ function handleSlide(pageId, compId, value) {
       const speed = a.speed || 2
       const steps = Math.min(Math.abs(delta) * speed, 12)
       const dir   = a.direction || 'vertical'
-      if (OS === 'linux') {
+      if (OS === PLATFORMS.LINUX) {
         // xdotool: 4=up 5=down 6=left 7=right
         const btn = dir === 'horizontal' ? (delta > 0 ? 7 : 6) : (delta > 0 ? 5 : 4)
         for (let i = 0; i < steps; i++) executeCommand(`xdotool click --clearmodifiers ${btn}`)
-      } else if (OS === 'darwin') {
+      } else if (OS === PLATFORMS.DARWIN) {
         const amount = delta > 0 ? -steps : steps
         executeCommand(`osascript -e 'tell application "System Events" to scroll ${dir === 'horizontal' ? 'left' : 'up'} by ${Math.abs(amount)}'`)
       }
       break
     }
-    case 'command':  executeCommand(a.command.replace(/{value}/g, val)); break
-    case 'builtin':  executeBuiltin(a.key); break
-    case 'hotkey':   executeHotkey(a.combo); break
-    case 'sequence':
+    case ACTION_TYPES.COMMAND:  executeCommand(a.command.replace(/{value}/g, val)); break
+    case ACTION_TYPES.BUILTIN:  executeBuiltin(a.key); break
+    case ACTION_TYPES.HOTKEY:   executeHotkey(a.combo); break
+    case ACTION_TYPES.SEQUENCE:
       a.commands.forEach((cmd, idx) =>
-        setTimeout(() => executeCommand(cmd.replace(/{value}/g, val)), idx * (a.delay ?? 150))
+        setTimeout(() => executeCommand(cmd.replace(/{value}/g, val)), idx * (a.delay ?? TIMINGS.SEQUENCE_DEFAULT_MS))
       ); break
-    case 'plugin': {
+    case ACTION_TYPES.PLUGIN: {
       const fn = pluginsMap[a.pluginKey]
       if (fn) {
-        const TIMEOUT = 10000
-        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Plugin timed out')), TIMEOUT))
-        Promise.race([Promise.resolve().then(() => fn({ ...(a.params || {}), value })), timeout])
+        callPluginWithTimeout(fn, { ...(a.params || {}), value })
           .catch(err => console.error(`Plugin slide "${a.pluginKey}" error:`, err.message))
       } else {
         console.warn('Unknown plugin action:', a.pluginKey)
@@ -389,7 +418,11 @@ async function handleVoiceCommand(transcript, pageId, compId, voiceMode) {
     const page = config.pages.find(p => p.id === pageId)
     const comp = page?.components?.find(c => c.id === compId)
     const template = comp?.voiceCommand || ''
-    if (template) executeCommand(template.replace(/{transcript}/g, transcript.replace(/'/g, "'\\''")))
+    if (template) {
+      // Standard POSIX single-quote escaping: end the quote, insert escaped quote, reopen
+      const escaped = transcript.replace(/'/g, "'\\''")
+      executeCommand(template.replace(/{transcript}/g, escaped))
+    }
     return
   }
 
@@ -410,9 +443,9 @@ async function handleVoiceCommand(transcript, pageId, compId, voiceMode) {
 
     if (best && bestScore >= 0.3) {
       handlePress(best.page.id, best.comp.id, false)
-      broadcast({ type: 'voiceResult', matched: best.comp.label, transcript })
+      broadcast({ type: MESSAGE_TYPES.VOICE_RESULT, matched: best.comp.label, transcript })
     } else {
-      broadcast({ type: 'voiceResult', matched: null, transcript })
+      broadcast({ type: MESSAGE_TYPES.VOICE_RESULT, matched: null, transcript })
     }
     return
   }
@@ -424,10 +457,14 @@ function getConfig()  { return config }
 function getInfo()    { return serverInfo }
 
 function setConfig(newConfig) {
+  if (!validateConfig(newConfig)) {
+    console.error('setConfig: rejected invalid config structure')
+    return
+  }
   config       = migrateConfig(newConfig)
   toggleStates = {}
   saveConfig(configFilePath, config)
-  broadcast({ type: 'config', config })
+  broadcast({ type: MESSAGE_TYPES.CONFIG, config })
   startTilePollers()
   startSpotifyPoller()
 }
@@ -451,10 +488,21 @@ async function start(onEvent, port = 3000, paths = {}) {
   const { key, cert, ip, host, mode } = await getCert(certDir)
   const app = express()
 
+  // Security headers for all responses
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN')
+    res.setHeader('Cache-Control', 'no-store')
+    next()
+  })
+
   const upload = multer({
     storage: multer.diskStorage({
       destination: mediaPath,
-      filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
+      filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).replace(/[^a-zA-Z0-9.]/g, '') || '.bin'
+        cb(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`)
+      }
     }),
     limits: { fileSize: 20 * 1024 * 1024 }
   })
@@ -469,38 +517,55 @@ async function start(onEvent, port = 3000, paths = {}) {
     res.setHeader('Content-Disposition', 'attachment; filename="macropad.crt"')
     res.send(cert)
   })
-  app.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next() })
   app.use(express.static(pwaPath))
 
   const server = https.createServer({ key, cert }, app)
   wss = new WebSocket.Server({ server })
 
+  // Simple per-client rate limit: max 60 messages per second
+  const RATE_LIMIT = 60
+  const RATE_WINDOW_MS = 1000
+
   wss.on('connection', (ws) => {
     connectedClients++
-    onEvent({ type: 'connection', connected: true, clients: connectedClients })
-    ws.send(JSON.stringify({ type: 'config', config }))
+    onEvent({ type: MESSAGE_TYPES.CONNECTION, connected: true, clients: connectedClients })
+    ws.send(JSON.stringify({ type: MESSAGE_TYPES.CONFIG, config }))
 
     // Send cached tile values to new client
     for (const [k, text] of Object.entries(tileCache)) {
-      ws.send(JSON.stringify({ type: 'tileUpdate', key: k, text }))
+      ws.send(JSON.stringify({ type: MESSAGE_TYPES.TILE_UPDATE, key: k, text }))
     }
     // Send cached Spotify state to new client
     if (spotifyState.title || spotifyState.isPlaying) {
-      ws.send(JSON.stringify({ type: 'spotifyUpdate', ...spotifyState }))
+      ws.send(JSON.stringify({ type: MESSAGE_TYPES.SPOTIFY_UPDATE, ...spotifyState }))
     }
 
+    let msgCount = 0
+    let windowStart = Date.now()
+
     ws.on('message', (data) => {
+      // Rate limiting
+      const now = Date.now()
+      if (now - windowStart >= RATE_WINDOW_MS) { msgCount = 0; windowStart = now }
+      msgCount++
+      if (msgCount > RATE_LIMIT) {
+        console.warn('WebSocket rate limit exceeded — dropping message')
+        return
+      }
+
       try {
         const event = JSON.parse(data.toString())
-        if (event.type === 'press')        { handlePress(event.pageId, event.compId, event.hold || false); onEvent(event) }
-        if (event.type === 'slide')        { handleSlide(event.pageId, event.compId, event.value); onEvent(event) }
-        if (event.type === 'voiceCommand') { handleVoiceCommand(event.transcript, event.pageId, event.compId, event.voiceMode) }
-      } catch {}
+        if (event.type === MESSAGE_TYPES.PRESS)         { handlePress(event.pageId, event.compId, event.hold || false); onEvent(event) }
+        if (event.type === MESSAGE_TYPES.SLIDE)         { handleSlide(event.pageId, event.compId, event.value); onEvent(event) }
+        if (event.type === MESSAGE_TYPES.VOICE_COMMAND) { handleVoiceCommand(event.transcript, event.pageId, event.compId, event.voiceMode) }
+      } catch (err) {
+        console.error('WebSocket message parse error:', err.message)
+      }
     })
 
     ws.on('close', () => {
       connectedClients--
-      onEvent({ type: 'connection', connected: connectedClients > 0, clients: connectedClients })
+      onEvent({ type: MESSAGE_TYPES.CONNECTION, connected: connectedClients > 0, clients: connectedClients })
     })
   })
 
@@ -508,10 +573,8 @@ async function start(onEvent, port = 3000, paths = {}) {
   serverInfo = { ip, host, port, mode }
   console.log(`MacroPad running at https://${host}:${port} (${mode})`)
 
-  // Start tile pollers after server is up
   startTilePollers()
   startSpotifyPoller()
-
 
   return serverInfo
 }

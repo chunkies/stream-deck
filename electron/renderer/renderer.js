@@ -159,7 +159,6 @@ function populatePluginSelect(plugins) {
   if (!loadedPlugins.length) {
     sel.innerHTML = '<option value="">— no plugins installed —</option>'
     renderPluginParams('', {})
-    populateCompPluginSelects()
     renderComponentPanel()
     return
   }
@@ -177,13 +176,9 @@ function populatePluginSelect(plugins) {
     sel.appendChild(og)
   }
   renderPluginParams(sel.value, {})
-  populateCompPluginSelects()
   renderComponentPanel()
 }
 
-function populateCompPluginSelects() {
-  // plugin actions for switch/slider/knob removed — handled via component panel drag
-}
 
 function getPluginActionByKey(key) {
   return loadedPlugins.flatMap(p => p.actions || []).find(a => a.key === key) || null
@@ -236,20 +231,18 @@ function collectPluginParams() {
   return params
 }
 
-function showSliderActionFields(type) {
-  for (const t of ['volume', 'scroll', 'hotkey', 'command', 'sequence']) {
-    document.getElementById(`s-action-${t}`).style.display = t === type ? '' : 'none'
+const SLIDER_ACTION_TYPES = ['volume', 'scroll', 'hotkey', 'command', 'sequence']
+const SWITCH_ACTION_TYPES = ['builtin', 'hotkey', 'command', 'sequence', 'page']
+
+function showActionFields(prefix, types, type) {
+  for (const t of types) {
+    document.getElementById(`${prefix}-action-${t}`).style.display = t === type ? '' : 'none'
   }
 }
-function showKnobActionFields(type) {
-  for (const t of ['volume', 'scroll', 'hotkey', 'command', 'sequence']) {
-    document.getElementById(`k-action-${t}`).style.display = t === type ? '' : 'none'
-  }
-}
+function showSliderActionFields(type) { showActionFields('s', SLIDER_ACTION_TYPES, type) }
+function showKnobActionFields(type)   { showActionFields('k', SLIDER_ACTION_TYPES, type) }
 function showSwitchActionFields(type) {
-  for (const t of ['builtin', 'hotkey', 'command', 'sequence', 'page']) {
-    document.getElementById(`t-action-${t}`).style.display = t === type ? '' : 'none'
-  }
+  showActionFields('t', SWITCH_ACTION_TYPES, type)
   if (type === 'page') fillPageSelect('t-page-target', document.getElementById('t-page-target').value || null)
 }
 

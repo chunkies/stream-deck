@@ -68,4 +68,19 @@ describe('executeHotkey', () => {
     executeHotkey('ctrl+c')
     expect(execSync).toHaveBeenCalled()
   })
+
+  test('rejects combo with shell metacharacters', () => {
+    execSync.mockClear()
+    executeHotkey('ctrl+$(whoami)')
+    executeHotkey('ctrl+`id`')
+    executeHotkey('ctrl+c; rm -rf /')
+    expect(execSync).not.toHaveBeenCalled()
+  })
+
+  test('accepts valid combos with digits and underscores', () => {
+    executeHotkey('ctrl+shift+F12')
+    executeHotkey('super+l')
+    executeHotkey('alt+F4')
+    expect(execSync).toHaveBeenCalledTimes(3)
+  })
 })

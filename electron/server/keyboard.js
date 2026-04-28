@@ -1,7 +1,13 @@
+'use strict'
+
 const { execSync } = require('child_process')
 const os = require('os')
+const { PLATFORMS } = require('./constants')
 
 const OS = os.platform()
+
+// Only keysym characters allowed in hotkey combos — prevents shell injection
+const SAFE_COMBO_RE = /^[a-zA-Z0-9+\-_]+$/
 
 // Windows P/Invoke to send virtual media/volume keys (no extra software needed)
 const winKey = (vk) =>
@@ -12,32 +18,36 @@ const winKey = (vk) =>
 // Mac:    osascript built-in; playerctl via `brew install playerctl`
 // Win:    nothing extra required
 const BUILTIN = {
-  'media.playPause':  { label: 'Play / Pause',    linux: 'playerctl play-pause', darwin: 'playerctl play-pause', win32: winKey(0xB3) },
-  'media.next':       { label: 'Next Track',       linux: 'playerctl next',       darwin: 'playerctl next',       win32: winKey(0xB0) },
-  'media.previous':   { label: 'Previous Track',   linux: 'playerctl previous',   darwin: 'playerctl previous',   win32: winKey(0xB1) },
-  'media.volumeUp':   { label: 'Volume Up',        linux: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+',  darwin: `osascript -e 'set volume output volume (output volume of (get volume settings) + 10)'`, win32: winKey(0xAF) },
-  'media.volumeDown': { label: 'Volume Down',      linux: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-',  darwin: `osascript -e 'set volume output volume (output volume of (get volume settings) - 10)'`, win32: winKey(0xAE) },
-  'media.mute':       { label: 'Mute Audio',       linux: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle', darwin: `osascript -e 'set volume output muted not (output muted of (get volume settings))'`,    win32: winKey(0xAD) },
-  'system.lock':      { label: 'Lock Screen',      linux: 'xdg-screensaver lock', darwin: `osascript -e 'tell application "System Events" to keystroke "q" using {command down, control down}'`, win32: 'rundll32.exe user32.dll,LockWorkStation' },
-  'system.sleep':     { label: 'Sleep',            linux: 'systemctl suspend',    darwin: 'pmset sleepnow', win32: 'rundll32.exe powrprof.dll,SetSuspendState 0,1,0' },
-  'system.screenshot':{ label: 'Screenshot',       linux: 'scrot -d 0 ~/Desktop/screenshot-$(date +%Y%m%d-%H%M%S).png 2>/dev/null || gnome-screenshot', darwin: `osascript -e 'tell application "System Events" to keystroke "4" using {shift down, command down}'`, win32: 'powershell -c "Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(\'%{PRTSC}\')"' },
-  'spotify.shuffle':  { label: '🔀 Shuffle Toggle', linux: 'playerctl shuffle Toggle', darwin: `osascript -e 'tell application "Spotify" to set shuffling to not shuffling'`, win32: winKey(0xB3) },
-  'spotify.repeat':   { label: '🔁 Repeat Toggle',  linux: 'playerctl loop None', darwin: `osascript -e 'tell application "Spotify" to set repeating to not repeating'`, win32: winKey(0xB3) },
-  'spotify.seekFwd':  { label: '⏩ Seek +10s',      linux: 'playerctl position 10+', darwin: `osascript -e 'tell application "Spotify" to set player position to (player position + 10)'`, win32: winKey(0xB3) },
-  'spotify.seekBack': { label: '⏪ Seek -10s',      linux: 'playerctl position 10-', darwin: `osascript -e 'tell application "Spotify" to set player position to (player position - 10)'`, win32: winKey(0xB3) },
+  'media.playPause':  { label: 'Play / Pause',    [PLATFORMS.LINUX]: 'playerctl play-pause', [PLATFORMS.DARWIN]: 'playerctl play-pause', [PLATFORMS.WINDOWS]: winKey(0xB3) },
+  'media.next':       { label: 'Next Track',       [PLATFORMS.LINUX]: 'playerctl next',       [PLATFORMS.DARWIN]: 'playerctl next',       [PLATFORMS.WINDOWS]: winKey(0xB0) },
+  'media.previous':   { label: 'Previous Track',   [PLATFORMS.LINUX]: 'playerctl previous',   [PLATFORMS.DARWIN]: 'playerctl previous',   [PLATFORMS.WINDOWS]: winKey(0xB1) },
+  'media.volumeUp':   { label: 'Volume Up',        [PLATFORMS.LINUX]: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+',  [PLATFORMS.DARWIN]: `osascript -e 'set volume output volume (output volume of (get volume settings) + 10)'`, [PLATFORMS.WINDOWS]: winKey(0xAF) },
+  'media.volumeDown': { label: 'Volume Down',      [PLATFORMS.LINUX]: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-',  [PLATFORMS.DARWIN]: `osascript -e 'set volume output volume (output volume of (get volume settings) - 10)'`, [PLATFORMS.WINDOWS]: winKey(0xAE) },
+  'media.mute':       { label: 'Mute Audio',       [PLATFORMS.LINUX]: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle', [PLATFORMS.DARWIN]: `osascript -e 'set volume output muted not (output muted of (get volume settings))'`,    [PLATFORMS.WINDOWS]: winKey(0xAD) },
+  'system.lock':      { label: 'Lock Screen',      [PLATFORMS.LINUX]: 'xdg-screensaver lock', [PLATFORMS.DARWIN]: `osascript -e 'tell application "System Events" to keystroke "q" using {command down, control down}'`, [PLATFORMS.WINDOWS]: 'rundll32.exe user32.dll,LockWorkStation' },
+  'system.sleep':     { label: 'Sleep',            [PLATFORMS.LINUX]: 'systemctl suspend',    [PLATFORMS.DARWIN]: 'pmset sleepnow', [PLATFORMS.WINDOWS]: 'rundll32.exe powrprof.dll,SetSuspendState 0,1,0' },
+  'system.screenshot':{ label: 'Screenshot',       [PLATFORMS.LINUX]: 'scrot -d 0 ~/Desktop/screenshot-$(date +%Y%m%d-%H%M%S).png 2>/dev/null || gnome-screenshot', [PLATFORMS.DARWIN]: `osascript -e 'tell application "System Events" to keystroke "4" using {shift down, command down}'`, [PLATFORMS.WINDOWS]: 'powershell -c "Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(\'%{PRTSC}\')"' },
+  'spotify.shuffle':  { label: '🔀 Shuffle Toggle', [PLATFORMS.LINUX]: 'playerctl shuffle Toggle', [PLATFORMS.DARWIN]: `osascript -e 'tell application "Spotify" to set shuffling to not shuffling'`, [PLATFORMS.WINDOWS]: winKey(0xB3) },
+  'spotify.repeat':   { label: '🔁 Repeat Toggle',  [PLATFORMS.LINUX]: 'playerctl loop None', [PLATFORMS.DARWIN]: `osascript -e 'tell application "Spotify" to set repeating to not repeating'`, [PLATFORMS.WINDOWS]: winKey(0xB3) },
+  'spotify.seekFwd':  { label: '⏩ Seek +10s',      [PLATFORMS.LINUX]: 'playerctl position 10+', [PLATFORMS.DARWIN]: `osascript -e 'tell application "Spotify" to set player position to (player position + 10)'`, [PLATFORMS.WINDOWS]: winKey(0xB3) },
+  'spotify.seekBack': { label: '⏪ Seek -10s',      [PLATFORMS.LINUX]: 'playerctl position 10-', [PLATFORMS.DARWIN]: `osascript -e 'tell application "Spotify" to set player position to (player position - 10)'`, [PLATFORMS.WINDOWS]: winKey(0xB3) },
 }
 
 function executeBuiltin(key) {
   const action = BUILTIN[key]
   if (!action) { console.error('Unknown builtin:', key); return }
-  executeCommand(action[OS] ?? action.linux)
+  executeCommand(action[OS] ?? action[PLATFORMS.LINUX])
 }
 
 function executeHotkey(combo) {
   if (!combo?.trim()) return
-  if (OS === 'linux') {
+  if (!SAFE_COMBO_RE.test(combo)) {
+    console.error('Rejected unsafe hotkey combo:', combo)
+    return
+  }
+  if (OS === PLATFORMS.LINUX) {
     executeCommand(`xdotool key --clearmodifiers ${combo}`)
-  } else if (OS === 'darwin') {
+  } else if (OS === PLATFORMS.DARWIN) {
     const parts = combo.toLowerCase().split('+')
     const key   = parts.pop()
     const modMap = { ctrl: 'control', cmd: 'command', command: 'command', super: 'command', win: 'command', alt: 'option', shift: 'shift' }
@@ -57,7 +67,7 @@ function executeHotkey(combo) {
 function executeCommand(command) {
   if (!command?.trim()) return
   try {
-    execSync(command, { shell: OS === 'win32' ? 'cmd.exe' : '/bin/sh', timeout: 5000 })
+    execSync(command, { shell: OS === PLATFORMS.WINDOWS ? 'cmd.exe' : '/bin/sh', timeout: 5000 })
   } catch (err) {
     console.error('Command failed:', err.message)
   }

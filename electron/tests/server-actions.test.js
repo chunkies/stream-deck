@@ -273,7 +273,9 @@ describe('tile format template', () => {
 describe('voice template mode', () => {
   function applyVoiceTemplate(template, transcript) {
     if (!template) return null
-    return template.replace(/{transcript}/g, transcript.replace(/'/g, "\\'"))
+    // POSIX single-quote escaping: end quote, insert escaped quote, reopen
+    const escaped = transcript.replace(/'/g, "'\\''")
+    return template.replace(/{transcript}/g, escaped)
   }
 
   test('substitutes transcript into template', () => {
@@ -281,12 +283,105 @@ describe('voice template mode', () => {
     expect(cmd).toBe("notify-send 'hello world'")
   })
 
-  test('escapes single quotes in transcript', () => {
+  test('escapes single quotes using POSIX approach', () => {
     const cmd = applyVoiceTemplate("echo '{transcript}'", "it's here")
-    expect(cmd).toBe("echo 'it\\'s here'")
+    expect(cmd).toBe("echo 'it'\\''s here'")
   })
 
   test('returns null when template is empty', () => {
     expect(applyVoiceTemplate('', 'test')).toBeNull()
+  })
+})
+
+// ── Config validation ──────────────────────────────────
+describe('validateConfig', () => {
+  function validateConfig(cfg) {
+    return Boolean(
+      cfg !== null &&
+      typeof cfg === 'object' &&
+      cfg.grid &&
+      typeof cfg.grid.cols === 'number' &&
+      typeof cfg.grid.rows === 'number' &&
+      Array.isArray(cfg.pages)
+    )
+  }
+
+  test('accepts a valid config', () => {
+    expect(validateConfig({ grid: { cols: 3, rows: 4 }, pages: [] })).toBe(true)
+  })
+
+  test('rejects null', () => {
+    expect(validateConfig(null)).toBe(false)
+  })
+
+  test('rejects config without grid', () => {
+    expect(validateConfig({ pages: [] })).toBe(false)
+  })
+
+  test('rejects config with non-array pages', () => {
+    expect(validateConfig({ grid: { cols: 3, rows: 4 }, pages: {} })).toBe(false)
+  })
+
+  test('rejects config with string grid dimensions', () => {
+    expect(validateConfig({ grid: { cols: '3', rows: '4' }, pages: [] })).toBe(false)
+  })
+})
+
+// ── Spotify SSRF path guard ────────────────────────────
+describe('isArtPathSafe', () => {
+  const path = require('path')
+  const SAFE_ART_PREFIXES = ['/home', '/tmp', '/var/folders', '/private/var/folders']
+
+  function isArtPathSafe(filePath) {
+    const resolved = path.resolve(filePath)
+    return SAFE_ART_PREFIXES.some(prefix => resolved.startsWith(prefix))
+  }
+
+  test('allows paths in /home', () => {
+    expect(isArtPathSafe('/home/user/.cache/spotify/art.jpg')).toBe(true)
+  })
+
+  test('allows paths in /tmp', () => {
+    expect(isArtPathSafe('/tmp/spotify-art.jpg')).toBe(true)
+  })
+
+  test('rejects /etc/passwd', () => {
+    expect(isArtPathSafe('/etc/passwd')).toBe(false)
+  })
+
+  test('rejects path traversal escape from /tmp', () => {
+    expect(isArtPathSafe('/tmp/../etc/shadow')).toBe(false)
+  })
+
+  test('rejects /root', () => {
+    expect(isArtPathSafe('/root/.ssh/id_rsa')).toBe(false)
+  })
+})
+
+// ── callPluginWithTimeout ──────────────────────────────
+describe('callPluginWithTimeout', () => {
+  const PLUGIN_TIMEOUT_MS = 10_000
+
+  function callPluginWithTimeout(fn, params, timeoutMs = PLUGIN_TIMEOUT_MS) {
+    const timeout = new Promise((_, rej) =>
+      setTimeout(() => rej(new Error('Plugin action timed out')), timeoutMs)
+    )
+    return Promise.race([Promise.resolve().then(() => fn(params)), timeout])
+  }
+
+  test('resolves when fn completes quickly', async () => {
+    const fn = jest.fn().mockResolvedValue('ok')
+    await expect(callPluginWithTimeout(fn, { x: 1 }, 500)).resolves.toBe('ok')
+    expect(fn).toHaveBeenCalledWith({ x: 1 })
+  })
+
+  test('rejects when fn times out', async () => {
+    const fn = jest.fn(() => new Promise(resolve => setTimeout(resolve, 200)))
+    await expect(callPluginWithTimeout(fn, {}, 50)).rejects.toThrow('Plugin action timed out')
+  })
+
+  test('propagates fn rejection', async () => {
+    const fn = jest.fn().mockRejectedValue(new Error('plugin crashed'))
+    await expect(callPluginWithTimeout(fn, {}, 500)).rejects.toThrow('plugin crashed')
   })
 })
