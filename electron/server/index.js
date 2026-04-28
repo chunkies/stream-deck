@@ -10,8 +10,11 @@ const fs        = require('fs')
 const { execSync, exec }                               = require('child_process')
 const { getCert }                                      = require('./cert')
 const { executeCommand, executeBuiltin, executeHotkey, OS } = require('./keyboard')
+const { Worker }   = require('worker_threads')
 const { PLATFORMS, ACTION_TYPES, COMPONENT_TYPES, MESSAGE_TYPES, TIMINGS } = require('./constants')
 const { semverGt } = require('./plugin-installer')
+
+const PLUGIN_RUNNER = path.join(__dirname, 'plugin-runner.js')
 
 const APP_VERSION = (() => {
   try { return require('../../package.json').version } catch { return '0.0.0' }
@@ -82,26 +85,91 @@ let wss             = null
 let connectedClients = 0
 
 // ── Plugins ────────────────────────────────────────────
-const { createSDK }    = require('./plugin-sdk')
+// Each plugin runs in its own worker_threads Worker.
+// Crashes/hangs in a plugin cannot take down the server.
+// The SDK surface is identical from the plugin author's perspective.
+
 let pluginsMap         = {}
 let pluginsMeta        = []
-let activePluginsDir   = null
 let pluginsDataDir     = null
+const pluginWorkers    = {}  // { pluginId: { worker, pending: Map, callId: number } }
+
+function makeActionCaller(pluginId, key) {
+  return (params) => {
+    const pw = pluginWorkers[pluginId]
+    if (!pw) return Promise.reject(new Error(`Plugin "${pluginId}" not running`))
+    return new Promise((resolve, reject) => {
+      const id = ++pw.callId
+      pw.pending.set(id, { resolve, reject })
+      pw.worker.postMessage({ type: 'invoke', id, key, params })
+      setTimeout(() => {
+        if (pw.pending.has(id)) {
+          pw.pending.delete(id)
+          reject(new Error(`Plugin "${key}" timed out after ${TIMINGS.PLUGIN_TIMEOUT}ms`))
+        }
+      }, TIMINGS.PLUGIN_TIMEOUT)
+    })
+  }
+}
+
+function spawnPluginWorker(manifest, dir) {
+  const pending = new Map()
+  const worker  = new Worker(PLUGIN_RUNNER, {
+    workerData: {
+      pluginId:   manifest.id,
+      pluginPath: path.join(dir, 'index.js'),
+      dataDir:    pluginsDataDir || dir
+    }
+  })
+
+  pluginWorkers[manifest.id] = { worker, pending, callId: 0 }
+
+  worker.on('message', (msg) => {
+    if (msg.type === 'result') {
+      const cb = pending.get(msg.id)
+      if (cb) { pending.delete(msg.id); msg.error ? cb.reject(new Error(msg.error)) : cb.resolve() }
+    } else if (msg.type === 'broadcast') {
+      broadcast(msg.payload)
+    }
+  })
+
+  worker.on('error', (err) => console.error(`Plugin "${manifest.id}" worker error:`, err.message))
+
+  worker.on('exit', (code) => {
+    if (code !== 0) console.error(`Plugin "${manifest.id}" worker exited (code ${code})`)
+    delete pluginWorkers[manifest.id]
+  })
+
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      worker.terminate().catch(() => {})
+      reject(new Error('Plugin startup timeout'))
+    }, 5000)
+
+    worker.on('message', (msg) => {
+      if (msg.type === 'ready') {
+        clearTimeout(timer)
+        resolve(msg.actions)
+      } else if (msg.type === 'error') {
+        clearTimeout(timer)
+        reject(new Error(msg.error))
+      }
+    })
+  })
+}
+
+function stopAllWorkers() {
+  for (const [id, pw] of Object.entries(pluginWorkers)) {
+    pw.worker.terminate().catch(() => {})
+    delete pluginWorkers[id]
+  }
+}
 
 function loadPlugins(pluginsDir) {
-  // Resolve real path so symlinked plugins clear cache correctly
-  const realDir = (() => { try { return fs.realpathSync(pluginsDir) } catch { return pluginsDir } })()
+  stopAllWorkers()
+  pluginsMap  = {}
+  pluginsMeta = []
 
-  // Clear require cache for previously loaded plugins (supports symlinks)
-  for (const key of Object.keys(require.cache)) {
-    let realKey
-    try { realKey = fs.realpathSync(key) } catch { realKey = key }
-    if (realKey.startsWith(realDir)) delete require.cache[key]
-  }
-
-  pluginsMap       = {}
-  pluginsMeta      = []
-  activePluginsDir = realDir
   if (!fs.existsSync(pluginsDir)) return
 
   for (const name of fs.readdirSync(pluginsDir)) {
@@ -119,22 +187,7 @@ function loadPlugins(pluginsDir) {
         continue
       }
 
-      const raw       = require(indexPath)
-
-      // Support two plugin patterns:
-      // 1. Factory fn(sdk) => { 'action.key': handlerFn }  (plain object)
-      // 2. Factory fn(sdk) using sdk.on('key', fn) — returns cleanup fn or nothing
-      const sdk    = createSDK(manifest.id, pluginsDataDir || dir, broadcast)
-      const result = typeof raw === 'function' ? raw(sdk) : raw
-
-      // Merge sdk.on() registered handlers first, then any object returned by factory
-      const handlers = { ...sdk._handlers, ...(result && typeof result === 'object' && !Array.isArray(result) && typeof result !== 'function' ? result : {}) }
-
-      // Warn on action key conflicts between plugins
-      for (const key of Object.keys(handlers)) {
-        if (pluginsMap[key]) console.warn(`Plugin conflict: "${key}" already registered — "${manifest.id}" overrides it`)
-      }
-
+      // Register meta immediately so marketplace shows the plugin while it starts
       pluginsMeta.push({
         id:          manifest.id,
         name:        manifest.name,
@@ -145,8 +198,19 @@ function loadPlugins(pluginsDir) {
         _local:      manifest._local || false,
         actions:     manifest.actions || []
       })
-      Object.assign(pluginsMap, handlers)
-      console.log(`Plugin loaded: ${manifest.name} v${manifest.version || '?'}`)
+
+      // Spawn worker — resolves once the plugin reports ready
+      spawnPluginWorker(manifest, dir).then(actions => {
+        for (const key of actions) {
+          if (pluginsMap[key]) console.warn(`Plugin conflict: "${key}" already registered — "${manifest.id}" overrides it`)
+          pluginsMap[key] = makeActionCaller(manifest.id, key)
+        }
+        console.log(`Plugin loaded: ${manifest.name} v${manifest.version || '?'} (${actions.length} actions)`)
+      }).catch(err => {
+        console.error(`Plugin "${manifest.id}" failed to start:`, err.message)
+        const idx = pluginsMeta.findIndex(m => m.id === manifest.id)
+        if (idx !== -1) pluginsMeta.splice(idx, 1)
+      })
     } catch (err) {
       console.error(`Plugin "${name}" failed to load:`, err.message)
     }
@@ -347,8 +411,7 @@ function handlePress(pageId, compId, hold = false) {
           callParams.value = toggleStates[key]
           broadcast({ type: MESSAGE_TYPES.TOGGLE_STATE, key, active: toggleStates[key] })
         }
-        callPluginWithTimeout(fn, callParams)
-          .catch(err => console.error(`Plugin "${action.pluginKey}" error:`, err.message))
+        fn(callParams).catch(err => console.error(`Plugin "${action.pluginKey}" error:`, err.message))
       } else {
         console.warn('Unknown plugin action:', action.pluginKey)
       }
@@ -404,8 +467,7 @@ function handleSlide(pageId, compId, value) {
     case ACTION_TYPES.PLUGIN: {
       const fn = pluginsMap[a.pluginKey]
       if (fn) {
-        callPluginWithTimeout(fn, { ...(a.params || {}), value })
-          .catch(err => console.error(`Plugin slide "${a.pluginKey}" error:`, err.message))
+        fn({ ...(a.params || {}), value }).catch(err => console.error(`Plugin slide "${a.pluginKey}" error:`, err.message))
       } else {
         console.warn('Unknown plugin action:', a.pluginKey)
       }

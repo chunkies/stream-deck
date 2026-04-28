@@ -14,6 +14,19 @@ let mediaPath
 let pluginsPath
 let tray = null
 
+// Single-instance lock — prevents port 3000 conflict when app is launched twice
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
+}
+
 // Trust our own self-signed cert so the admin panel can load images from the local server
 app.on('certificate-error', (event, webContents, url, error, cert, callback) => {
   event.preventDefault()

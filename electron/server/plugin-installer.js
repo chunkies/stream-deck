@@ -1,7 +1,9 @@
 'use strict'
 
-const fs   = require('fs')
-const path = require('path')
+const fs             = require('fs')
+const path           = require('path')
+const { execFile }   = require('child_process')
+const NPM            = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 
 const REGISTRY_URL = 'https://raw.githubusercontent.com/chunkies/macropad/master/registry/registry.json'
 const CACHE_TTL    = 5 * 60 * 1000
@@ -128,6 +130,18 @@ async function installPlugin(pluginId, downloadUrl, pluginsDir, onProgress) {
     // Validate plugin id matches folder name
     if (manifest.id && manifest.id !== pluginId) {
       throw new Error(`Plugin id mismatch: expected "${pluginId}", got "${manifest.id}"`)
+    }
+
+    // Install npm dependencies if plugin has a package.json
+    const packageJsonPath = path.join(destDir, 'package.json')
+    if (fs.existsSync(packageJsonPath)) {
+      if (onProgress) onProgress({ status: 'installing', pct: 100 })
+      await new Promise((resolve, reject) => {
+        execFile(NPM, ['install', '--omit=dev', '--no-audit', '--no-fund'], { cwd: destDir, timeout: 120000 }, (err) => {
+          if (err) reject(new Error(`npm install failed: ${err.message}`))
+          else resolve()
+        })
+      })
     }
 
     if (onProgress) onProgress({ status: 'done', pct: 100 })

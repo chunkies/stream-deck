@@ -3,7 +3,7 @@
   "name": "OBS Studio",
   "version": "1.0.0",
   "description": "Control OBS Studio via WebSocket — switch scenes, toggle recording/streaming, mute sources.",
-  "author": "MacroPad",
+  "author": "MacroPad Team",
   "actions": [
     {
       "key": "obs.connect",
