@@ -4,6 +4,12 @@
   "version": "1.0.0",
   "description": "Control OBS Studio via WebSocket — switch scenes, toggle recording/streaming, mute sources.",
   "author": "MacroPad Team",
+  "authorUrl": "https://github.com/chunkies/macropad",
+  "homepage": "https://github.com/chunkies/macropad/tree/master/plugins-example/obs",
+  "price": 0,
+  "license": "MIT",
+  "tags": ["obs", "streaming", "recording"],
+  "minAppVersion": "1.0.0",
   "actions": [
     {
       "key": "obs.connect",

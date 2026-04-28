@@ -2,9 +2,32 @@
   "id": "hello-world",
   "name": "Hello World",
   "version": "1.0.0",
-  "description": "Example plugin — shows a notification",
+  "description": "Example plugin — sends a desktop notification and opens a URL. Use this as a starting point for building your own plugin.",
+  "author": "MacroPad Team",
+  "authorUrl": "https://github.com/chunkies/macropad",
+  "homepage": "https://github.com/chunkies/macropad/tree/master/plugins-example/hello-world",
+  "price": 0,
+  "license": "MIT",
+  "tags": ["example"],
+  "minAppVersion": "1.0.0",
   "actions": [
-    { "key": "hello-world.notify",  "label": "Send notification",     "componentType": "button" },
-    { "key": "hello-world.openUrl", "label": "Open URL in browser",   "componentType": "button" }
+    {
+      "key": "hello-world.notify",
+      "label": "Send notification",
+      "componentType": "button",
+      "description": "Shows a desktop notification with a custom message.",
+      "params": [
+        { "key": "message", "label": "Message", "type": "text", "placeholder": "MacroPad says hello!", "default": "MacroPad says hello!" }
+      ]
+    },
+    {
+      "key": "hello-world.openUrl",
+      "label": "Open URL in browser",
+      "componentType": "button",
+      "description": "Opens a URL in the default browser.",
+      "params": [
+        { "key": "url", "label": "URL", "type": "text", "placeholder": "https://example.com" }
+      ]
+    }
   ]
 }

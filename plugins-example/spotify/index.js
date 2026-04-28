@@ -6,9 +6,9 @@ module.exports = function (sdk) {
 
   function spotify(cmd) {
     if (isMac) {
-      return shell.exec(`osascript -e 'tell application "Spotify" to ${cmd}'`)
+      return shell.execAsync(`osascript -e 'tell application "Spotify" to ${cmd}'`)
     }
-    return shell.exec(`playerctl --player=spotify ${cmd} 2>/dev/null || playerctl ${cmd}`)
+    return shell.execAsync(`playerctl --player=spotify ${cmd} 2>/dev/null || playerctl ${cmd}`)
   }
 
   sdk.on('spotify.playPause', async () => {
@@ -29,18 +29,18 @@ module.exports = function (sdk) {
   sdk.on('spotify.volumeUp', async ({ value }) => {
     if (isMac) {
       const vol = Math.round(value)
-      await shell.exec(`osascript -e 'tell application "Spotify" to set sound volume to ${vol}'`)
+      await shell.execAsync(`osascript -e 'tell application "Spotify" to set sound volume to ${vol}'`)
     } else {
-      await shell.exec(`playerctl --player=spotify volume ${(value / 100).toFixed(2)}`)
+      await shell.execAsync(`playerctl --player=spotify volume ${(value / 100).toFixed(2)}`)
     }
   })
 
   sdk.on('spotify.volumeDown', async ({ value }) => {
     if (isMac) {
       const vol = Math.round(value)
-      await shell.exec(`osascript -e 'tell application "Spotify" to set sound volume to ${vol}'`)
+      await shell.execAsync(`osascript -e 'tell application "Spotify" to set sound volume to ${vol}'`)
     } else {
-      await shell.exec(`playerctl --player=spotify volume ${(value / 100).toFixed(2)}`)
+      await shell.execAsync(`playerctl --player=spotify volume ${(value / 100).toFixed(2)}`)
     }
   })
 
@@ -51,11 +51,11 @@ module.exports = function (sdk) {
     try {
       let track, artist
       if (isMac) {
-        track  = (await shell.exec(`osascript -e 'tell application "Spotify" to name of current track'`)).trim()
-        artist = (await shell.exec(`osascript -e 'tell application "Spotify" to artist of current track'`)).trim()
+        track  = (await shell.execAsync(`osascript -e 'tell application "Spotify" to name of current track'`)).trim()
+        artist = (await shell.execAsync(`osascript -e 'tell application "Spotify" to artist of current track'`)).trim()
       } else {
-        track  = (await shell.exec(`playerctl --player=spotify metadata title 2>/dev/null`)).trim()
-        artist = (await shell.exec(`playerctl --player=spotify metadata artist 2>/dev/null`)).trim()
+        track  = (await shell.execAsync(`playerctl --player=spotify metadata title 2>/dev/null`)).trim()
+        artist = (await shell.execAsync(`playerctl --player=spotify metadata artist 2>/dev/null`)).trim()
       }
       if (track) sdk.broadcast('spotify.nowPlaying', { value: track, track, artist })
     } catch {}
