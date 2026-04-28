@@ -3,16 +3,16 @@
   "name": "System Info",
   "version": "1.0.0",
   "description": "Show CPU load, memory, uptime, and public IP via the plugin SDK",
-  "author": "Stream Deck Team",
-  "homepage": "https://github.com/chunkies/stream-deck",
+  "author": "MacroPad Team",
+  "homepage": "https://github.com/chunkies/macropad",
   "price": 0,
   "license": "MIT",
   "tags": ["system", "monitoring"],
   "actions": [
-    { "key": "system-info.cpu",    "label": "Show CPU load" },
-    { "key": "system-info.memory", "label": "Show memory usage" },
-    { "key": "system-info.uptime", "label": "Show system uptime" },
-    { "key": "system-info.ip",     "label": "Show public IP" },
-    { "key": "system-info.count",  "label": "Button press counter" }
+    { "key": "system-info.cpu",    "label": "Show CPU load",        "componentType": "button" },
+    { "key": "system-info.memory", "label": "Show memory usage",    "componentType": "button" },
+    { "key": "system-info.uptime", "label": "Show system uptime",   "componentType": "button" },
+    { "key": "system-info.ip",     "label": "Show public IP",       "componentType": "button" },
+    { "key": "system-info.count",  "label": "Button press counter", "componentType": "button" }
   ]
 }

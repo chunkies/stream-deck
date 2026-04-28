@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Example plugin — shows a notification",
   "actions": [
-    { "key": "hello-world.notify",    "label": "Send notification" },
-    { "key": "hello-world.openUrl",   "label": "Open URL in browser" }
+    { "key": "hello-world.notify",  "label": "Send notification",     "componentType": "button" },
+    { "key": "hello-world.openUrl", "label": "Open URL in browser",   "componentType": "button" }
   ]
 }

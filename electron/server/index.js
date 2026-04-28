@@ -466,7 +466,7 @@ async function start(onEvent, port = 3000, paths = {}) {
 
   app.get('/cert.crt', (req, res) => {
     res.setHeader('Content-Type', 'application/x-x509-ca-cert')
-    res.setHeader('Content-Disposition', 'attachment; filename="stream-deck.crt"')
+    res.setHeader('Content-Disposition', 'attachment; filename="macropad.crt"')
     res.send(cert)
   })
   app.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next() })
@@ -506,7 +506,7 @@ async function start(onEvent, port = 3000, paths = {}) {
 
   await new Promise(resolve => server.listen(port, resolve))
   serverInfo = { ip, host, port, mode }
-  console.log(`Stream Deck running at https://${host}:${port} (${mode})`)
+  console.log(`MacroPad running at https://${host}:${port} (${mode})`)
 
   // Start tile pollers after server is up
   startTilePollers()

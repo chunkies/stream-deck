@@ -3,7 +3,7 @@
   "name": "Spotify",
   "version": "1.0.0",
   "description": "Control Spotify playback — play/pause, skip tracks, adjust volume, and show now-playing info.",
-  "author": "Stream Deck",
+  "author": "MacroPad",
   "actions": [
     {
       "key": "spotify.playPause",

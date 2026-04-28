@@ -1,6 +1,6 @@
 {
-  "name": "Stream Deck",
-  "short_name": "Deck",
+  "name": "MacroPad",
+  "short_name": "MacroPad",
   "start_url": "/",
   "display": "fullscreen",
   "background_color": "#0f172a",

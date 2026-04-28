@@ -303,7 +303,7 @@ function wireDevTab() {
 
   document.getElementById('registry-link').addEventListener('click', e => {
     e.preventDefault()
-    window.mp.openExternal('https://github.com/chunkies/stream-deck/tree/master/registry')
+    window.mp.openExternal('https://github.com/chunkies/macropad/tree/master/registry')
   })
 }
 

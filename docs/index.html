@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Plugin SDK Docs — Stream Deck</title>
+  <title>Plugin SDK Docs — MacroPad</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
@@ -205,12 +205,12 @@
 <main class="content">
 
   <h1>Plugin SDK</h1>
-  <p class="lead">Build plugins for Stream Deck in two files. Your plugin gets a full SDK for running shell commands, persisting data, making HTTP requests, and pushing events to connected phones.</p>
+  <p class="lead">Build plugins for MacroPad in two files. Your plugin gets a full SDK for running shell commands, persisting data, making HTTP requests, and pushing events to connected phones.</p>
 
   <!-- ── Overview ── -->
   <h2 id="overview">Overview</h2>
-  <p>Stream Deck plugins are Node.js modules that live in <code>userData/plugins/&lt;id&gt;/</code>. Each plugin exposes a map of <strong>action handlers</strong> — functions that fire when a button configured to that action is pressed on the phone.</p>
-  <p>Plugins run inside the same Electron process as the server, with access to Node.js built-ins and the Stream Deck SDK. They are loaded once at startup and hot-reloaded on demand without restarting the app.</p>
+  <p>MacroPad plugins are Node.js modules that live in <code>userData/plugins/&lt;id&gt;/</code>. Each plugin exposes a map of <strong>action handlers</strong> — functions that fire when a button configured to that action is pressed on the phone.</p>
+  <p>Plugins run inside the same Electron process as the server, with access to Node.js built-ins and the MacroPad SDK. They are loaded once at startup and hot-reloaded on demand without restarting the app.</p>
 
   <!-- ── Quickstart ── -->
   <h2 id="quickstart">Quick start</h2>
@@ -271,7 +271,7 @@
     <tr><td>downloadUrl</td><td>string</td><td><span class="badge badge-optional">optional</span> Direct URL to a .zip of your plugin. Required for marketplace install.</td></tr>
     <tr><td>license</td><td>string</td><td><span class="badge badge-optional">optional</span> e.g. <code>"MIT"</code></td></tr>
     <tr><td>tags</td><td>string[]</td><td><span class="badge badge-optional">optional</span> Used for filtering in the marketplace browse tab.</td></tr>
-    <tr><td>minAppVersion</td><td>string</td><td><span class="badge badge-optional">optional</span> Minimum Stream Deck version required.</td></tr>
+    <tr><td>minAppVersion</td><td>string</td><td><span class="badge badge-optional">optional</span> Minimum MacroPad version required.</td></tr>
   </table>
 
   <h3>Action definition</h3>
@@ -453,7 +453,7 @@ sdk.log.<span class="fn">error</span>(<span class="str">'Failed:'</span>, err.me
   <ol>
     <li>Create a <strong>GitHub release</strong> (or any public host) and upload a .zip of your plugin folder.</li>
     <li>Set <code>downloadUrl</code> in your manifest to the direct download URL of the zip.</li>
-    <li>Fork <a href="https://github.com/chunkies/stream-deck" target="_blank">chunkies/stream-deck</a> and add your plugin to <code>registry/registry.json</code>.</li>
+    <li>Fork <a href="https://github.com/chunkies/macropad" target="_blank">chunkies/macropad</a> and add your plugin to <code>registry/registry.json</code>.</li>
     <li>Open a <strong>Pull Request</strong>. Once merged, your plugin appears in the marketplace for all users.</li>
   </ol>
 
@@ -516,7 +516,7 @@ sdk.log.<span class="fn">error</span>(<span class="str">'Failed:'</span>, err.me
 
 <span class="kw">module</span>.<span class="fn">exports</span> = {
   <span class="str">'hello-world.notify'</span>: () => {
-    execSync(<span class="str">'notify-send "Stream Deck" "Hello from your macro pad!"'</span>)
+    execSync(<span class="str">'notify-send "MacroPad" "Hello from your macro pad!"'</span>)
   }
 }</code></pre>
 

@@ -3,9 +3,9 @@
   "name": "Text Macro",
   "version": "1.0.0",
   "description": "Type a block of text, pause, then fire a hotkey — all from one button press. Great for snippets, form fills, and keyboard shortcuts.",
-  "author": "Stream Deck Team",
-  "authorUrl": "https://github.com/chunkies/stream-deck",
-  "homepage": "https://github.com/chunkies/stream-deck/tree/master/plugins-example/text-macro",
+  "author": "MacroPad Team",
+  "authorUrl": "https://github.com/chunkies/macropad",
+  "homepage": "https://github.com/chunkies/macropad/tree/master/plugins-example/text-macro",
   "price": 0,
   "license": "MIT",
   "tags": ["productivity", "keyboard", "macro"],
@@ -13,6 +13,7 @@
     {
       "key": "text-macro.run",
       "label": "Type text + hotkey",
+      "componentType": "button",
       "params": [
         {
           "key": "text",
@@ -38,6 +39,7 @@
     {
       "key": "text-macro.type-only",
       "label": "Type text only",
+      "componentType": "button",
       "params": [
         {
           "key": "text",
@@ -50,6 +52,7 @@
     {
       "key": "text-macro.hotkey-only",
       "label": "Fire hotkey only",
+      "componentType": "button",
       "params": [
         {
           "key": "hotkey",

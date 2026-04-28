@@ -106,16 +106,16 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Stream Deck ${{ github.ref_name }}
+          name: MacroPad ${{ github.ref_name }}
           body: |
             ## Download
 
             | Platform | File |
             |----------|------|
-            | Linux (portable) | `stream-deck-*.AppImage` |
-            | Linux (Debian/Ubuntu) | `stream-deck-*.deb` |
-            | macOS | `stream-deck-*.dmg` |
-            | Windows | `stream-deck-*.exe` |
+            | Linux (portable) | `macropad-*.AppImage` |
+            | Linux (Debian/Ubuntu) | `macropad-*.deb` |
+            | macOS | `macropad-*.dmg` |
+            | Windows | `macropad-*.exe` |
 
             ### Quick start
             1. Download for your platform
@@ -123,7 +123,7 @@ jobs:
             3. Scan the QR code on your phone
             4. Start adding buttons
 
-            See the [full documentation](https://github.com/chunkies/stream-deck/tree/master/docs) and [plugin SDK](https://github.com/chunkies/stream-deck/tree/master/docs).
+            See the [full documentation](https://github.com/chunkies/macropad/tree/master/docs) and [plugin SDK](https://github.com/chunkies/macropad/tree/master/docs).
           files: |
             artifacts/**/*.AppImage
             artifacts/**/*.deb

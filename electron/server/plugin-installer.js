@@ -3,7 +3,7 @@
 const fs   = require('fs')
 const path = require('path')
 
-const REGISTRY_URL = 'https://raw.githubusercontent.com/chunkies/stream-deck/master/registry/registry.json'
+const REGISTRY_URL = 'https://raw.githubusercontent.com/chunkies/macropad/master/registry/registry.json'
 const CACHE_TTL    = 5 * 60 * 1000
 
 let registryCache     = null

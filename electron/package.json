@@ -1,5 +1,5 @@
 {
-  "name": "stream-deck",
+  "name": "macropad",
   "version": "1.0.0",
   "description": "Configurable phone-to-PC macro pad",
   "main": "main.js",
@@ -12,8 +12,8 @@
     "build:all": "electron-builder --linux --mac --win"
   },
   "build": {
-    "appId": "com.chunkies.streamdeck",
-    "productName": "Stream Deck",
+    "appId": "com.chunkies.macropad",
+    "productName": "MacroPad",
     "directories": {
       "output": "../dist"
     },

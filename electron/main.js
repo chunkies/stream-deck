@@ -3,35 +3,6 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, shell, dialog } = require('electron')
 const path      = require('path')
 const fs        = require('fs')
-const crypto    = require('crypto')
-
-// ── Pro license ────────────────────────────────────────
-// Validation uses HMAC-SHA256. The actual secret used to generate keys is kept
-// out of this repo — set SD_LICENSE_SECRET env var in production builds,
-// or keys generated with scripts/gen-license.js (not in this repo) won't match.
-const _lk = process.env.SD_LICENSE_SECRET || (() => {
-  const b = Buffer.from('73642d76312d323032362d70726f', 'hex')
-  return b.toString()
-})()
-
-function validateLicenseKey(key) {
-  if (!key || typeof key !== 'string') return false
-  const match = key.toUpperCase().match(/^SD-([A-Z0-9]{8})-([A-Z0-9]{8})-([A-Z0-9]{8})$/)
-  if (!match) return false
-  const [, a, b, check] = match
-  const expected = crypto.createHmac('sha256', _lk)
-    .update(a + b)
-    .digest('hex')
-    .slice(0, 8)
-    .toUpperCase()
-  return check === expected
-}
-
-function getProStatus(cfg) {
-  if (!cfg?.pro?.license) return { active: false }
-  const valid = validateLicenseKey(cfg.pro.license)
-  return { active: valid, license: valid ? cfg.pro.license : null }
-}
 const os        = require('os')
 const QRCode    = require('qrcode')
 const server    = require('./server/index')
@@ -95,11 +66,11 @@ function createTray() {
   try {
     const icon = nativeImage.createFromBuffer(makePNG(0x7c, 0x3a, 0xed))
     tray = new Tray(icon)
-    tray.setToolTip('Stream Deck')
+    tray.setToolTip('MacroPad')
     tray.on('click',        () => { mainWindow?.show(); mainWindow?.focus() })
     tray.on('double-click', () => { mainWindow?.show(); mainWindow?.focus() })
     tray.setContextMenu(Menu.buildFromTemplate([
-      { label: 'Show Stream Deck', click: () => { mainWindow?.show(); mainWindow?.focus() } },
+      { label: 'Show MacroPad', click: () => { mainWindow?.show(); mainWindow?.focus() } },
       { type: 'separator' },
       { label: 'Quit', click: () => { app.isQuitting = true; app.quit() } }
     ]))
@@ -111,7 +82,7 @@ function createTray() {
 // ── Autostart ──────────────────────────────────────────
 function getAutostart() {
   if (process.platform === 'linux') {
-    return fs.existsSync(path.join(os.homedir(), '.config/autostart/stream-deck.desktop'))
+    return fs.existsSync(path.join(os.homedir(), '.config/autostart/macropad.desktop'))
   }
   return app.getLoginItemSettings().openAtLogin
 }
@@ -119,11 +90,11 @@ function getAutostart() {
 function setAutostart(enable) {
   if (process.platform === 'linux') {
     const dir  = path.join(os.homedir(), '.config/autostart')
-    const file = path.join(dir, 'stream-deck.desktop')
+    const file = path.join(dir, 'macropad.desktop')
     if (enable) {
       const exec = app.isPackaged ? process.execPath : `"${process.execPath}" "${__dirname}"`
       fs.mkdirSync(dir, { recursive: true })
-      fs.writeFileSync(file, `[Desktop Entry]\nType=Application\nName=Stream Deck\nExec=${exec}\nHidden=false\nX-GNOME-Autostart-enabled=true\n`)
+      fs.writeFileSync(file, `[Desktop Entry]\nType=Application\nName=MacroPad\nExec=${exec}\nHidden=false\nX-GNOME-Autostart-enabled=true\n`)
     } else {
       try { fs.unlinkSync(file) } catch {}
     }
@@ -142,7 +113,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false
     },
-    title: 'Stream Deck',
+    title: 'MacroPad',
     backgroundColor: '#0f172a'
   })
   mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'))
@@ -262,29 +233,11 @@ ipcMain.handle('mp:uninstall', (_, pluginId) => {
   server.reloadPlugins(pluginsPath)
 })
 
-// ── Pro IPC ────────────────────────────────────────────
-ipcMain.handle('get-pro-status', () => getProStatus(server.getConfig()))
-
-ipcMain.handle('activate-license', (_, key) => {
-  if (!validateLicenseKey(key)) return { ok: false, error: 'Invalid license key' }
-  const cfg = server.getConfig()
-  cfg.pro = { license: key.toUpperCase(), activatedAt: new Date().toISOString() }
-  server.setConfig(cfg)
-  return { ok: true }
-})
-
-ipcMain.handle('deactivate-license', () => {
-  const cfg = server.getConfig()
-  delete cfg.pro
-  server.setConfig(cfg)
-  return { ok: true }
-})
-
 // ── Config import / export ────────────────────────────
 ipcMain.handle('export-config', async () => {
   const result = await dialog.showSaveDialog(mainWindow, {
     title: 'Export layout',
-    defaultPath: 'stream-deck-layout.json',
+    defaultPath: 'macropad-layout.json',
     filters: [{ name: 'JSON', extensions: ['json'] }]
   })
   if (result.canceled || !result.filePath) return { ok: false }
@@ -305,9 +258,6 @@ ipcMain.handle('import-config', async () => {
     return { ok: false, error: 'Invalid JSON file' }
   }
   if (!parsed.pages || !Array.isArray(parsed.pages)) return { ok: false, error: 'Not a valid layout file' }
-  // Strip sensitive fields from imported config
-  delete parsed.claudeApiKey
-  delete parsed.pro
   server.setConfig(parsed)
   return { ok: true, config: server.getConfig() }
 })

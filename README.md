@@ -1,8 +1,8 @@
-# Stream Deck — Phone Macro Pad
+# MacroPad — Phone Macro Pad
 
 Turn any phone into a programmable control surface. Tap buttons on your phone to run shell commands, trigger hotkeys, control OBS, fire macros, and more — all over local WiFi.
 
-**[Landing Page](https://chunkies.github.io/stream-deck/landing/)** · **[Plugin SDK Docs](https://chunkies.github.io/stream-deck/docs/)**
+**[Landing Page](https://chunkies.github.io/macropad/landing/)** · **[Plugin SDK Docs](https://chunkies.github.io/macropad/docs/)**
 
 ---
 
@@ -21,9 +21,9 @@ Phone (iOS/Android)         PC (Linux/Mac/Windows)
 
 | Platform | Download |
 |----------|----------|
-| Linux    | [AppImage](https://github.com/chunkies/stream-deck/releases/latest/download/stream-deck-linux.AppImage) · [.deb](https://github.com/chunkies/stream-deck/releases/latest/download/stream-deck-linux.deb) |
-| macOS    | [.dmg (Intel + Apple Silicon)](https://github.com/chunkies/stream-deck/releases/latest/download/stream-deck-mac.dmg) |
-| Windows  | [Setup.exe](https://github.com/chunkies/stream-deck/releases/latest/download/stream-deck-setup.exe) |
+| Linux    | [AppImage](https://github.com/chunkies/macropad/releases/latest/download/macropad-linux.AppImage) · [.deb](https://github.com/chunkies/macropad/releases/latest/download/macropad-linux.deb) |
+| macOS    | [.dmg (Intel + Apple Silicon)](https://github.com/chunkies/macropad/releases/latest/download/macropad-mac.dmg) |
+| Windows  | [Setup.exe](https://github.com/chunkies/macropad/releases/latest/download/macropad-setup.exe) |
 
 Or [build from source](#build-from-source).
 
@@ -100,8 +100,8 @@ The voice button uses the browser's Web Speech API — no server-side processing
 ## Build from source
 
 ```bash
-git clone https://github.com/chunkies/stream-deck
-cd stream-deck/electron
+git clone https://github.com/chunkies/macropad
+cd macropad/electron
 npm install
 npm start              # dev mode
 npm run build:linux    # AppImage + .deb
@@ -145,7 +145,7 @@ docs/
 
 ## Contributing
 
-- **Bug reports / feature requests**: [open an issue](https://github.com/chunkies/stream-deck/issues)
+- **Bug reports / feature requests**: [open an issue](https://github.com/chunkies/macropad/issues)
 - **New plugin**: add two files and submit a PR adding your entry to `registry/registry.json`
 - **Core changes**: PRs welcome — keep it simple, no unnecessary dependencies
 
