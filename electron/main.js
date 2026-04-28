@@ -1,18 +1,106 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
-const path = require('path')
-const fs   = require('fs')
+'use strict'
+
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron')
+const path   = require('path')
+const fs     = require('fs')
+const os     = require('os')
 const QRCode = require('qrcode')
 const server = require('./server/index')
 
 let mainWindow
 let mediaPath
+let tray = null
 
-// Trust our own self-signed cert so admin panel can load images from the local server
+// Trust our own self-signed cert so the admin panel can load images from the local server
 app.on('certificate-error', (event, webContents, url, error, cert, callback) => {
   event.preventDefault()
   callback(true)
 })
 
+// ── Tray icon (generated at runtime) ──────────────────
+function makePNG(r, g, b, size = 16) {
+  const { deflateSync } = require('zlib')
+  const W = size, H = size
+  const raw = Buffer.alloc((1 + W * 4) * H)
+  for (let y = 0; y < H; y++) {
+    raw[y * (1 + W * 4)] = 0
+    for (let x = 0; x < W; x++) {
+      const o = y * (1 + W * 4) + 1 + x * 4
+      raw[o] = r; raw[o + 1] = g; raw[o + 2] = b; raw[o + 3] = 255
+    }
+  }
+  const idat = deflateSync(raw)
+
+  const table = new Uint32Array(256)
+  for (let i = 0; i < 256; i++) {
+    let c = i
+    for (let k = 0; k < 8; k++) c = (c & 1) ? 0xEDB88320 ^ (c >>> 1) : (c >>> 1)
+    table[i] = c >>> 0
+  }
+  function crc32(buf) {
+    let c = 0xFFFFFFFF
+    for (let i = 0; i < buf.length; i++) c = table[(c ^ buf[i]) & 0xFF] ^ (c >>> 8)
+    return (c ^ 0xFFFFFFFF) >>> 0
+  }
+  function chunk(type, data) {
+    const len = Buffer.alloc(4); len.writeUInt32BE(data.length)
+    const t = Buffer.from(type, 'ascii')
+    const cBuf = Buffer.alloc(4); cBuf.writeUInt32BE(crc32(Buffer.concat([t, data])))
+    return Buffer.concat([len, t, data, cBuf])
+  }
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4)
+  ihdr[8] = 8; ihdr[9] = 6 // RGBA
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', idat),
+    chunk('IEND', Buffer.alloc(0))
+  ])
+}
+
+function createTray() {
+  try {
+    const icon = nativeImage.createFromBuffer(makePNG(0x7c, 0x3a, 0xed))
+    tray = new Tray(icon)
+    tray.setToolTip('Stream Deck')
+    tray.on('click',        () => { mainWindow?.show(); mainWindow?.focus() })
+    tray.on('double-click', () => { mainWindow?.show(); mainWindow?.focus() })
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Show Stream Deck', click: () => { mainWindow?.show(); mainWindow?.focus() } },
+      { type: 'separator' },
+      { label: 'Quit', click: () => { app.isQuitting = true; app.quit() } }
+    ]))
+  } catch (err) {
+    console.error('Tray creation failed:', err.message)
+  }
+}
+
+// ── Autostart ──────────────────────────────────────────
+function getAutostart() {
+  if (process.platform === 'linux') {
+    return fs.existsSync(path.join(os.homedir(), '.config/autostart/stream-deck.desktop'))
+  }
+  return app.getLoginItemSettings().openAtLogin
+}
+
+function setAutostart(enable) {
+  if (process.platform === 'linux') {
+    const dir  = path.join(os.homedir(), '.config/autostart')
+    const file = path.join(dir, 'stream-deck.desktop')
+    if (enable) {
+      const exec = app.isPackaged ? process.execPath : `"${process.execPath}" "${__dirname}"`
+      fs.mkdirSync(dir, { recursive: true })
+      fs.writeFileSync(file, `[Desktop Entry]\nType=Application\nName=Stream Deck\nExec=${exec}\nHidden=false\nX-GNOME-Autostart-enabled=true\n`)
+    } else {
+      try { fs.unlinkSync(file) } catch {}
+    }
+  } else {
+    app.setLoginItemSettings({ openAtLogin: enable })
+  }
+}
+
+// ── Window ─────────────────────────────────────────────
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 960,
@@ -26,6 +114,14 @@ function createWindow() {
     backgroundColor: '#0f172a'
   })
   mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'))
+
+  // Minimize to tray on close
+  mainWindow.on('close', (e) => {
+    if (!app.isQuitting) {
+      e.preventDefault()
+      mainWindow.hide()
+    }
+  })
 }
 
 async function sendServerReady(info) {
@@ -35,8 +131,10 @@ async function sendServerReady(info) {
   mainWindow.webContents.send('server-ready', { ...info, qr })
 }
 
+// ── Init ───────────────────────────────────────────────
 app.whenReady().then(async () => {
   createWindow()
+  createTray()
 
   const userData   = app.getPath('userData')
   const pwaPath    = app.isPackaged ? path.join(process.resourcesPath, 'pwa') : path.join(__dirname, '../pwa')
@@ -62,11 +160,17 @@ app.whenReady().then(async () => {
   if (windowReady) await sendServerReady(serverInfo)
 })
 
-ipcMain.handle('get-config',      ()         => server.getConfig())
-ipcMain.handle('get-server-info', ()         => server.getInfo())
-ipcMain.handle('set-config',      (_, cfg)   => server.setConfig(cfg))
-ipcMain.handle('get-platform',    ()         => process.platform)
-ipcMain.handle('upload-media',    (_, srcPath) => {
+// ── IPC ────────────────────────────────────────────────
+ipcMain.handle('get-config',      ()            => server.getConfig())
+ipcMain.handle('get-server-info', ()            => server.getInfo())
+ipcMain.handle('set-config',      (_, cfg)      => server.setConfig(cfg))
+ipcMain.handle('get-platform',    ()            => process.platform)
+ipcMain.handle('get-autostart',   ()            => getAutostart())
+ipcMain.handle('set-autostart',   (_, enable)   => setAutostart(enable))
+ipcMain.handle('connect-obs',     (_, opts)     => server.connectOBS(opts.host, opts.port, opts.password))
+ipcMain.handle('get-obs-status',  ()            => server.isOBSReady())
+
+ipcMain.handle('upload-media', (_, srcPath) => {
   const ext      = path.extname(srcPath)
   const filename = `${Date.now()}${ext}`
   const dest     = path.join(mediaPath, filename)
@@ -75,3 +179,4 @@ ipcMain.handle('upload-media',    (_, srcPath) => {
 })
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
+app.on('before-quit', () => { app.isQuitting = true })

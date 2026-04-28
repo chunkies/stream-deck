@@ -21,7 +21,11 @@ function connect() {
     const msg = JSON.parse(e.data)
     if (msg.type === 'config')      { config = msg.config; currentPageIdx = 0; toggleStates = {}; render() }
     if (msg.type === 'toggleState') { toggleStates[msg.key] = msg.active; updateToggleBtn(msg.key, msg.active) }
-    if (msg.type === 'navigate')    { const idx = config?.pages.findIndex(p => p.id === msg.pageId); if (idx >= 0) { currentPageIdx = idx; render() } }
+    if (msg.type === 'tileUpdate')  { updateTile(msg.key, msg.text) }
+    if (msg.type === 'navigate')    {
+      const idx = config?.pages.findIndex(p => p.id === msg.pageId)
+      if (idx >= 0) { currentPageIdx = idx; render() }
+    }
   }
 }
 
@@ -46,6 +50,7 @@ function renderGrid() {
     switch (slot.componentType) {
       case 'slider': grid.appendChild(createSlider(slot, page, i)); break
       case 'toggle': grid.appendChild(createToggle(slot, page, i)); break
+      case 'tile':   grid.appendChild(createTile(slot, page, i));   break
       default:       grid.appendChild(createButton(slot, page, i)); break
     }
   }
@@ -67,12 +72,47 @@ function createButton(slot, page, i) {
   btn.className = 'btn'
   applyBg(btn, slot.color, slot.image)
   btn.innerHTML = `<div class="btn-icon">${slot.icon || ''}</div><div class="btn-label">${slot.label || ''}</div>`
-  btn.addEventListener('pointerdown', () => {
-    navigator.vibrate?.(30)
-    btn.classList.add('pressed')
-    setTimeout(() => btn.classList.remove('pressed'), 150)
-    send({ type: 'press', pageId: page.id, slot: i })
-  })
+
+  const hasHold = !!slot.holdAction
+
+  if (!hasHold) {
+    btn.addEventListener('pointerdown', () => {
+      navigator.vibrate?.(30)
+      btn.classList.add('pressed')
+      setTimeout(() => btn.classList.remove('pressed'), 150)
+      send({ type: 'press', pageId: page.id, slot: i, hold: false })
+    })
+  } else {
+    let holdTimer = null
+    let didHold   = false
+
+    btn.addEventListener('pointerdown', () => {
+      didHold   = false
+      holdTimer = setTimeout(() => {
+        didHold   = true
+        holdTimer = null
+        navigator.vibrate?.([50, 50, 50])
+        btn.classList.add('holding')
+        setTimeout(() => btn.classList.remove('holding'), 400)
+        send({ type: 'press', pageId: page.id, slot: i, hold: true })
+      }, 500)
+    })
+
+    btn.addEventListener('pointerup', () => {
+      if (holdTimer !== null) { clearTimeout(holdTimer); holdTimer = null }
+      if (!didHold) {
+        navigator.vibrate?.(30)
+        btn.classList.add('pressed')
+        setTimeout(() => btn.classList.remove('pressed'), 150)
+        send({ type: 'press', pageId: page.id, slot: i, hold: false })
+      }
+    })
+
+    btn.addEventListener('pointercancel', () => {
+      if (holdTimer !== null) { clearTimeout(holdTimer); holdTimer = null }
+    })
+  }
+
   return btn
 }
 
@@ -93,7 +133,7 @@ function createToggle(slot, page, i) {
     navigator.vibrate?.(30)
     btn.classList.add('pressed')
     setTimeout(() => btn.classList.remove('pressed'), 150)
-    send({ type: 'press', pageId: page.id, slot: i })
+    send({ type: 'press', pageId: page.id, slot: i, hold: false })
   })
   return btn
 }
@@ -111,13 +151,30 @@ function updateToggleBtn(key, active) {
   const btn = grid.querySelector(`[data-key="${key}"]`)
   if (!btn) return
   btn.classList.toggle('active', active)
-
-  const parts    = key.split(':')
-  const pageId   = parts[0]
-  const slotIdx  = parseInt(parts[1])
-  const page     = config.pages.find(p => p.id === pageId)
-  const slot     = page?.slots[slotIdx]
+  const parts   = key.split(':')
+  const pageId  = parts[0]
+  const slotIdx = parseInt(parts[1])
+  const pg      = config.pages.find(p => p.id === pageId)
+  const slot    = pg?.slots[slotIdx]
   if (slot) refreshToggleVisual(btn, slot, active)
+}
+
+// ── Tile ──────────────────────────────────────────────
+function createTile(slot, page, i) {
+  const cell = document.createElement('div')
+  cell.className = 'tile-cell'
+  cell.style.background = slot.color || '#0f172a'
+  cell.dataset.key = `${page.id}:${i}`
+  cell.innerHTML = `
+    <div class="tile-label">${slot.label || ''}</div>
+    <div class="tile-value">—</div>
+  `
+  return cell
+}
+
+function updateTile(key, text) {
+  const el = grid.querySelector(`[data-key="${key}"] .tile-value`)
+  if (el) el.textContent = text
 }
 
 // ── Slider ────────────────────────────────────────────
@@ -148,9 +205,9 @@ function createSlider(slot, page, i) {
   let dragging  = false
 
   function update(touch) {
-    const rect   = track.getBoundingClientRect()
-    const relY   = rect.bottom - touch.clientY
-    const raw    = min + (Math.max(0, Math.min(1, relY / rect.height))) * (max - min)
+    const rect = track.getBoundingClientRect()
+    const relY = rect.bottom - touch.clientY
+    const raw  = min + Math.max(0, Math.min(1, relY / rect.height)) * (max - min)
     value = Math.max(min, Math.min(max, Math.round(raw / step) * step))
     const p = valueToPct(value, min, max)
     fill.style.height  = `${p}%`
@@ -190,8 +247,7 @@ function applyBg(el, color, image) {
 grid.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX }, { passive: true })
 grid.addEventListener('touchend', e => {
   if (!config) return
-  // Only trigger page swipe if touch started on a non-slider cell
-  if (e.target.closest('.slider-cell')) return
+  if (e.target.closest('.slider-cell') || e.target.closest('.tile-cell')) return
   const dx = e.changedTouches[0].clientX - touchStartX
   if (Math.abs(dx) < 60) return
   if (dx < 0 && currentPageIdx < config.pages.length - 1) { currentPageIdx++; render() }

@@ -29,6 +29,27 @@ function executeBuiltin(key) {
   executeCommand(action[OS] ?? action.linux)
 }
 
+function executeHotkey(combo) {
+  if (!combo?.trim()) return
+  if (OS === 'linux') {
+    executeCommand(`xdotool key --clearmodifiers ${combo}`)
+  } else if (OS === 'darwin') {
+    const parts = combo.toLowerCase().split('+')
+    const key   = parts.pop()
+    const modMap = { ctrl: 'control', cmd: 'command', command: 'command', super: 'command', win: 'command', alt: 'option', shift: 'shift' }
+    const mods  = parts.map(m => (modMap[m] || m) + ' down').join(', ')
+    const modsStr = mods ? `using {${mods}}` : ''
+    executeCommand(`osascript -e 'tell application "System Events" to keystroke "${key}" ${modsStr}'`)
+  } else {
+    const parts = combo.toLowerCase().split('+')
+    const key   = parts.pop()
+    const prefix = parts.map(m => ({ ctrl: '^', alt: '%', shift: '+' }[m] || '')).join('')
+    const keyMap = { f1:'{F1}',f2:'{F2}',f3:'{F3}',f4:'{F4}',f5:'{F5}',f6:'{F6}',f7:'{F7}',f8:'{F8}',f9:'{F9}',f10:'{F10}',f11:'{F11}',f12:'{F12}',return:'{ENTER}',enter:'{ENTER}',escape:'{ESC}',tab:'{TAB}',backspace:'{BACKSPACE}',delete:'{DELETE}',space:' ' }
+    const k = keyMap[key] || key
+    executeCommand(`powershell -c "Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('${prefix}${k}')"`)
+  }
+}
+
 function executeCommand(command) {
   if (!command?.trim()) return
   try {
@@ -38,4 +59,4 @@ function executeCommand(command) {
   }
 }
 
-module.exports = { executeCommand, executeBuiltin, BUILTIN, OS }
+module.exports = { executeCommand, executeBuiltin, executeHotkey, BUILTIN, OS }

@@ -10,16 +10,45 @@
 
   <aside class="sidebar">
     <h1 class="logo">Stream Deck</h1>
+
+    <!-- Server info -->
     <div class="server-block">
       <img id="qr-img" class="qr" style="display:none">
       <div class="url-row"><span class="label">URL</span><a id="server-url" class="url" href="#" target="_blank">—</a></div>
       <div class="url-row"><span class="label">Cert</span><a id="cert-url" class="url" href="#" target="_blank">Download →</a></div>
       <div id="cert-hint" class="cert-hint"></div>
     </div>
+
+    <!-- Connection status -->
     <div class="status-block">
       <div class="status-row"><span class="label">Phone</span><span id="phone-status" class="badge disconnected">Disconnected</span></div>
       <div class="status-row"><span class="label">Last</span><span id="last-press" class="muted">—</span></div>
     </div>
+
+    <!-- OBS integration -->
+    <div class="obs-block">
+      <div class="section-label">OBS WebSocket</div>
+      <div class="obs-field"><label>Host</label><input id="obs-host" type="text" value="localhost" placeholder="localhost"></div>
+      <div class="obs-field"><label>Port</label><input id="obs-port" type="number" value="4455" min="1" max="65535"></div>
+      <div class="obs-field"><label>Password</label><input id="obs-password" type="password" placeholder="optional"></div>
+      <div class="obs-actions">
+        <button id="obs-connect-btn" class="btn-secondary">Connect</button>
+        <span id="obs-status-badge" class="obs-status-badge">Not connected</span>
+      </div>
+    </div>
+
+    <!-- Startup -->
+    <div class="status-block">
+      <div class="status-row">
+        <span class="label">Startup</span>
+        <label class="sw">
+          <input type="checkbox" id="autostart-toggle">
+          <span class="sw-track"><span class="sw-thumb"></span></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Actions -->
     <div class="sidebar-actions">
       <button id="add-page-btn" class="btn-secondary">+ Add Page</button>
     </div>
@@ -50,6 +79,7 @@
           <button class="type-tab active" data-type="button">Button</button>
           <button class="type-tab" data-type="toggle">Toggle</button>
           <button class="type-tab" data-type="slider">Slider</button>
+          <button class="type-tab" data-type="tile">Tile</button>
         </div>
       </div>
 
@@ -73,18 +103,56 @@
           <label>Action</label>
           <select id="f-action-type">
             <option value="builtin">Built-in</option>
+            <option value="hotkey">Hotkey</option>
             <option value="command">Command</option>
             <option value="sequence">Sequence</option>
             <option value="page">Go to Page</option>
+            <option value="obs">OBS Action</option>
           </select>
         </div>
         <div id="action-builtin"><div class="field-row"><label>Action</label><select id="f-builtin-key"></select></div></div>
+        <div id="action-hotkey" style="display:none">
+          <div class="field-row">
+            <label>Keys</label>
+            <div>
+              <input id="f-hotkey" type="text" placeholder="ctrl+shift+f5">
+              <div class="field-hint">xdotool format on Linux (e.g. <code>ctrl+shift+f5</code>, <code>super+l</code>)</div>
+            </div>
+          </div>
+        </div>
         <div id="action-command" style="display:none"><div class="field-row"><label>Command</label><input id="f-command" type="text" placeholder="e.g. playerctl play-pause"></div></div>
         <div id="action-sequence" style="display:none">
           <div class="field-row"><label>Commands<br><span class="field-hint">one per line</span></label><textarea id="f-sequence" rows="4" placeholder="cmd1&#10;cmd2"></textarea></div>
           <div class="field-row"><label>Delay ms</label><input id="f-seq-delay" type="number" value="150" min="0"></div>
         </div>
         <div id="action-page" style="display:none"><div class="field-row"><label>Page</label><select id="f-page-target"></select></div></div>
+        <div id="action-obs" style="display:none">
+          <div class="field-row">
+            <label>OBS Action</label>
+            <select id="f-obs-action">
+              <option value="switchScene">Switch Scene</option>
+              <option value="toggleRecording">Toggle Recording</option>
+              <option value="toggleStreaming">Toggle Streaming</option>
+              <option value="muteToggle">Mute Toggle</option>
+            </select>
+          </div>
+          <div id="obs-scene-row" class="field-row" style="display:none"><label>Scene Name</label><input id="f-obs-scene" type="text" placeholder="Gaming"></div>
+          <div id="obs-source-row" class="field-row" style="display:none"><label>Source Name</label><input id="f-obs-source" type="text" placeholder="Mic/AUX"></div>
+        </div>
+
+        <!-- Hold action -->
+        <div class="hold-section">
+          <div class="hold-header">
+            <span class="field-hint">Hold action (500ms hold triggers a different command)</span>
+            <label class="sw sw-sm">
+              <input type="checkbox" id="f-hold-enable">
+              <span class="sw-track"><span class="sw-thumb"></span></span>
+            </label>
+          </div>
+          <div id="hold-fields" style="display:none">
+            <div class="field-row"><label>Hold cmd</label><input id="f-hold-command" type="text" placeholder="e.g. systemctl suspend"></div>
+          </div>
+        </div>
       </div>
 
       <!-- ── Toggle fields ── -->
@@ -140,8 +208,28 @@
         <div class="field-row">
           <label>Command</label>
           <div>
-            <input id="s-command" type="text" placeholder="e.g. wpctl set-volume @DEFAULT_AUDIO_SINK@ {value}%">
+            <input id="s-command" type="text" placeholder="wpctl set-volume @DEFAULT_AUDIO_SINK@ {value}%">
             <div class="field-hint">Use <code>{value}</code> where the number goes</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Tile fields ── -->
+      <div id="comp-tile" style="display:none">
+        <div class="field-row"><label>Label</label><input id="tile-label" type="text" placeholder="Now Playing"></div>
+        <div class="field-row"><label>Color</label><input id="tile-color" type="color" value="#0f172a"></div>
+        <div class="field-row">
+          <label>Command</label>
+          <div>
+            <input id="tile-command" type="text" placeholder="playerctl metadata title">
+            <div class="field-hint">Runs every N seconds — first line of output is displayed</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Interval</label>
+          <div>
+            <input id="tile-interval" type="number" value="5" min="1" max="3600">
+            <div class="field-hint">seconds between polls</div>
           </div>
         </div>
       </div>

@@ -142,6 +142,44 @@ html, body {
   transform: scale(1.3);
 }
 
+/* ── Tile ── */
+.tile-cell {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 8px;
+  overflow: hidden;
+}
+
+.tile-label {
+  font-size: clamp(9px, 2vw, 11px);
+  font-weight: 500;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tile-value {
+  font-size: clamp(12px, 3vw, 16px);
+  font-weight: 600;
+  color: #e2e8f0;
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+/* ── Hold animation ── */
+.btn.holding {
+  transform: scale(0.9);
+  box-shadow: 0 0 0 3px #7c3aed;
+  transition: box-shadow 0.1s, transform 0.1s;
+}
+
 /* ── Slider ── */
 .slider-cell {
   border-radius: 12px;
