@@ -6,43 +6,25 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-
 <div class="layout">
 
-  <!-- ── Sidebar ── -->
   <aside class="sidebar">
     <h1 class="logo">Stream Deck</h1>
-
     <div class="server-block">
       <img id="qr-img" class="qr" style="display:none">
-      <div class="url-row">
-        <span class="label">URL</span>
-        <a id="server-url" class="url" href="#" target="_blank">—</a>
-      </div>
-      <div class="url-row">
-        <span class="label">Cert</span>
-        <a id="cert-url" class="url cert-link" href="#" target="_blank">Download →</a>
-      </div>
+      <div class="url-row"><span class="label">URL</span><a id="server-url" class="url" href="#" target="_blank">—</a></div>
+      <div class="url-row"><span class="label">Cert</span><a id="cert-url" class="url" href="#" target="_blank">Download →</a></div>
       <div id="cert-hint" class="cert-hint"></div>
     </div>
-
     <div class="status-block">
-      <div class="status-row">
-        <span class="label">Phone</span>
-        <span id="phone-status" class="badge disconnected">Disconnected</span>
-      </div>
-      <div class="status-row">
-        <span class="label">Last</span>
-        <span id="last-press" class="muted">—</span>
-      </div>
+      <div class="status-row"><span class="label">Phone</span><span id="phone-status" class="badge disconnected">Disconnected</span></div>
+      <div class="status-row"><span class="label">Last</span><span id="last-press" class="muted">—</span></div>
     </div>
-
     <div class="sidebar-actions">
       <button id="add-page-btn" class="btn-secondary">+ Add Page</button>
     </div>
   </aside>
 
-  <!-- ── Main ── -->
   <main class="main">
     <div class="page-tabs" id="page-tabs"></div>
     <div class="grid-wrap">
@@ -56,86 +38,118 @@
 <div class="modal-overlay" id="modal" style="display:none">
   <div class="modal">
     <div class="modal-header">
-      <h2 id="modal-title">Edit Button</h2>
+      <h2 id="modal-title">Edit</h2>
       <button class="modal-close" id="modal-close">✕</button>
     </div>
-
     <div class="modal-body">
+
+      <!-- Component type -->
       <div class="field-row">
-        <label>Icon</label>
-        <input id="f-icon" type="text" maxlength="4" placeholder="emoji">
-      </div>
-      <div class="field-row">
-        <label>Label</label>
-        <input id="f-label" type="text" placeholder="Button label">
-      </div>
-      <div class="field-row">
-        <label>Color</label>
-        <input id="f-color" type="color" value="#1e293b">
-      </div>
-      <div class="field-row">
-        <label>Action</label>
-        <select id="f-type">
-          <option value="builtin">Built-in</option>
-          <option value="command">Command</option>
-          <option value="toggle">Toggle</option>
-          <option value="sequence">Sequence</option>
-          <option value="page">Go to Page</option>
-        </select>
+        <label>Type</label>
+        <div class="type-tabs" id="type-tabs">
+          <button class="type-tab active" data-type="button">Button</button>
+          <button class="type-tab" data-type="toggle">Toggle</button>
+          <button class="type-tab" data-type="slider">Slider</button>
+        </div>
       </div>
 
-      <!-- builtin -->
-      <div id="fields-builtin" class="action-fields">
+      <!-- ── Button fields ── -->
+      <div id="comp-button">
+        <div class="field-row"><label>Icon</label><input id="f-icon" type="text" maxlength="4" placeholder="emoji"></div>
+        <div class="field-row"><label>Label</label><input id="f-label" type="text" placeholder="Button label"></div>
+        <div class="field-row"><label>Color</label><input id="f-color" type="color" value="#1e293b"></div>
+        <div class="field-row">
+          <label>Image</label>
+          <div class="image-field">
+            <div id="img-preview" class="img-preview" style="display:none"></div>
+            <div class="image-actions">
+              <button class="btn-sm" id="img-upload-btn">Upload image / GIF</button>
+              <button class="btn-sm btn-sm-danger" id="img-clear-btn" style="display:none">Remove</button>
+            </div>
+            <input id="img-file-input" type="file" accept="image/*" style="display:none">
+          </div>
+        </div>
         <div class="field-row">
           <label>Action</label>
-          <select id="f-builtin-key"></select>
+          <select id="f-action-type">
+            <option value="builtin">Built-in</option>
+            <option value="command">Command</option>
+            <option value="sequence">Sequence</option>
+            <option value="page">Go to Page</option>
+          </select>
+        </div>
+        <div id="action-builtin"><div class="field-row"><label>Action</label><select id="f-builtin-key"></select></div></div>
+        <div id="action-command" style="display:none"><div class="field-row"><label>Command</label><input id="f-command" type="text" placeholder="e.g. playerctl play-pause"></div></div>
+        <div id="action-sequence" style="display:none">
+          <div class="field-row"><label>Commands<br><span class="field-hint">one per line</span></label><textarea id="f-sequence" rows="4" placeholder="cmd1&#10;cmd2"></textarea></div>
+          <div class="field-row"><label>Delay ms</label><input id="f-seq-delay" type="number" value="150" min="0"></div>
+        </div>
+        <div id="action-page" style="display:none"><div class="field-row"><label>Page</label><select id="f-page-target"></select></div></div>
+      </div>
+
+      <!-- ── Toggle fields ── -->
+      <div id="comp-toggle" style="display:none">
+        <div class="two-col">
+          <div class="state-col">
+            <div class="state-label">Off state</div>
+            <div class="field-row"><label>Icon</label><input id="t-icon" type="text" maxlength="4" placeholder="emoji"></div>
+            <div class="field-row"><label>Label</label><input id="t-label" type="text" placeholder="Off label"></div>
+            <div class="field-row"><label>Color</label><input id="t-color" type="color" value="#1e293b"></div>
+            <div class="field-row">
+              <label>Image</label>
+              <div class="image-field">
+                <div id="t-img-preview" class="img-preview" style="display:none"></div>
+                <div class="image-actions">
+                  <button class="btn-sm" id="t-img-upload-btn">Upload</button>
+                  <button class="btn-sm btn-sm-danger" id="t-img-clear-btn" style="display:none">Remove</button>
+                </div>
+                <input id="t-img-file-input" type="file" accept="image/*" style="display:none">
+              </div>
+            </div>
+            <div class="field-row"><label>Command</label><input id="t-off-cmd" type="text" placeholder="command when turning OFF"></div>
+          </div>
+          <div class="state-col">
+            <div class="state-label active-label">On state</div>
+            <div class="field-row"><label>Icon</label><input id="t-active-icon" type="text" maxlength="4" placeholder="emoji"></div>
+            <div class="field-row"><label>Label</label><input id="t-active-label" type="text" placeholder="On label"></div>
+            <div class="field-row"><label>Color</label><input id="t-active-color" type="color" value="#4f46e5"></div>
+            <div class="field-row">
+              <label>Image</label>
+              <div class="image-field">
+                <div id="t-active-img-preview" class="img-preview" style="display:none"></div>
+                <div class="image-actions">
+                  <button class="btn-sm" id="t-active-img-upload-btn">Upload</button>
+                  <button class="btn-sm btn-sm-danger" id="t-active-img-clear-btn" style="display:none">Remove</button>
+                </div>
+                <input id="t-active-img-file-input" type="file" accept="image/*" style="display:none">
+              </div>
+            </div>
+            <div class="field-row"><label>Command</label><input id="t-on-cmd" type="text" placeholder="command when turning ON"></div>
+          </div>
         </div>
       </div>
 
-      <!-- command -->
-      <div id="fields-command" class="action-fields" style="display:none">
+      <!-- ── Slider fields ── -->
+      <div id="comp-slider" style="display:none">
+        <div class="field-row"><label>Label</label><input id="s-label" type="text" placeholder="e.g. Volume"></div>
+        <div class="field-row"><label>Color</label><input id="s-color" type="color" value="#1e293b"></div>
+        <div class="field-row"><label>Min</label><input id="s-min" type="number" value="0"></div>
+        <div class="field-row"><label>Max</label><input id="s-max" type="number" value="100"></div>
+        <div class="field-row"><label>Step</label><input id="s-step" type="number" value="5" min="1"></div>
+        <div class="field-row"><label>Default</label><input id="s-default" type="number" value="50"></div>
         <div class="field-row">
           <label>Command</label>
-          <input id="f-command" type="text" placeholder="e.g. playerctl play-pause">
+          <div>
+            <input id="s-command" type="text" placeholder="e.g. wpctl set-volume @DEFAULT_AUDIO_SINK@ {value}%">
+            <div class="field-hint">Use <code>{value}</code> where the number goes</div>
+          </div>
         </div>
       </div>
 
-      <!-- toggle -->
-      <div id="fields-toggle" class="action-fields" style="display:none">
-        <div class="field-row">
-          <label>On</label>
-          <input id="f-toggle-on" type="text" placeholder="command when turning ON">
-        </div>
-        <div class="field-row">
-          <label>Off</label>
-          <input id="f-toggle-off" type="text" placeholder="command when turning OFF">
-        </div>
-      </div>
-
-      <!-- sequence -->
-      <div id="fields-sequence" class="action-fields" style="display:none">
-        <div class="field-row">
-          <label>Commands<br><span class="muted" style="font-weight:400;font-size:11px">one per line</span></label>
-          <textarea id="f-sequence" rows="4" placeholder="cmd1&#10;cmd2&#10;cmd3"></textarea>
-        </div>
-        <div class="field-row">
-          <label>Delay (ms)</label>
-          <input id="f-seq-delay" type="number" value="150" min="0" max="5000">
-        </div>
-      </div>
-
-      <!-- page -->
-      <div id="fields-page" class="action-fields" style="display:none">
-        <div class="field-row">
-          <label>Target page</label>
-          <select id="f-page-target"></select>
-        </div>
-      </div>
     </div>
-
     <div class="modal-footer">
       <button id="modal-delete" class="btn-danger">Remove</button>
-      <button id="modal-save"   class="btn-primary">Save</button>
+      <button id="modal-save" class="btn-primary">Save</button>
     </div>
   </div>
 </div>
@@ -148,10 +162,7 @@
       <button class="modal-close" id="page-modal-close">✕</button>
     </div>
     <div class="modal-body">
-      <div class="field-row">
-        <label>Name</label>
-        <input id="f-page-name" type="text" placeholder="e.g. Gaming">
-      </div>
+      <div class="field-row"><label>Name</label><input id="f-page-name" type="text" placeholder="e.g. Gaming"></div>
     </div>
     <div class="modal-footer">
       <button id="page-modal-save" class="btn-primary">Create</button>

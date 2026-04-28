@@ -1,9 +1,11 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
-const path   = require('path')
+const path = require('path')
+const fs   = require('fs')
 const QRCode = require('qrcode')
 const server = require('./server/index')
 
 let mainWindow
+let mediaPath
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -30,12 +32,11 @@ async function sendServerReady(info) {
 app.whenReady().then(async () => {
   createWindow()
 
-  // Resolve paths correctly for both dev and packaged app
-  const pwaPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'pwa')
-    : path.join(__dirname, '../pwa')
-
-  const configPath = path.join(app.getPath('userData'), 'config.json')
+  const userData   = app.getPath('userData')
+  const pwaPath    = app.isPackaged ? path.join(process.resourcesPath, 'pwa') : path.join(__dirname, '../pwa')
+  const configPath = path.join(userData, 'config.json')
+  mediaPath        = path.join(userData, 'media')
+  fs.mkdirSync(mediaPath, { recursive: true })
 
   let serverInfo  = null
   let windowReady = false
@@ -48,15 +49,22 @@ app.whenReady().then(async () => {
   serverInfo = await server.start(
     (event) => mainWindow?.webContents.send('deck-event', event),
     3000,
-    { pwaPath, configPath }
+    { pwaPath, configPath, mediaPath }
   )
 
   if (windowReady) await sendServerReady(serverInfo)
 })
 
-ipcMain.handle('get-config',      ()       => server.getConfig())
-ipcMain.handle('get-server-info', ()       => server.getInfo())
-ipcMain.handle('set-config',      (_, cfg) => server.setConfig(cfg))
-ipcMain.handle('get-platform',    ()       => process.platform)
+ipcMain.handle('get-config',      ()         => server.getConfig())
+ipcMain.handle('get-server-info', ()         => server.getInfo())
+ipcMain.handle('set-config',      (_, cfg)   => server.setConfig(cfg))
+ipcMain.handle('get-platform',    ()         => process.platform)
+ipcMain.handle('upload-media',    (_, srcPath) => {
+  const ext      = path.extname(srcPath)
+  const filename = `${Date.now()}${ext}`
+  const dest     = path.join(mediaPath, filename)
+  fs.copyFileSync(srcPath, dest)
+  return `/media/${filename}`
+})
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
