@@ -218,6 +218,12 @@ function renderGrid() {
             <div class="cell-tile-cmd">${(slot.pollCommand || '').substring(0, 22)}</div>
             <div class="cell-label">${slot.label || ''}</div>`
           break
+        case 'spotify':
+          cell.innerHTML = `
+            <div class="cell-type-badge">spotify</div>
+            <div class="cell-icon">🎵</div>
+            <div class="cell-label">Spotify tile</div>`
+          break
         default:
           cell.innerHTML = `
             <div class="cell-icon">${slot.icon || ''}</div>
@@ -262,7 +268,7 @@ function pushConfig() { window.api.setConfig(config) }
 function setCompType(type) {
   currentCompType = type
   document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === type))
-  for (const t of ['button', 'toggle', 'slider', 'tile']) {
+  for (const t of ['button', 'toggle', 'slider', 'spotify', 'tile']) {
     document.getElementById(`comp-${t}`).style.display = t === type ? 'block' : 'none'
   }
 }
@@ -349,6 +355,10 @@ function openModal(pageIdx, slotIdx) {
     document.getElementById('tile-interval').value = slot?.pollInterval ?? 5
   }
 
+  if (compType === 'spotify') {
+    document.getElementById('sp-color').value = slot?.color || '#0f172a'
+  }
+
   document.getElementById('modal').style.display = 'flex'
 }
 
@@ -428,6 +438,14 @@ function saveModal() {
       color:        document.getElementById('tile-color').value,
       pollCommand:  document.getElementById('tile-command').value.trim(),
       pollInterval: parseInt(document.getElementById('tile-interval').value) || 5
+    }
+  }
+
+  if (currentCompType === 'spotify') {
+    slot = {
+      componentType: 'spotify',
+      color:  document.getElementById('sp-color').value,
+      action: { type: 'builtin', key: 'media.playPause' }
     }
   }
 

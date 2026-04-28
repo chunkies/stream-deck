@@ -19,10 +19,11 @@ function connect() {
   ws.onclose = () => { wsStatusEl.textContent = 'Disconnected'; wsDotEl.className = 'dot disconnected'; setTimeout(connect, 2000) }
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data)
-    if (msg.type === 'config')      { config = msg.config; currentPageIdx = 0; toggleStates = {}; render() }
-    if (msg.type === 'toggleState') { toggleStates[msg.key] = msg.active; updateToggleBtn(msg.key, msg.active) }
-    if (msg.type === 'tileUpdate')  { updateTile(msg.key, msg.text) }
-    if (msg.type === 'navigate')    {
+    if (msg.type === 'config')        { config = msg.config; currentPageIdx = 0; toggleStates = {}; render() }
+    if (msg.type === 'toggleState')   { toggleStates[msg.key] = msg.active; updateToggleBtn(msg.key, msg.active) }
+    if (msg.type === 'tileUpdate')    { updateTile(msg.key, msg.text) }
+    if (msg.type === 'spotifyUpdate') { updateSpotifyTile(msg) }
+    if (msg.type === 'navigate')      {
       const idx = config?.pages.findIndex(p => p.id === msg.pageId)
       if (idx >= 0) { currentPageIdx = idx; render() }
     }
@@ -48,10 +49,11 @@ function renderGrid() {
     if (!slot) { const el = document.createElement('div'); el.className = 'btn empty'; grid.appendChild(el); continue }
 
     switch (slot.componentType) {
-      case 'slider': grid.appendChild(createSlider(slot, page, i)); break
-      case 'toggle': grid.appendChild(createToggle(slot, page, i)); break
-      case 'tile':   grid.appendChild(createTile(slot, page, i));   break
-      default:       grid.appendChild(createButton(slot, page, i)); break
+      case 'slider':  grid.appendChild(createSlider(slot, page, i));  break
+      case 'toggle':  grid.appendChild(createToggle(slot, page, i));  break
+      case 'tile':    grid.appendChild(createTile(slot, page, i));    break
+      case 'spotify': grid.appendChild(createSpotifyTile(slot, page, i)); break
+      default:        grid.appendChild(createButton(slot, page, i));  break
     }
   }
 }
@@ -177,6 +179,47 @@ function updateTile(key, text) {
   if (el) el.textContent = text
 }
 
+// ── Spotify tile ──────────────────────────────────────
+function createSpotifyTile(slot, page, i) {
+  const cell = document.createElement('div')
+  cell.className = 'spotify-cell'
+  cell.style.background = slot.color || '#0f172a'
+  cell.innerHTML = `
+    <div class="spotify-art"></div>
+    <div class="spotify-overlay">
+      <div class="spotify-status">—</div>
+      <div class="spotify-title">Nothing playing</div>
+      <div class="spotify-artist"></div>
+    </div>
+  `
+  cell.addEventListener('pointerdown', () => {
+    navigator.vibrate?.(30)
+    cell.classList.add('pressed')
+    setTimeout(() => cell.classList.remove('pressed'), 150)
+    send({ type: 'press', pageId: page.id, slot: i, hold: false })
+  })
+  return cell
+}
+
+function updateSpotifyTile(state) {
+  document.querySelectorAll('.spotify-cell').forEach(cell => {
+    const artEl    = cell.querySelector('.spotify-art')
+    const titleEl  = cell.querySelector('.spotify-title')
+    const artistEl = cell.querySelector('.spotify-artist')
+    const statusEl = cell.querySelector('.spotify-status')
+
+    titleEl.textContent  = state.title  || 'Nothing playing'
+    artistEl.textContent = state.artist || ''
+    statusEl.textContent = state.isPlaying ? '▶' : (state.title ? '⏸' : '—')
+
+    if (state.artVersion) {
+      artEl.style.backgroundImage = `url(${location.origin}/media/spotify-art.jpg?v=${state.artVersion})`
+    } else {
+      artEl.style.backgroundImage = ''
+    }
+  })
+}
+
 // ── Slider ────────────────────────────────────────────
 function createSlider(slot, page, i) {
   const cell = document.createElement('div')
@@ -247,7 +290,7 @@ function applyBg(el, color, image) {
 grid.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX }, { passive: true })
 grid.addEventListener('touchend', e => {
   if (!config) return
-  if (e.target.closest('.slider-cell') || e.target.closest('.tile-cell')) return
+  if (e.target.closest('.slider-cell') || e.target.closest('.tile-cell') || e.target.closest('.spotify-cell')) return
   const dx = e.changedTouches[0].clientX - touchStartX
   if (Math.abs(dx) < 60) return
   if (dx < 0 && currentPageIdx < config.pages.length - 1) { currentPageIdx++; render() }

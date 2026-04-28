@@ -6,7 +6,7 @@ const express   = require('express')
 const multer    = require('multer')
 const path      = require('path')
 const fs        = require('fs')
-const { execSync }                                     = require('child_process')
+const { execSync, exec }                               = require('child_process')
 const { generateCert }                                 = require('./cert')
 const { executeCommand, executeBuiltin, executeHotkey, OS } = require('./keyboard')
 
@@ -108,6 +108,77 @@ async function handleOBSAction(action) {
   } catch (err) { console.error('OBS action failed:', err.message) }
 }
 
+// ── Spotify poller ─────────────────────────────────────
+let spotifyTimer    = null
+let spotifyState    = { title: '', artist: '', isPlaying: false, artUrl: '', artVersion: 0 }
+let spotifyMediaPath = null
+
+function spotifyCommand() {
+  if (OS === 'linux')  return 'playerctl metadata --format "{{status}}\t{{title}}\t{{artist}}\t{{mpris:artUrl}}" 2>/dev/null'
+  if (OS === 'darwin') return `osascript -e 'tell application "Spotify" to return (player state as string)&"\\t"&(name of current track)&"\\t"&(artist of current track)&"\\t"&(artwork url of current track)' 2>/dev/null`
+  return null
+}
+
+async function downloadSpotifyArt(url) {
+  if (!url || !spotifyMediaPath) return false
+  try {
+    const dest = path.join(spotifyMediaPath, 'spotify-art.jpg')
+    if (url.startsWith('file://')) {
+      const src = decodeURIComponent(url.slice(7))
+      if (fs.existsSync(src)) { fs.copyFileSync(src, dest); return true }
+      return false
+    }
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000) })
+    if (!res.ok) return false
+    fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()))
+    return true
+  } catch { return false }
+}
+
+function pollSpotify() {
+  const cmd = spotifyCommand()
+  if (!cmd) return
+
+  exec(cmd, { timeout: 2000 }, async (err, stdout) => {
+    if (err || !stdout.trim()) {
+      if (spotifyState.title) {
+        spotifyState = { title: '', artist: '', isPlaying: false, artUrl: '', artVersion: spotifyState.artVersion }
+        broadcast({ type: 'spotifyUpdate', ...spotifyState })
+      }
+      return
+    }
+    const [status, title = '', artist = '', artUrl = ''] = stdout.trim().split('\t')
+    const isPlaying = status === 'Playing'
+
+    let artVersion = spotifyState.artVersion
+    if (artUrl && artUrl !== spotifyState.artUrl) {
+      const ok = await downloadSpotifyArt(artUrl)
+      if (ok) artVersion = Date.now()
+    }
+
+    const changed = title !== spotifyState.title || artist !== spotifyState.artist
+                  || isPlaying !== spotifyState.isPlaying || artVersion !== spotifyState.artVersion
+
+    spotifyState = { title, artist, isPlaying, artUrl, artVersion }
+    if (changed) broadcast({ type: 'spotifyUpdate', title, artist, isPlaying, artVersion })
+  })
+}
+
+function hasSpotifyTile() {
+  return config?.pages.some(p => p.slots.some(s => s?.componentType === 'spotify'))
+}
+
+function startSpotifyPoller() {
+  stopSpotifyPoller()
+  if (!hasSpotifyTile()) return
+  pollSpotify()
+  spotifyTimer = setInterval(pollSpotify, 2000)
+}
+
+function stopSpotifyPoller() {
+  if (spotifyTimer) { clearInterval(spotifyTimer); spotifyTimer = null }
+}
+
 // ── Config ─────────────────────────────────────────────
 function loadConfig(filePath) {
   try {
@@ -182,6 +253,7 @@ function setConfig(newConfig) {
   saveConfig(configFilePath, config)
   broadcast({ type: 'config', config })
   startTilePollers()
+  startSpotifyPoller()
 }
 
 // ── Server start ───────────────────────────────────────
@@ -193,6 +265,7 @@ async function start(onEvent, port = 3000, paths = {}) {
   config = loadConfig(configFilePath)
 
   fs.mkdirSync(mediaPath, { recursive: true })
+  spotifyMediaPath = mediaPath
 
   const { key, cert, ip } = generateCert(certDir)
   const app = express()
@@ -230,6 +303,10 @@ async function start(onEvent, port = 3000, paths = {}) {
     for (const [k, text] of Object.entries(tileCache)) {
       ws.send(JSON.stringify({ type: 'tileUpdate', key: k, text }))
     }
+    // Send cached Spotify state to new client
+    if (spotifyState.title || spotifyState.isPlaying) {
+      ws.send(JSON.stringify({ type: 'spotifyUpdate', ...spotifyState }))
+    }
 
     ws.on('message', (data) => {
       try {
@@ -251,6 +328,7 @@ async function start(onEvent, port = 3000, paths = {}) {
 
   // Start tile pollers after server is up
   startTilePollers()
+  startSpotifyPoller()
 
   // Auto-connect OBS if settings saved
   if (config.obsSettings?.host) {

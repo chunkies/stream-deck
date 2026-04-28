@@ -80,6 +80,7 @@
           <button class="type-tab" data-type="toggle">Toggle</button>
           <button class="type-tab" data-type="slider">Slider</button>
           <button class="type-tab" data-type="tile">Tile</button>
+          <button class="type-tab" data-type="spotify">Spotify</button>
         </div>
       </div>
 
@@ -211,6 +212,21 @@
             <input id="s-command" type="text" placeholder="wpctl set-volume @DEFAULT_AUDIO_SINK@ {value}%">
             <div class="field-hint">Use <code>{value}</code> where the number goes</div>
           </div>
+        </div>
+      </div>
+
+      <!-- ── Spotify tile fields ── -->
+      <div id="comp-spotify" style="display:none">
+        <div class="field-row">
+          <label>Color</label>
+          <div>
+            <input id="sp-color" type="color" value="#0f172a">
+            <div class="field-hint">Fallback background when no album art is available</div>
+          </div>
+        </div>
+        <div class="field-hint" style="padding:8px 0 0">
+          Shows live album art, track title, and artist from the currently playing song.<br>
+          Tap the tile to play/pause.
         </div>
       </div>
 

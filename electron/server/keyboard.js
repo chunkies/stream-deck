@@ -20,7 +20,11 @@ const BUILTIN = {
   'media.mute':       { label: 'Mute Audio',       linux: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle', darwin: `osascript -e 'set volume output muted not (output muted of (get volume settings))'`,    win32: winKey(0xAD) },
   'system.lock':      { label: 'Lock Screen',      linux: 'xdg-screensaver lock', darwin: `osascript -e 'tell application "System Events" to keystroke "q" using {command down, control down}'`, win32: 'rundll32.exe user32.dll,LockWorkStation' },
   'system.sleep':     { label: 'Sleep',            linux: 'systemctl suspend',    darwin: 'pmset sleepnow', win32: 'rundll32.exe powrprof.dll,SetSuspendState 0,1,0' },
-  'system.screenshot':{ label: 'Screenshot',       linux: 'scrot -d 0 ~/Desktop/screenshot-$(date +%Y%m%d-%H%M%S).png 2>/dev/null || gnome-screenshot', darwin: `osascript -e 'tell application "System Events" to keystroke "4" using {shift down, command down}'`, win32: 'powershell -c "Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(\'%{PRTSC}\')"' }
+  'system.screenshot':{ label: 'Screenshot',       linux: 'scrot -d 0 ~/Desktop/screenshot-$(date +%Y%m%d-%H%M%S).png 2>/dev/null || gnome-screenshot', darwin: `osascript -e 'tell application "System Events" to keystroke "4" using {shift down, command down}'`, win32: 'powershell -c "Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(\'%{PRTSC}\')"' },
+  'spotify.shuffle':  { label: '🔀 Shuffle Toggle', linux: 'playerctl shuffle Toggle', darwin: `osascript -e 'tell application "Spotify" to set shuffling to not shuffling'`, win32: winKey(0xB3) },
+  'spotify.repeat':   { label: '🔁 Repeat Toggle',  linux: 'playerctl loop None', darwin: `osascript -e 'tell application "Spotify" to set repeating to not repeating'`, win32: winKey(0xB3) },
+  'spotify.seekFwd':  { label: '⏩ Seek +10s',      linux: 'playerctl position 10+', darwin: `osascript -e 'tell application "Spotify" to set player position to (player position + 10)'`, win32: winKey(0xB3) },
+  'spotify.seekBack': { label: '⏪ Seek -10s',      linux: 'playerctl position 10-', darwin: `osascript -e 'tell application "Spotify" to set player position to (player position - 10)'`, win32: winKey(0xB3) },
 }
 
 function executeBuiltin(key) {
