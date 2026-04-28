@@ -41,13 +41,28 @@ let wss             = null
 let connectedClients = 0
 
 // ── Plugins ────────────────────────────────────────────
-let pluginsMap  = {}
-let pluginsMeta = []
+const { createSDK }    = require('./plugin-sdk')
+let pluginsMap         = {}
+let pluginsMeta        = []
+let activePluginsDir   = null
+let pluginsDataDir     = null
 
 function loadPlugins(pluginsDir) {
-  pluginsMap  = {}
-  pluginsMeta = []
+  // Resolve real path so symlinked plugins clear cache correctly
+  const realDir = (() => { try { return fs.realpathSync(pluginsDir) } catch { return pluginsDir } })()
+
+  // Clear require cache for previously loaded plugins (supports symlinks)
+  for (const key of Object.keys(require.cache)) {
+    let realKey
+    try { realKey = fs.realpathSync(key) } catch { realKey = key }
+    if (realKey.startsWith(realDir)) delete require.cache[key]
+  }
+
+  pluginsMap       = {}
+  pluginsMeta      = []
+  activePluginsDir = realDir
   if (!fs.existsSync(pluginsDir)) return
+
   for (const name of fs.readdirSync(pluginsDir)) {
     const dir = path.join(pluginsDir, name)
     try {
@@ -55,11 +70,31 @@ function loadPlugins(pluginsDir) {
       const manifestPath = path.join(dir, 'manifest.json')
       const indexPath    = path.join(dir, 'index.js')
       if (!fs.existsSync(manifestPath) || !fs.existsSync(indexPath)) continue
+
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-      const handlers  = require(indexPath)
-      pluginsMeta.push({ id: manifest.id, name: manifest.name, actions: manifest.actions || [] })
+      const raw       = require(indexPath)
+
+      // Support factory (sdk) => handlers and plain object exports
+      const sdk      = createSDK(manifest.id, pluginsDataDir || dir, broadcast)
+      const handlers = typeof raw === 'function' ? raw(sdk) : raw
+
+      // Warn on action key conflicts between plugins
+      for (const key of Object.keys(handlers)) {
+        if (pluginsMap[key]) console.warn(`Plugin conflict: "${key}" already registered — "${manifest.id}" overrides it`)
+      }
+
+      pluginsMeta.push({
+        id:          manifest.id,
+        name:        manifest.name,
+        version:     manifest.version || '0.0.0',
+        description: manifest.description || '',
+        author:      manifest.author || '',
+        icon:        manifest.icon || '',
+        _local:      manifest._local || false,
+        actions:     manifest.actions || []
+      })
       Object.assign(pluginsMap, handlers)
-      console.log(`Plugin loaded: ${manifest.name}`)
+      console.log(`Plugin loaded: ${manifest.name} v${manifest.version || '?'}`)
     } catch (err) {
       console.error(`Plugin "${name}" failed to load:`, err.message)
     }
@@ -262,10 +297,10 @@ function handlePress(pageId, slotIndex, hold = false) {
     case 'plugin': {
       const fn = pluginsMap[action.pluginKey]
       if (fn) {
-        try {
-          const result = fn(action.params || {})
-          if (result?.catch) result.catch(err => console.error('Plugin error:', err.message))
-        } catch (err) { console.error('Plugin error:', err.message) }
+        const TIMEOUT = 10000
+        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Plugin action timed out')), TIMEOUT))
+        Promise.race([Promise.resolve().then(() => fn(action.params || {})), timeout])
+          .catch(err => console.error(`Plugin "${action.pluginKey}" error:`, err.message))
       } else {
         console.warn('Unknown plugin action:', action.pluginKey)
       }
@@ -306,8 +341,10 @@ async function start(onEvent, port = 3000, paths = {}) {
   configFilePath    = paths.configPath  || path.join(__dirname, '../../config.json')
   config = loadConfig(configFilePath)
 
-  fs.mkdirSync(mediaPath,  { recursive: true })
-  fs.mkdirSync(pluginsDir, { recursive: true })
+  pluginsDataDir = path.join(path.dirname(pluginsDir), 'plugins-data')
+  fs.mkdirSync(mediaPath,      { recursive: true })
+  fs.mkdirSync(pluginsDir,     { recursive: true })
+  fs.mkdirSync(pluginsDataDir, { recursive: true })
   spotifyMediaPath = mediaPath
   loadPlugins(pluginsDir)
 

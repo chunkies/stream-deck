@@ -1,13 +1,15 @@
 'use strict'
 
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron')
-const path   = require('path')
-const fs     = require('fs')
-const os     = require('os')
-const QRCode = require('qrcode')
-const server = require('./server/index')
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, shell, dialog } = require('electron')
+const path      = require('path')
+const fs        = require('fs')
+const os        = require('os')
+const QRCode    = require('qrcode')
+const server    = require('./server/index')
+const installer = require('./server/plugin-installer')
 
 let mainWindow
+let marketplaceWindow = null
 let mediaPath
 let pluginsPath
 let tray = null
@@ -163,17 +165,43 @@ app.whenReady().then(async () => {
   if (windowReady) await sendServerReady(serverInfo)
 })
 
+// ── Marketplace window ─────────────────────────────────
+function openMarketplace() {
+  if (marketplaceWindow && !marketplaceWindow.isDestroyed()) {
+    marketplaceWindow.show(); marketplaceWindow.focus(); return
+  }
+  marketplaceWindow = new BrowserWindow({
+    width: 940,
+    height: 680,
+    minWidth: 700,
+    minHeight: 500,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-marketplace.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    },
+    title: 'Plugin Marketplace',
+    backgroundColor: '#0f172a',
+    parent: mainWindow,
+    show: false
+  })
+  marketplaceWindow.loadFile(path.join(__dirname, 'renderer/marketplace.html'))
+  marketplaceWindow.once('ready-to-show', () => marketplaceWindow.show())
+  marketplaceWindow.on('closed', () => { marketplaceWindow = null })
+}
+
 // ── IPC ────────────────────────────────────────────────
-ipcMain.handle('get-config',      ()            => server.getConfig())
-ipcMain.handle('get-server-info', ()            => server.getInfo())
-ipcMain.handle('set-config',      (_, cfg)      => server.setConfig(cfg))
-ipcMain.handle('get-platform',    ()            => process.platform)
-ipcMain.handle('get-autostart',   ()            => getAutostart())
-ipcMain.handle('set-autostart',   (_, enable)   => setAutostart(enable))
-ipcMain.handle('connect-obs',     (_, opts)     => server.connectOBS(opts.host, opts.port, opts.password))
-ipcMain.handle('get-obs-status',  ()            => server.isOBSReady())
-ipcMain.handle('get-plugins',     ()            => server.getPlugins())
-ipcMain.handle('reload-plugins',  ()            => { server.reloadPlugins(pluginsPath); return server.getPlugins() })
+ipcMain.handle('get-config',           ()           => server.getConfig())
+ipcMain.handle('get-server-info',      ()           => server.getInfo())
+ipcMain.handle('set-config',           (_, cfg)     => server.setConfig(cfg))
+ipcMain.handle('get-platform',         ()           => process.platform)
+ipcMain.handle('get-autostart',        ()           => getAutostart())
+ipcMain.handle('set-autostart',        (_, enable)  => setAutostart(enable))
+ipcMain.handle('connect-obs',          (_, opts)    => server.connectOBS(opts.host, opts.port, opts.password))
+ipcMain.handle('get-obs-status',       ()           => server.isOBSReady())
+ipcMain.handle('get-plugins',          ()           => server.getPlugins())
+ipcMain.handle('reload-plugins',       ()           => { server.reloadPlugins(pluginsPath); return server.getPlugins() })
+ipcMain.handle('open-marketplace',     ()           => openMarketplace())
 
 ipcMain.handle('upload-media', (_, srcPath) => {
   const ext      = path.extname(srcPath)
@@ -181,6 +209,37 @@ ipcMain.handle('upload-media', (_, srcPath) => {
   const dest     = path.join(mediaPath, filename)
   fs.copyFileSync(srcPath, dest)
   return `/media/${filename}`
+})
+
+// ── Marketplace IPC ────────────────────────────────────
+ipcMain.handle('mp:fetch-registry',  (_, force) => installer.fetchRegistry(force))
+ipcMain.handle('mp:get-installed',   ()         => installer.getInstalledManifests(pluginsPath))
+ipcMain.handle('mp:check-updates',   ()         => installer.checkUpdates(pluginsPath))
+ipcMain.handle('mp:open-external',   (_, url)   => shell.openExternal(url))
+ipcMain.handle('mp:open-plugins-dir',()         => shell.openPath(pluginsPath))
+ipcMain.handle('mp:reload',          ()         => { server.reloadPlugins(pluginsPath); return server.getPlugins() })
+
+ipcMain.handle('mp:install', async (event, pluginId, downloadUrl) => {
+  const onProgress = (d) => { try { event.sender.send('mp:progress', d) } catch {} }
+  const manifest = await installer.installPlugin(pluginId, downloadUrl, pluginsPath, onProgress)
+  server.reloadPlugins(pluginsPath)
+  return manifest
+})
+
+ipcMain.handle('mp:uninstall', (_, pluginId) => {
+  installer.uninstallPlugin(pluginId, pluginsPath)
+  server.reloadPlugins(pluginsPath)
+})
+
+ipcMain.handle('mp:load-local', async (event) => {
+  const result = await dialog.showOpenDialog(marketplaceWindow || mainWindow, {
+    title: 'Select plugin folder',
+    properties: ['openDirectory']
+  })
+  if (result.canceled || !result.filePaths.length) return null
+  const manifest = installer.loadLocalPlugin(result.filePaths[0], pluginsPath)
+  server.reloadPlugins(pluginsPath)
+  return manifest
 })
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
