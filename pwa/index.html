@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Stream Deck</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <div class="top-bar">
+      <div class="ws-indicator">
+        <span class="dot disconnected" id="ws-dot"></span>
+        <span id="ws-status">Connecting...</span>
+      </div>
+      <div id="page-name" class="page-name">—</div>
+    </div>
+
+    <div class="grid-wrap">
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="page-dots" id="page-dots"></div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

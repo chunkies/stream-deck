@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Stream Deck</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <h1 class="logo">Stream Deck</h1>
+
+    <div class="server-block">
+      <img id="qr-img" class="qr" style="display:none">
+      <div class="url-row">
+        <span class="label">URL</span>
+        <a id="server-url" class="url" href="#" target="_blank">—</a>
+      </div>
+      <div class="url-row">
+        <span class="label">Cert</span>
+        <a id="cert-url" class="url" href="#" target="_blank">Download</a>
+      </div>
+    </div>
+
+    <div class="status-block">
+      <div class="status-row">
+        <span class="label">Phone</span>
+        <span id="phone-status" class="badge disconnected">Disconnected</span>
+      </div>
+      <div class="status-row">
+        <span class="label">Last press</span>
+        <span id="last-press" class="muted">—</span>
+      </div>
+    </div>
+
+    <div class="sidebar-actions">
+      <button id="add-page-btn" class="btn-secondary">+ Add Page</button>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <div class="page-tabs" id="page-tabs"></div>
+
+    <div class="grid-wrap">
+      <div class="grid" id="grid"></div>
+    </div>
+
+  </main>
+
+</div>
+
+<!-- ── Edit Modal ── -->
+<div class="modal-overlay" id="modal" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Edit Button</h2>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="field-row">
+        <label>Icon</label>
+        <input id="f-icon" type="text" maxlength="4" placeholder="emoji or text">
+      </div>
+      <div class="field-row">
+        <label>Label</label>
+        <input id="f-label" type="text" placeholder="Button label">
+      </div>
+      <div class="field-row">
+        <label>Color</label>
+        <input id="f-color" type="color" value="#1e293b">
+      </div>
+      <div class="field-row">
+        <label>Action</label>
+        <select id="f-type">
+          <option value="command">Command</option>
+          <option value="toggle">Toggle</option>
+          <option value="sequence">Sequence</option>
+          <option value="page">Go to Page</option>
+        </select>
+      </div>
+
+      <!-- command -->
+      <div id="fields-command" class="action-fields">
+        <div class="field-row">
+          <label>Command</label>
+          <input id="f-command" type="text" placeholder="e.g. playerctl play-pause">
+        </div>
+      </div>
+
+      <!-- toggle -->
+      <div id="fields-toggle" class="action-fields" style="display:none">
+        <div class="field-row">
+          <label>On command</label>
+          <input id="f-toggle-on" type="text" placeholder="command when turning ON">
+        </div>
+        <div class="field-row">
+          <label>Off command</label>
+          <input id="f-toggle-off" type="text" placeholder="command when turning OFF">
+        </div>
+      </div>
+
+      <!-- sequence -->
+      <div id="fields-sequence" class="action-fields" style="display:none">
+        <div class="field-row">
+          <label>Commands<br><span class="muted" style="font-weight:400;font-size:11px">one per line</span></label>
+          <textarea id="f-sequence" rows="4" placeholder="cmd1&#10;cmd2&#10;cmd3"></textarea>
+        </div>
+        <div class="field-row">
+          <label>Delay (ms)</label>
+          <input id="f-seq-delay" type="number" value="150" min="0" max="5000">
+        </div>
+      </div>
+
+      <!-- page -->
+      <div id="fields-page" class="action-fields" style="display:none">
+        <div class="field-row">
+          <label>Target page</label>
+          <select id="f-page-target"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button id="modal-delete" class="btn-danger">Remove Button</button>
+      <button id="modal-save"   class="btn-primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add Page Modal ── -->
+<div class="modal-overlay" id="page-modal" style="display:none">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <h2>New Page</h2>
+      <button class="modal-close" id="page-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <label>Page name</label>
+        <input id="f-page-name" type="text" placeholder="e.g. Gaming">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="page-modal-save" class="btn-primary">Create</button>
+    </div>
+  </div>
+</div>
+
+<script src="renderer.js"></script>
+</body>
+</html>
