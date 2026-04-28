@@ -106,7 +106,7 @@ function createButton(comp, page) {
 
   if (!hasHold) {
     btn.addEventListener('pointerdown', () => {
-      navigator.vibrate?.(30)
+      Haptic.tap()
       btn.classList.add('pressed')
       setTimeout(() => btn.classList.remove('pressed'), 150)
       send({ type: 'press', pageId: page.id, compId: comp.id, hold: false })
@@ -120,7 +120,7 @@ function createButton(comp, page) {
       holdTimer = setTimeout(() => {
         didHold   = true
         holdTimer = null
-        navigator.vibrate?.([50, 50, 50])
+        Haptic.hold()
         btn.classList.add('holding')
         setTimeout(() => btn.classList.remove('holding'), 400)
         send({ type: 'press', pageId: page.id, compId: comp.id, hold: true })
@@ -130,7 +130,7 @@ function createButton(comp, page) {
     btn.addEventListener('pointerup', () => {
       if (holdTimer !== null) { clearTimeout(holdTimer); holdTimer = null }
       if (!didHold) {
-        navigator.vibrate?.(30)
+        Haptic.tap()
         btn.classList.add('pressed')
         setTimeout(() => btn.classList.remove('pressed'), 150)
         send({ type: 'press', pageId: page.id, compId: comp.id, hold: false })
@@ -162,7 +162,7 @@ function createSwitch(comp, page) {
   `
 
   cell.addEventListener('pointerdown', () => {
-    navigator.vibrate?.(30)
+    Haptic.tap()
     cell.classList.add('pressed')
     setTimeout(() => cell.classList.remove('pressed'), 150)
     send({ type: 'press', pageId: page.id, compId: comp.id, hold: false })
@@ -248,7 +248,7 @@ function createKnob(comp, page) {
     const newVal = Math.max(min, Math.min(max, Math.round(raw / step) * step))
     if (newVal !== value) {
       value = newVal
-      if (value !== lastSentValue) navigator.vibrate?.(8)
+      if (value !== lastSentValue) Haptic.ratchet()
       pct                 = valueToPct(value, min, max) / 100
       ringEl.innerHTML    = knobSVG(pct)
       valueEl.textContent = value
@@ -353,7 +353,7 @@ function createSpotifyTile(comp, page) {
     </div>
   `
   cell.addEventListener('pointerdown', () => {
-    navigator.vibrate?.(30)
+    Haptic.tap()
     cell.classList.add('pressed')
     setTimeout(() => cell.classList.remove('pressed'), 150)
     send({ type: 'press', pageId: page.id, compId: comp.id, hold: false })
@@ -426,7 +426,7 @@ function createVoiceButton(comp, page) {
   rec.onend = () => stopListening()
 
   function startListening() {
-    try { rec.start(); listening = true; btn.classList.add('listening'); navigator.vibrate?.([40, 20, 40]) } catch {}
+    try { rec.start(); listening = true; btn.classList.add('listening'); Haptic.listening() } catch {}
   }
 
   function stopListening() {
@@ -498,7 +498,7 @@ function createSlider(comp, page) {
       : Math.max(0, Math.min(1, (rect.bottom - touch.clientY) / rect.height))
     const raw    = min + p * (max - min)
     const newVal = Math.max(min, Math.min(max, Math.round(raw / step) * step))
-    if (ratchet && newVal !== value) navigator.vibrate?.(8)
+    if (ratchet && newVal !== value) Haptic.ratchet()
     value = newVal
     const pv = valueToPct(value, min, max)
     if (horiz) {
@@ -540,7 +540,7 @@ function createSlider(comp, page) {
       const v = getTrackValue(e.touches[0])
       applyPct(valueToPct(v, min, max)); valueEl.textContent = v
       if (v !== lastSentValue) {
-        navigator.vibrate?.(8)
+        Haptic.ratchet()
         send({ type: 'slide', pageId: page.id, compId: comp.id, value: v })
         lastSentValue = v
       }
