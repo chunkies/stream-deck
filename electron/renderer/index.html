@@ -11,7 +11,6 @@
   <aside class="sidebar">
     <h1 class="logo">Stream Deck</h1>
 
-    <!-- Server info -->
     <div class="server-block">
       <img id="qr-img" class="qr" style="display:none">
       <div class="url-row"><span class="label">URL</span><a id="server-url" class="url" href="#" target="_blank">—</a></div>
@@ -19,13 +18,11 @@
       <div id="cert-hint" class="cert-hint"></div>
     </div>
 
-    <!-- Connection status -->
     <div class="status-block">
       <div class="status-row"><span class="label">Phone</span><span id="phone-status" class="badge disconnected">Disconnected</span></div>
       <div class="status-row"><span class="label">Last</span><span id="last-press" class="muted">—</span></div>
     </div>
 
-    <!-- Startup -->
     <div class="status-block">
       <div class="status-row">
         <span class="label">Startup</span>
@@ -36,43 +33,6 @@
       </div>
     </div>
 
-    <!-- Claude API key (for AI voice) -->
-    <div class="s-card">
-      <div class="section-label">AI Voice (optional)</div>
-      <div class="s-field">
-        <label>Claude API key</label>
-        <input id="claude-api-key" type="password" placeholder="sk-ant-…" autocomplete="off">
-      </div>
-      <div class="s-row">
-        <button id="claude-save-btn" class="btn-secondary">Save key</button>
-        <span class="field-hint" style="font-size:11px">Used by Voice buttons in AI mode</span>
-      </div>
-    </div>
-
-    <!-- Pro license -->
-    <div class="s-card pro-block">
-      <div class="section-label">
-        License
-        <span id="pro-badge" class="pro-badge pro-badge-free">Free</span>
-      </div>
-      <div id="pro-active-view" style="display:none">
-        <div class="field-hint pro-active-text">Pro active — AI voice &amp; premium features unlocked</div>
-        <button id="pro-deactivate-btn" class="btn-sm btn-sm-danger" style="margin-top:6px">Deactivate</button>
-      </div>
-      <div id="pro-inactive-view">
-        <div class="s-field">
-          <label>License key</label>
-          <input id="pro-license-key" type="text" placeholder="SD-XXXXXXXX-XXXXXXXX-XXXXXXXX" autocomplete="off">
-        </div>
-        <div class="s-row">
-          <button id="pro-activate-btn" class="btn-secondary">Activate</button>
-          <a id="pro-buy-link" href="#" class="field-hint pro-buy-link">Get Pro ($8/mo) →</a>
-        </div>
-        <div id="pro-error" class="pro-error" style="display:none"></div>
-      </div>
-    </div>
-
-    <!-- Grid settings -->
     <div class="s-card">
       <div class="section-label">Grid</div>
       <div style="display:flex;gap:8px">
@@ -91,17 +51,14 @@
       </div>
     </div>
 
-    <!-- Import / export -->
     <div class="s-card">
       <div class="section-label">Layout</div>
       <div class="s-row" style="gap:6px">
         <button id="export-btn" class="btn-secondary" style="flex:1">Export</button>
         <button id="import-btn" class="btn-secondary" style="flex:1">Import</button>
       </div>
-      <div class="field-hint" style="font-size:11px;margin-top:2px">Backup or restore your button layout</div>
     </div>
 
-    <!-- Actions -->
     <div class="sidebar-actions">
       <button id="add-page-btn" class="btn-secondary">+ Add Page</button>
       <button id="marketplace-btn" class="btn-secondary">🔌 Plugins</button>
@@ -115,67 +72,35 @@
     </div>
   </main>
 
+  <!-- ── Right component panel ── -->
+  <aside class="component-panel" id="component-panel">
+    <!-- Populated by renderComponentPanel() -->
+  </aside>
+
 </div>
 
-<!-- ── Upgrade Modal ── -->
-<div class="modal-overlay" id="upgrade-modal" style="display:none">
-  <div class="modal upgrade-modal-inner">
-    <div class="modal-header">
-      <h2>Upgrade to Pro</h2>
-      <button class="modal-close" id="upgrade-modal-close">✕</button>
+<!-- ── Config drawer (slides up from bottom) ── -->
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-header-left">
+      <h2 id="modal-title">Configure</h2>
     </div>
-    <div class="modal-body upgrade-body">
-      <div class="upgrade-icon">⚡</div>
-      <p class="upgrade-tagline">AI Voice mode uses Claude to understand natural language and fire the right button automatically.</p>
-      <ul class="upgrade-features">
-        <li>✓ AI Voice button (Claude-powered)</li>
-        <li>✓ Cloud sync <span class="coming-soon">coming soon</span></li>
-        <li>✓ Premium marketplace plugins</li>
-        <li>✓ Priority support</li>
-      </ul>
-      <div class="upgrade-price">$8 / month</div>
-      <button id="upgrade-buy-btn" class="btn-primary upgrade-cta">Get Pro</button>
-      <div class="upgrade-already">Already have a key? Enter it in the License section of the sidebar.</div>
+    <div class="drawer-header-right">
+      <div style="display:none">
+        <input type="number" id="f-col-span" value="1" min="1" max="8">
+        <input type="number" id="f-row-span" value="1" min="1" max="8">
+      </div>
+      <button id="modal-delete" class="btn-danger" style="display:none">Remove</button>
+      <button id="modal-save" class="btn-primary">Save</button>
+      <button class="modal-close" id="drawer-close">✕</button>
     </div>
   </div>
-</div>
 
-<!-- ── Edit Modal ── -->
-<div class="modal-overlay" id="modal" style="display:none">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="modal-title">Edit</h2>
-      <button class="modal-close" id="modal-close">✕</button>
-    </div>
-    <div class="modal-body">
+  <div class="drawer-body">
 
-      <!-- Component type -->
-      <div class="field-row">
-        <label>Type</label>
-        <div class="type-tabs" id="type-tabs">
-          <button class="type-tab active" data-type="button">Button</button>
-          <button class="type-tab" data-type="toggle">Toggle</button>
-          <button class="type-tab" data-type="slider">Slider</button>
-          <button class="type-tab" data-type="tile">Tile</button>
-          <button class="type-tab" data-type="spotify">Spotify</button>
-          <button class="type-tab" data-type="voice">Voice</button>
-          <button class="type-tab" data-type="plugin-tile">Plugin Tile</button>
-        </div>
-      </div>
-
-      <!-- Size (colSpan × rowSpan) -->
-      <div class="field-row">
-        <label>Size</label>
-        <div class="size-row">
-          <input type="number" id="f-col-span" value="1" min="1" max="8" class="size-input">
-          <span class="size-sep">×</span>
-          <input type="number" id="f-row-span" value="1" min="1" max="8" class="size-input">
-          <span class="size-hint">cols × rows</span>
-        </div>
-      </div>
-
-      <!-- ── Button fields ── -->
-      <div id="comp-button">
+    <!-- ── Button fields ── -->
+    <div id="comp-button">
+      <div class="drawer-fields">
         <div class="field-row"><label>Icon</label><input id="f-icon" type="text" maxlength="4" placeholder="emoji"></div>
         <div class="field-row"><label>Label</label><input id="f-label" type="text" placeholder="Button label"></div>
         <div class="field-row"><label>Color</label><input id="f-color" type="color" value="#1e293b"></div>
@@ -198,104 +123,112 @@
             <option value="command">Command</option>
             <option value="sequence">Sequence</option>
             <option value="page">Go to Page</option>
-            <option value="plugin">Plugin</option>
           </select>
         </div>
-        <div id="action-builtin"><div class="field-row"><label>Action</label><select id="f-builtin-key"></select></div></div>
-        <div id="action-hotkey" style="display:none">
-          <div class="field-row">
-            <label>Keys</label>
-            <div>
-              <input id="f-hotkey" type="text" placeholder="ctrl+shift+f5">
-              <div class="field-hint">xdotool format on Linux (e.g. <code>ctrl+shift+f5</code>, <code>super+l</code>)</div>
-            </div>
-          </div>
-        </div>
-        <div id="action-command" style="display:none"><div class="field-row"><label>Command</label><input id="f-command" type="text" placeholder="e.g. playerctl play-pause"></div></div>
-        <div id="action-sequence" style="display:none">
-          <div class="field-row"><label>Commands<br><span class="field-hint">one per line</span></label><textarea id="f-sequence" rows="4" placeholder="cmd1&#10;cmd2"></textarea></div>
-          <div class="field-row"><label>Delay ms</label><input id="f-seq-delay" type="number" value="150" min="0"></div>
-        </div>
-        <div id="action-page" style="display:none"><div class="field-row"><label>Page</label><select id="f-page-target"></select></div></div>
-        <div id="action-plugin" style="display:none">
-          <div class="field-row">
-            <label>Action</label>
-            <select id="f-plugin-action">
-              <option value="">— no plugins installed —</option>
-            </select>
-          </div>
-          <div class="plugin-reload-row">
-            <button class="btn-sm" id="plugin-reload-btn">⟳ Reload plugins</button>
-            <span class="field-hint">Plugins live in <code>userData/plugins/</code></span>
-          </div>
-          <div id="plugin-params"></div>
-        </div>
-
-        <!-- Hold action -->
-        <div class="hold-section">
-          <div class="hold-header">
-            <span class="field-hint">Hold action (500ms hold triggers a different command)</span>
-            <label class="sw sw-sm">
-              <input type="checkbox" id="f-hold-enable">
-              <span class="sw-track"><span class="sw-thumb"></span></span>
-            </label>
-          </div>
-          <div id="hold-fields" style="display:none">
-            <div class="field-row"><label>Hold cmd</label><input id="f-hold-command" type="text" placeholder="e.g. systemctl suspend"></div>
+      </div>
+      <div id="action-builtin"><div class="field-row"><label>Action</label><select id="f-builtin-key"></select></div></div>
+      <div id="action-hotkey" style="display:none">
+        <div class="field-row">
+          <label>Keys</label>
+          <div>
+            <input id="f-hotkey" type="text" placeholder="ctrl+shift+f5">
+            <div class="field-hint">xdotool format (e.g. <code>ctrl+shift+f5</code>, <code>super+l</code>)</div>
           </div>
         </div>
       </div>
-
-      <!-- ── Toggle fields ── -->
-      <div id="comp-toggle" style="display:none">
-        <div class="two-col">
-          <div class="state-col">
-            <div class="state-label">Off state</div>
-            <div class="field-row"><label>Icon</label><input id="t-icon" type="text" maxlength="4" placeholder="emoji"></div>
-            <div class="field-row"><label>Label</label><input id="t-label" type="text" placeholder="Off label"></div>
-            <div class="field-row"><label>Color</label><input id="t-color" type="color" value="#1e293b"></div>
-            <div class="field-row">
-              <label>Image</label>
-              <div class="image-field">
-                <div id="t-img-preview" class="img-preview" style="display:none"></div>
-                <div class="image-actions">
-                  <button class="btn-sm" id="t-img-upload-btn">Upload</button>
-                  <button class="btn-sm btn-sm-danger" id="t-img-clear-btn" style="display:none">Remove</button>
-                </div>
-                <input id="t-img-file-input" type="file" accept="image/*" style="display:none">
-              </div>
-            </div>
-            <div class="field-row"><label>Command</label><input id="t-off-cmd" type="text" placeholder="command when turning OFF"></div>
-          </div>
-          <div class="state-col">
-            <div class="state-label active-label">On state</div>
-            <div class="field-row"><label>Icon</label><input id="t-active-icon" type="text" maxlength="4" placeholder="emoji"></div>
-            <div class="field-row"><label>Label</label><input id="t-active-label" type="text" placeholder="On label"></div>
-            <div class="field-row"><label>Color</label><input id="t-active-color" type="color" value="#4f46e5"></div>
-            <div class="field-row">
-              <label>Image</label>
-              <div class="image-field">
-                <div id="t-active-img-preview" class="img-preview" style="display:none"></div>
-                <div class="image-actions">
-                  <button class="btn-sm" id="t-active-img-upload-btn">Upload</button>
-                  <button class="btn-sm btn-sm-danger" id="t-active-img-clear-btn" style="display:none">Remove</button>
-                </div>
-                <input id="t-active-img-file-input" type="file" accept="image/*" style="display:none">
-              </div>
-            </div>
-            <div class="field-row"><label>Command</label><input id="t-on-cmd" type="text" placeholder="command when turning ON"></div>
-          </div>
+      <div id="action-command" style="display:none"><div class="field-row"><label>Command</label><input id="f-command" type="text" placeholder="e.g. playerctl play-pause"></div></div>
+      <div id="action-sequence" style="display:none">
+        <div class="field-row"><label>Commands<br><span class="field-hint">one per line</span></label><textarea id="f-sequence" rows="3" placeholder="cmd1&#10;cmd2"></textarea></div>
+        <div class="field-row"><label>Delay ms</label><input id="f-seq-delay" type="number" value="150" min="0"></div>
+      </div>
+      <div id="action-page" style="display:none"><div class="field-row"><label>Page</label><select id="f-page-target"></select></div></div>
+      <div id="action-plugin" style="display:none">
+        <div class="field-row">
+          <label>Action</label>
+          <select id="f-plugin-action"><option value="">— no plugins installed —</option></select>
+        </div>
+        <div id="plugin-comp-hint" class="field-hint plugin-comp-hint" style="display:none"></div>
+        <div class="plugin-reload-row">
+          <button class="btn-sm" id="plugin-reload-btn">⟳ Reload plugins</button>
+          <span class="field-hint">Plugins live in <code>userData/plugins/</code></span>
+        </div>
+        <div id="plugin-params"></div>
+      </div>
+      <div class="hold-section">
+        <div class="hold-header">
+          <span class="field-hint">Hold action (500ms)</span>
+          <label class="sw sw-sm">
+            <input type="checkbox" id="f-hold-enable">
+            <span class="sw-track"><span class="sw-thumb"></span></span>
+          </label>
+        </div>
+        <div id="hold-fields" style="display:none">
+          <div class="field-row"><label>Hold cmd</label><input id="f-hold-command" type="text" placeholder="e.g. systemctl suspend"></div>
         </div>
       </div>
+    </div>
 
-      <!-- ── Slider fields ── -->
-      <div id="comp-slider" style="display:none">
+    <!-- ── Switch fields ── -->
+    <div id="comp-switch" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row"><label>Label</label><input id="t-label" type="text" placeholder="e.g. Mute"></div>
+        <div class="field-row"><label>Color</label><input id="t-color" type="color" value="#1e293b"></div>
+        <div class="field-row">
+          <label>Action</label>
+          <select id="t-action-type">
+            <option value="builtin">Built-in</option>
+            <option value="hotkey">Hotkey</option>
+            <option value="command">Commands (on/off)</option>
+            <option value="sequence">Sequence</option>
+            <option value="page">Go to Page</option>
+          </select>
+        </div>
+      </div>
+      <div id="t-action-builtin" style="display:none"><div class="field-row"><label>Action</label><select id="t-builtin-key"></select></div></div>
+      <div id="t-action-hotkey" style="display:none">
+        <div class="field-row"><label>Keys</label><div><input id="t-hotkey" type="text" placeholder="ctrl+shift+f5"><div class="field-hint">xdotool format (e.g. <code>ctrl+shift+f5</code>)</div></div></div>
+      </div>
+      <div id="t-action-command" style="display:none">
+        <div class="field-row"><label>Off cmd</label><input id="t-off-cmd" type="text" placeholder="command when turning OFF"></div>
+        <div class="field-row"><label>On cmd</label><input id="t-on-cmd" type="text" placeholder="command when turning ON"></div>
+      </div>
+      <div id="t-action-sequence" style="display:none">
+        <div class="field-row"><label>Commands<br><span class="field-hint">one per line</span></label><textarea id="t-sequence" rows="3" placeholder="cmd1&#10;cmd2"></textarea></div>
+        <div class="field-row"><label>Delay ms</label><input id="t-seq-delay" type="number" value="150" min="0"></div>
+      </div>
+      <div id="t-action-page" style="display:none"><div class="field-row"><label>Page</label><select id="t-page-target"></select></div></div>
+      <input id="t-icon" type="hidden"><input id="t-active-icon" type="hidden">
+      <input id="t-active-label" type="hidden"><input id="t-active-color" type="hidden" value="#4f46e5">
+      <input id="t-img-file-input" type="hidden"><input id="t-active-img-file-input" type="hidden">
+      <div id="t-img-preview" style="display:none"></div><div id="t-active-img-preview" style="display:none"></div>
+      <button id="t-img-upload-btn" style="display:none"></button><button id="t-img-clear-btn" style="display:none"></button>
+      <button id="t-active-img-upload-btn" style="display:none"></button><button id="t-active-img-clear-btn" style="display:none"></button>
+    </div>
+
+    <!-- ── Slider fields ── -->
+    <div id="comp-slider" style="display:none">
+      <div class="drawer-fields">
         <div class="field-row"><label>Label</label><input id="s-label" type="text" placeholder="e.g. Volume"></div>
         <div class="field-row"><label>Color</label><input id="s-color" type="color" value="#1e293b"></div>
         <div class="field-row"><label>Min</label><input id="s-min" type="number" value="0"></div>
         <div class="field-row"><label>Max</label><input id="s-max" type="number" value="100"></div>
         <div class="field-row"><label>Step</label><input id="s-step" type="number" value="5" min="1"></div>
         <div class="field-row"><label>Default</label><input id="s-default" type="number" value="50"></div>
+        <div class="field-row">
+          <label>Action</label>
+          <select id="s-action-type">
+            <option value="builtin">Built-in</option>
+            <option value="hotkey">Hotkey</option>
+            <option value="command">Command</option>
+            <option value="sequence">Sequence</option>
+          </select>
+        </div>
+      </div>
+      <div id="s-action-builtin" style="display:none"><div class="field-row"><label>Action</label><select id="s-builtin-key"></select></div></div>
+      <div id="s-action-hotkey" style="display:none">
+        <div class="field-row"><label>Keys</label><div><input id="s-hotkey" type="text" placeholder="ctrl+shift+f5"><div class="field-hint">Fired on release</div></div></div>
+      </div>
+      <div id="s-action-command" style="display:none">
         <div class="field-row">
           <label>Command</label>
           <div>
@@ -304,87 +237,138 @@
           </div>
         </div>
       </div>
+      <div id="s-action-sequence" style="display:none">
+        <div class="field-row"><label>Commands<br><span class="field-hint">one per line, <code>{value}</code> ok</span></label><textarea id="s-sequence" rows="3" placeholder="cmd1&#10;cmd2"></textarea></div>
+        <div class="field-row"><label>Delay ms</label><input id="s-seq-delay" type="number" value="150" min="0"></div>
+      </div>
+    </div>
 
-      <!-- ── Spotify tile fields ── -->
-      <div id="comp-spotify" style="display:none">
+    <!-- ── Knob fields ── -->
+    <div id="comp-knob" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row"><label>Label</label><input id="k-label" type="text" placeholder="e.g. Gain"></div>
+        <div class="field-row"><label>Color</label><input id="k-color" type="color" value="#1e293b"></div>
+        <div class="field-row"><label>Min</label><input id="k-min" type="number" value="0"></div>
+        <div class="field-row"><label>Max</label><input id="k-max" type="number" value="100"></div>
+        <div class="field-row"><label>Step</label><input id="k-step" type="number" value="1" min="1"></div>
+        <div class="field-row"><label>Default</label><input id="k-default" type="number" value="50"></div>
+        <div class="field-row">
+          <label>Action</label>
+          <select id="k-action-type">
+            <option value="builtin">Built-in</option>
+            <option value="hotkey">Hotkey</option>
+            <option value="command">Command</option>
+            <option value="sequence">Sequence</option>
+          </select>
+        </div>
+      </div>
+      <div id="k-action-builtin" style="display:none"><div class="field-row"><label>Action</label><select id="k-builtin-key"></select></div></div>
+      <div id="k-action-hotkey" style="display:none">
+        <div class="field-row"><label>Keys</label><div><input id="k-hotkey" type="text" placeholder="ctrl+shift+f5"><div class="field-hint">Fired on release</div></div></div>
+      </div>
+      <div id="k-action-command" style="display:none">
+        <div class="field-row">
+          <label>Command</label>
+          <div>
+            <input id="k-command" type="text" placeholder="e.g. amixer set Master {value}%">
+            <div class="field-hint">Use <code>{value}</code>. Drag up/down to adjust.</div>
+          </div>
+        </div>
+      </div>
+      <div id="k-action-sequence" style="display:none">
+        <div class="field-row"><label>Commands<br><span class="field-hint">one per line, <code>{value}</code> ok</span></label><textarea id="k-sequence" rows="3" placeholder="cmd1&#10;cmd2"></textarea></div>
+        <div class="field-row"><label>Delay ms</label><input id="k-seq-delay" type="number" value="150" min="0"></div>
+      </div>
+    </div>
+
+    <!-- ── Spotify fields ── -->
+    <div id="comp-spotify" style="display:none">
+      <div class="drawer-fields">
         <div class="field-row">
           <label>Color</label>
           <div>
             <input id="sp-color" type="color" value="#0f172a">
-            <div class="field-hint">Fallback background when no album art is available</div>
+            <div class="field-hint">Fallback background when no album art</div>
           </div>
         </div>
-        <div class="field-hint" style="padding:8px 0 0">
-          Shows live album art, track title, and artist from the currently playing song.<br>
-          Tap the tile to play/pause.
-        </div>
       </div>
+      <div class="field-hint" style="padding:4px 0">Shows live album art, track &amp; artist. Tap to play/pause.</div>
+    </div>
 
-      <!-- ── Tile fields ── -->
-      <div id="comp-tile" style="display:none">
+    <!-- ── Tile fields ── -->
+    <div id="comp-tile" style="display:none">
+      <div class="drawer-fields">
         <div class="field-row"><label>Label</label><input id="tile-label" type="text" placeholder="Now Playing"></div>
         <div class="field-row"><label>Color</label><input id="tile-color" type="color" value="#0f172a"></div>
         <div class="field-row">
           <label>Command</label>
           <div>
             <input id="tile-command" type="text" placeholder="playerctl metadata title">
-            <div class="field-hint">Runs every N seconds — first line of output is displayed</div>
+            <div class="field-hint">Runs every N seconds — first line shown</div>
           </div>
         </div>
         <div class="field-row">
           <label>Interval</label>
           <div>
             <input id="tile-interval" type="number" value="5" min="1" max="3600">
-            <div class="field-hint">seconds between polls</div>
+            <div class="field-hint">seconds</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Format</label>
+          <div>
+            <input id="tile-format" type="text" placeholder="{value}">
+            <div class="field-hint">Use <code>{value}</code> for output, e.g. <code>CPU: {value}%</code></div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Tap cmd</label>
+          <div>
+            <input id="tile-tap-cmd" type="text" placeholder="optional command when tapped">
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- ── Voice button fields ── -->
-      <div id="comp-voice" style="display:none">
+    <!-- ── Voice fields ── -->
+    <div id="comp-voice" style="display:none">
+      <div class="drawer-fields">
         <div class="field-row"><label>Icon</label><input id="voice-icon" type="text" maxlength="4" placeholder="🎤"></div>
         <div class="field-row"><label>Label</label><input id="voice-label" type="text" placeholder="Voice"></div>
         <div class="field-row"><label>Color</label><input id="voice-color" type="color" value="#1e293b"></div>
         <div class="field-row">
           <label>Mode</label>
           <select id="voice-mode">
-            <option value="smart">Smart — match to button label</option>
+            <option value="smart">Smart — press matching button by voice</option>
             <option value="command">Command — run transcript as shell command</option>
-            <option value="ai">AI — Claude interprets intent (Pro)</option>
+            <option value="template">Template — run command with transcript</option>
           </select>
         </div>
-        <div class="field-hint" style="padding:4px 0 8px">
-          Tap to start/stop listening. Needs microphone permission in browser.<br>
-          AI mode requires a Claude API key in Settings (sidebar).
+      </div>
+      <div id="voice-cmd-field" style="display:none">
+        <div class="field-row">
+          <label>Command</label>
+          <div>
+            <input id="voice-command" type="text" placeholder="notify-send '{transcript}'">
+            <div class="field-hint">Use <code>{transcript}</code> for the spoken text</div>
+          </div>
         </div>
       </div>
+      <div class="field-hint" style="padding:4px 0">Tap to start/stop listening. Needs microphone permission.</div>
+    </div>
 
-      <!-- ── Plugin tile fields ── -->
-      <div id="comp-plugin-tile" style="display:none">
+    <!-- ── Plugin tile fields ── -->
+    <div id="comp-plugin-tile" style="display:none">
+      <div class="drawer-fields">
         <div class="field-row"><label>Label</label><input id="ptile-label" type="text" placeholder="CPU"></div>
         <div class="field-row"><label>Color</label><input id="ptile-color" type="color" value="#0f172a"></div>
-        <div class="field-row">
-          <label>Plugin ID</label>
-          <input id="ptile-plugin-id" type="text" placeholder="system-info">
-        </div>
-        <div class="field-row">
-          <label>Event name</label>
-          <input id="ptile-event" type="text" placeholder="cpu">
-        </div>
-        <div class="field-row">
-          <label>Display field</label>
-          <input id="ptile-field" type="text" placeholder="value" value="value">
-        </div>
-        <div class="field-hint" style="padding:4px 0 8px">
-          Shows data from plugin <code>sdk.broadcast()</code> events. The plugin must broadcast <code>{ event: '…', value: '…' }</code>.
-        </div>
+        <div class="field-row"><label>Plugin ID</label><input id="ptile-plugin-id" type="text" placeholder="system-info"></div>
+        <div class="field-row"><label>Event</label><input id="ptile-event" type="text" placeholder="cpu"></div>
+        <div class="field-row"><label>Field</label><input id="ptile-field" type="text" placeholder="value" value="value"></div>
       </div>
+      <div class="field-hint" style="padding:4px 0">Shows data from plugin <code>sdk.broadcast()</code> events.</div>
+    </div>
 
-    </div>
-    <div class="modal-footer">
-      <button id="modal-delete" class="btn-danger">Remove</button>
-      <button id="modal-save" class="btn-primary">Save</button>
-    </div>
   </div>
 </div>
 

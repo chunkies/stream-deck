@@ -70,7 +70,9 @@ function renderGrid() {
     let el
     switch (comp.componentType) {
       case 'slider':      el = createSlider(comp, page);      break
-      case 'toggle':      el = createToggle(comp, page);      break
+      case 'switch':
+      case 'toggle':      el = createSwitch(comp, page);      break
+      case 'knob':        el = createKnob(comp, page);        break
       case 'tile':        el = createTile(comp, page);        break
       case 'spotify':     el = createSpotifyTile(comp, page); break
       case 'voice':       el = createVoiceButton(comp, page); break
@@ -143,45 +145,130 @@ function createButton(comp, page) {
   return btn
 }
 
-// ── Toggle ────────────────────────────────────────────
-function createToggle(comp, page) {
+// ── Switch (replaces Toggle) ──────────────────────────
+function createSwitch(comp, page) {
   const key    = `${page.id}:${comp.id}`
   const active = toggleStates[key] || false
-  const btn    = document.createElement('div')
+  const cell   = document.createElement('div')
 
-  btn.className      = 'btn toggle-btn' + (active ? ' active' : '')
-  btn.dataset.key    = key
-  btn.dataset.compId = comp.id
-  btn.dataset.pageId = page.id
+  cell.className      = 'switch-cell' + (active ? ' active' : '')
+  cell.dataset.key    = key
+  cell.dataset.compId = comp.id
+  cell.dataset.pageId = page.id
 
-  refreshToggleVisual(btn, comp, active)
+  cell.innerHTML = `
+    <div class="switch-label">${comp.label || ''}</div>
+    <div class="switch-track"><div class="switch-thumb"></div></div>
+  `
 
-  btn.addEventListener('pointerdown', () => {
+  cell.addEventListener('pointerdown', () => {
     navigator.vibrate?.(30)
-    btn.classList.add('pressed')
-    setTimeout(() => btn.classList.remove('pressed'), 150)
+    cell.classList.add('pressed')
+    setTimeout(() => cell.classList.remove('pressed'), 150)
     send({ type: 'press', pageId: page.id, compId: comp.id, hold: false })
   })
-  return btn
-}
-
-function refreshToggleVisual(btn, comp, active) {
-  const icon  = active ? (comp.activeIcon  || comp.icon)  : comp.icon
-  const label = active ? (comp.activeLabel || comp.label) : comp.label
-  const color = active ? (comp.activeColor || comp.color) : comp.color
-  const image = active ? (comp.activeImage || comp.image) : comp.image
-  applyBg(btn, color, image)
-  btn.innerHTML = `<div class="btn-icon">${icon || ''}</div><div class="btn-label">${label || ''}</div>`
+  return cell
 }
 
 function updateToggleBtn(key, active) {
-  const btn = grid.querySelector(`[data-key="${key}"]`)
-  if (!btn) return
-  btn.classList.toggle('active', active)
-  const [pageId, compId] = key.split(':')
-  const pg   = config.pages.find(p => p.id === pageId)
-  const comp = pg?.components?.find(c => c.id === compId)
-  if (comp) refreshToggleVisual(btn, comp, active)
+  const el = grid.querySelector(`[data-key="${key}"]`)
+  if (!el) return
+  el.classList.toggle('active', active)
+}
+
+// ── Knob ──────────────────────────────────────────────
+function polarToXY(cx, cy, r, angleDeg) {
+  const a = (angleDeg - 90) * Math.PI / 180
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }
+}
+
+function describeArc(cx, cy, r, startDeg, endDeg) {
+  const s = polarToXY(cx, cy, r, startDeg)
+  const e = polarToXY(cx, cy, r, endDeg)
+  const large = (endDeg - startDeg) > 180 ? 1 : 0
+  return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`
+}
+
+function knobSVG(pct) {
+  const cx = 36, cy = 36, r = 27
+  const start = -135, range = 270
+  const currentDeg = start + pct * range
+  const trackArc = describeArc(cx, cy, r, start, start + range)
+  const fillArc  = pct > 0.001 ? describeArc(cx, cy, r, start, currentDeg) : null
+  const tick     = polarToXY(cx, cy, r - 3, currentDeg)
+  return `<svg viewBox="0 0 72 72" width="100%" height="100%">
+    <defs>
+      <linearGradient id="kg" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#7c3aed"/>
+        <stop offset="100%" stop-color="#a78bfa"/>
+      </linearGradient>
+    </defs>
+    <path d="${trackArc}" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="4" stroke-linecap="round"/>
+    ${fillArc ? `<path d="${fillArc}" fill="none" stroke="url(#kg)" stroke-width="4" stroke-linecap="round"/>` : ''}
+    <circle cx="${cx}" cy="${cy}" r="18" fill="rgba(15,23,42,0.92)" stroke="rgba(255,255,255,0.09)" stroke-width="1.5"/>
+    <circle cx="${tick.x.toFixed(2)}" cy="${tick.y.toFixed(2)}" r="2.5" fill="${pct > 0.001 ? '#a78bfa' : 'rgba(255,255,255,0.25)'}"/>
+  </svg>`
+}
+
+function createKnob(comp, page) {
+  const cell = document.createElement('div')
+  cell.className = 'knob-cell'
+
+  const min  = comp.min ?? 0
+  const max  = comp.max ?? 100
+  const step = comp.step ?? 1
+  let value  = comp.defaultValue ?? Math.round((min + max) / 2)
+  let pct    = valueToPct(value, min, max) / 100
+
+  cell.innerHTML = `
+    <div class="knob-label">${comp.label || ''}</div>
+    <div class="knob-ring">${knobSVG(pct)}</div>
+    <div class="knob-value">${value}</div>
+  `
+
+  const ringEl  = cell.querySelector('.knob-ring')
+  const valueEl = cell.querySelector('.knob-value')
+
+  let startY = 0, startVal = value, dragging = false, lastSentValue = value
+
+  cell.addEventListener('pointerdown', e => {
+    startY        = e.clientY
+    startVal      = value
+    lastSentValue = value
+    dragging      = true
+    cell.classList.add('dragging')
+    cell.setPointerCapture(e.pointerId)
+    e.preventDefault()
+  })
+
+  cell.addEventListener('pointermove', e => {
+    if (!dragging) return
+    const dy     = startY - e.clientY
+    const raw    = startVal + (dy / 140) * (max - min)
+    const newVal = Math.max(min, Math.min(max, Math.round(raw / step) * step))
+    if (newVal !== value) {
+      value = newVal
+      if (value !== lastSentValue) navigator.vibrate?.(8)
+      pct                 = valueToPct(value, min, max) / 100
+      ringEl.innerHTML    = knobSVG(pct)
+      valueEl.textContent = value
+    }
+  })
+
+  cell.addEventListener('pointerup', () => {
+    if (!dragging) return
+    dragging = false
+    cell.classList.remove('dragging')
+    lastSentValue = value
+    send({ type: 'slide', pageId: page.id, compId: comp.id, value })
+  })
+
+  cell.addEventListener('pointercancel', () => {
+    dragging = false
+    cell.classList.remove('dragging')
+  })
+
+  return cell
 }
 
 // ── Tile ──────────────────────────────────────────────
@@ -350,8 +437,9 @@ function showVoiceResult(matched, transcript) {
 
 // ── Slider ────────────────────────────────────────────
 function createSlider(comp, page) {
-  const cell = document.createElement('div')
-  cell.className = 'slider-cell'
+  const horiz = comp.orientation === 'horizontal'
+  const cell  = document.createElement('div')
+  cell.className = 'slider-cell' + (horiz ? ' horizontal' : '')
   cell.style.background = comp.color || '#1e293b'
 
   const min  = comp.min          ?? 0
@@ -360,14 +448,26 @@ function createSlider(comp, page) {
   let value  = comp.defaultValue ?? 50
 
   const pct = valueToPct(value, min, max)
-  cell.innerHTML = `
-    <div class="slider-label">${comp.label || ''}</div>
-    <div class="slider-track">
-      <div class="slider-fill" style="height:${pct}%"></div>
-      <div class="slider-thumb" style="bottom:calc(${pct}% - 10px)"></div>
-    </div>
-    <div class="slider-value">${value}</div>
-  `
+
+  if (horiz) {
+    cell.innerHTML = `
+      <div class="slider-label">${comp.label || ''}</div>
+      <div class="slider-track">
+        <div class="slider-fill" style="width:${pct}%"></div>
+        <div class="slider-thumb" style="left:calc(${pct}% - 10px)"></div>
+      </div>
+      <div class="slider-value">${value}</div>
+    `
+  } else {
+    cell.innerHTML = `
+      <div class="slider-label">${comp.label || ''}</div>
+      <div class="slider-track">
+        <div class="slider-fill" style="height:${pct}%"></div>
+        <div class="slider-thumb" style="bottom:calc(${pct}% - 10px)"></div>
+      </div>
+      <div class="slider-value">${value}</div>
+    `
+  }
 
   const track   = cell.querySelector('.slider-track')
   const fill    = cell.querySelector('.slider-fill')
@@ -375,25 +475,33 @@ function createSlider(comp, page) {
   const valueEl = cell.querySelector('.slider-value')
   let dragging  = false
 
-  function update(touch) {
+  function update(touch, ratchet = false) {
     const rect = track.getBoundingClientRect()
-    const relY = rect.bottom - touch.clientY
-    const raw  = min + Math.max(0, Math.min(1, relY / rect.height)) * (max - min)
-    value = Math.max(min, Math.min(max, Math.round(raw / step) * step))
-    const p = valueToPct(value, min, max)
-    fill.style.height  = `${p}%`
-    thumb.style.bottom = `calc(${p}% - 10px)`
+    const p = horiz
+      ? Math.max(0, Math.min(1, (touch.clientX - rect.left)  / rect.width))
+      : Math.max(0, Math.min(1, (rect.bottom - touch.clientY) / rect.height))
+    const raw    = min + p * (max - min)
+    const newVal = Math.max(min, Math.min(max, Math.round(raw / step) * step))
+    if (ratchet && newVal !== value) navigator.vibrate?.(8)
+    value = newVal
+    const pv = valueToPct(value, min, max)
+    if (horiz) {
+      fill.style.width  = `${pv}%`
+      thumb.style.left  = `calc(${pv}% - 10px)`
+    } else {
+      fill.style.height  = `${pv}%`
+      thumb.style.bottom = `calc(${pv}% - 10px)`
+    }
     valueEl.textContent = value
   }
 
   track.addEventListener('touchstart', e => { dragging = true; cell.classList.add('dragging'); update(e.touches[0]); e.preventDefault() }, { passive: false })
-  track.addEventListener('touchmove',  e => { if (dragging) { update(e.touches[0]); e.preventDefault() } }, { passive: false })
+  track.addEventListener('touchmove',  e => { if (dragging) { update(e.touches[0], true); e.preventDefault() } }, { passive: false })
   track.addEventListener('touchend',   e => {
     if (!dragging) return
     dragging = false
     cell.classList.remove('dragging')
     update(e.changedTouches[0])
-    navigator.vibrate?.(20)
     send({ type: 'slide', pageId: page.id, compId: comp.id, value })
   })
 
@@ -419,7 +527,7 @@ function applyBg(el, color, image) {
 grid.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX }, { passive: true })
 grid.addEventListener('touchend', e => {
   if (!config) return
-  if (e.target.closest('.slider-cell') || e.target.closest('.tile-cell') || e.target.closest('.spotify-cell') || e.target.closest('.voice-btn')) return
+  if (e.target.closest('.slider-cell') || e.target.closest('.knob-cell') || e.target.closest('.tile-cell') || e.target.closest('.spotify-cell') || e.target.closest('.voice-btn')) return
   const dx = e.changedTouches[0].clientX - touchStartX
   if (Math.abs(dx) < 60) return
   if (dx < 0 && currentPageIdx < config.pages.length - 1) { currentPageIdx++; render() }

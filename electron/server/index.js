@@ -21,7 +21,7 @@ const DEFAULT_CONFIG = {
         { id: 'c-play', col: 2, row: 1, colSpan: 1, rowSpan: 1, componentType: 'button', icon: '⏯', label: 'Play/Pause', color: '#1e293b', action: { type: 'builtin', key: 'media.playPause' } },
         { id: 'c-next', col: 3, row: 1, colSpan: 1, rowSpan: 1, componentType: 'button', icon: '⏭', label: 'Next',       color: '#1e293b', action: { type: 'builtin', key: 'media.next'      } },
         { id: 'c-vol',  col: 1, row: 2, colSpan: 1, rowSpan: 2, componentType: 'slider', label: 'Volume', color: '#1e293b', min: 0, max: 100, step: 5, defaultValue: 50, action: { type: 'command', command: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ {value}%' } },
-        { id: 'c-mute', col: 2, row: 2, colSpan: 2, rowSpan: 1, componentType: 'toggle', icon: '🔇', activeIcon: '🔊', label: 'Muted', activeLabel: 'Unmuted', color: '#1e293b', activeColor: '#4f46e5', action: { type: 'toggle', on: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 1', off: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 0' } },
+        { id: 'c-mute', col: 2, row: 2, colSpan: 2, rowSpan: 1, componentType: 'switch', label: 'Mute', color: '#1e293b', action: { type: 'toggle', on: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 1', off: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 0' } },
         { id: 'c-spty', col: 2, row: 3, colSpan: 2, rowSpan: 1, componentType: 'button', icon: '🎵', label: 'Spotify',   color: '#14532d', action: { type: 'command', command: 'spotify'      } },
         { id: 'c-tile', col: 1, row: 4, colSpan: 3, rowSpan: 1, componentType: 'tile',   label: 'Now Playing', color: '#0f172a', pollCommand: 'playerctl metadata title 2>/dev/null || echo "Nothing"', pollInterval: 3 }
       ]
@@ -32,21 +32,25 @@ const DEFAULT_CONFIG = {
 function migrateConfig(cfg) {
   const defaultCols = cfg.grid?.cols || 3
   for (const page of (cfg.pages || [])) {
-    if (page.components) continue
-    const cols = page.cols || defaultCols
-    const components = []
-    ;(page.slots || []).forEach((slot, i) => {
-      if (!slot) return
-      components.push({
-        id: `cm${i}-${page.id}`,
-        col: (i % cols) + 1,
-        row: Math.floor(i / cols) + 1,
-        colSpan: 1, rowSpan: 1,
-        ...slot
+    if (!page.components) {
+      const cols = page.cols || defaultCols
+      const components = []
+      ;(page.slots || []).forEach((slot, i) => {
+        if (!slot) return
+        components.push({
+          id: `cm${i}-${page.id}`,
+          col: (i % cols) + 1,
+          row: Math.floor(i / cols) + 1,
+          colSpan: 1, rowSpan: 1,
+          ...slot
+        })
       })
-    })
-    page.components = components
-    delete page.slots
+      page.components = components
+      delete page.slots
+    }
+    for (const comp of page.components) {
+      if (comp.componentType === 'toggle') comp.componentType = 'switch'
+    }
   }
   return cfg
 }
@@ -92,9 +96,14 @@ function loadPlugins(pluginsDir) {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
       const raw       = require(indexPath)
 
-      // Support factory (sdk) => handlers and plain object exports
-      const sdk      = createSDK(manifest.id, pluginsDataDir || dir, broadcast)
-      const handlers = typeof raw === 'function' ? raw(sdk) : raw
+      // Support two plugin patterns:
+      // 1. Factory fn(sdk) => { 'action.key': handlerFn }  (plain object)
+      // 2. Factory fn(sdk) using sdk.on('key', fn) — returns cleanup fn or nothing
+      const sdk    = createSDK(manifest.id, pluginsDataDir || dir, broadcast)
+      const result = typeof raw === 'function' ? raw(sdk) : raw
+
+      // Merge sdk.on() registered handlers first, then any object returned by factory
+      const handlers = { ...sdk._handlers, ...(result && typeof result === 'object' && !Array.isArray(result) && typeof result !== 'function' ? result : {}) }
 
       // Warn on action key conflicts between plugins
       for (const key of Object.keys(handlers)) {
@@ -255,6 +264,10 @@ function broadcast(msg) {
 function handlePress(pageId, compId, hold = false) {
   const page = config.pages.find(p => p.id === pageId)
   const comp = page?.components.find(c => c.id === compId)
+  if (comp?.componentType === 'tile' && comp.tileTapCmd) {
+    executeCommand(comp.tileTapCmd)
+    return
+  }
   if (!comp?.action) return
 
   const action = (hold && comp.holdAction) ? comp.holdAction : comp.action
@@ -280,9 +293,18 @@ function handlePress(pageId, compId, hold = false) {
     case 'plugin': {
       const fn = pluginsMap[action.pluginKey]
       if (fn) {
+        const isSwitch = comp?.componentType === 'switch'
+        let callParams = { ...(action.params || {}) }
+        if (isSwitch) {
+          const key = `${pageId}:${compId}`
+          toggleStates[key] = !toggleStates[key]
+          const active = toggleStates[key]
+          callParams.value = active
+          broadcast({ type: 'toggleState', key, active })
+        }
         const TIMEOUT = 10000
         const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Plugin action timed out')), TIMEOUT))
-        Promise.race([Promise.resolve().then(() => fn(action.params || {})), timeout])
+        Promise.race([Promise.resolve().then(() => fn(callParams)), timeout])
           .catch(err => console.error(`Plugin "${action.pluginKey}" error:`, err.message))
       } else {
         console.warn('Unknown plugin action:', action.pluginKey)
@@ -296,8 +318,28 @@ function handleSlide(pageId, compId, value) {
   const page = config.pages.find(p => p.id === pageId)
   const comp = page?.components.find(c => c.id === compId)
   if (!comp?.action) return
-  if (comp.action.type === 'command') {
-    executeCommand(comp.action.command.replace(/{value}/g, String(Math.round(value))))
+  const a   = comp.action
+  const val = String(Math.round(value))
+  switch (a.type) {
+    case 'command':  executeCommand(a.command.replace(/{value}/g, val)); break
+    case 'builtin':  executeBuiltin(a.key); break
+    case 'hotkey':   executeHotkey(a.combo); break
+    case 'sequence':
+      a.commands.forEach((cmd, idx) =>
+        setTimeout(() => executeCommand(cmd.replace(/{value}/g, val)), idx * (a.delay ?? 150))
+      ); break
+    case 'plugin': {
+      const fn = pluginsMap[a.pluginKey]
+      if (fn) {
+        const TIMEOUT = 10000
+        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Plugin timed out')), TIMEOUT))
+        Promise.race([Promise.resolve().then(() => fn({ ...(a.params || {}), value })), timeout])
+          .catch(err => console.error(`Plugin slide "${a.pluginKey}" error:`, err.message))
+      } else {
+        console.warn('Unknown plugin action:', a.pluginKey)
+      }
+      break
+    }
   }
 }
 
@@ -309,6 +351,14 @@ async function handleVoiceCommand(transcript, pageId, compId, voiceMode) {
 
   if (mode === 'command') {
     executeCommand(transcript)
+    return
+  }
+
+  if (mode === 'template') {
+    const page = config.pages.find(p => p.id === pageId)
+    const comp = page?.components?.find(c => c.id === compId)
+    const template = comp?.voiceCommand || ''
+    if (template) executeCommand(template.replace(/{transcript}/g, transcript.replace(/'/g, "'\\''")))
     return
   }
 
@@ -336,56 +386,6 @@ async function handleVoiceCommand(transcript, pageId, compId, voiceMode) {
     return
   }
 
-  if (mode === 'ai' && config.claudeApiKey) {
-    try {
-      const allComps = config.pages.flatMap(pg =>
-        (pg.components || []).map(c => ({ comp: c, page: pg }))
-      ).filter(e => e.comp.label)
-
-      const buttonList = allComps.map((e, i) => `${i}: ${e.comp.label}`).join('\n')
-
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': config.claudeApiKey,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 64,
-          messages: [{
-            role: 'user',
-            content: `User said: "${transcript}"\n\nButtons:\n${buttonList}\n\nReply with JSON only — one of:\n{"button":0} to press button by index\n{"command":"shell cmd"} to run a command\n{"none":true} if nothing fits`
-          }]
-        }),
-        signal: AbortSignal.timeout(8000)
-      })
-
-      if (!res.ok) throw new Error(`Claude API ${res.status}`)
-      const data   = await res.json()
-      const text   = data.content?.[0]?.text?.trim() || '{}'
-      const result = JSON.parse(text)
-
-      if (result.button !== undefined && allComps[result.button]) {
-        const target = allComps[result.button]
-        handlePress(target.page.id, target.comp.id, false)
-        broadcast({ type: 'voiceResult', matched: target.comp.label, transcript })
-      } else if (result.command) {
-        executeCommand(result.command)
-        broadcast({ type: 'voiceResult', matched: result.command, transcript })
-      } else {
-        broadcast({ type: 'voiceResult', matched: null, transcript })
-      }
-    } catch (err) {
-      console.error('Voice AI error:', err.message)
-      broadcast({ type: 'voiceResult', matched: null, transcript })
-    }
-    return
-  }
-
-  // AI mode but no key — fall back to smart
-  handleVoiceCommand(transcript, pageId, compId, 'smart')
 }
 
 // ── Public API ─────────────────────────────────────────

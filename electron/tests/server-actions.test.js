@@ -1,0 +1,292 @@
+'use strict'
+
+// Test the server's action handling logic in isolation by extracting
+// the pure logic portions (config migration + action dispatch rules).
+
+// ── migrateConfig ──────────────────────────────────────
+// Inline the migration function so we can test without starting the server
+function migrateConfig(cfg) {
+  const defaultCols = cfg.grid?.cols || 3
+  for (const page of (cfg.pages || [])) {
+    if (!page.components) {
+      const cols = page.cols || defaultCols
+      const components = []
+      ;(page.slots || []).forEach((slot, i) => {
+        if (!slot) return
+        components.push({
+          id: `cm${i}-${page.id}`,
+          col: (i % cols) + 1,
+          row: Math.floor(i / cols) + 1,
+          colSpan: 1, rowSpan: 1,
+          ...slot
+        })
+      })
+      page.components = components
+      delete page.slots
+    }
+    for (const comp of (page.components || [])) {
+      if (comp.componentType === 'toggle') comp.componentType = 'switch'
+    }
+  }
+  return cfg
+}
+
+describe('migrateConfig', () => {
+  test('converts slots to components with correct grid positions', () => {
+    const cfg = {
+      grid: { cols: 3, rows: 4 },
+      pages: [{
+        id: 'pg1',
+        name: 'Main',
+        slots: [
+          { componentType: 'button', label: 'A' },
+          null,
+          { componentType: 'button', label: 'C' },
+          { componentType: 'slider', label: 'D' }
+        ]
+      }]
+    }
+    const result = migrateConfig(cfg)
+    const comps = result.pages[0].components
+    expect(comps).toHaveLength(3)
+    // slot 0 → col 1, row 1
+    expect(comps[0]).toMatchObject({ col: 1, row: 1, label: 'A' })
+    // slot 2 → col 3, row 1
+    expect(comps[1]).toMatchObject({ col: 3, row: 1, label: 'C' })
+    // slot 3 → col 1, row 2
+    expect(comps[2]).toMatchObject({ col: 1, row: 2, label: 'D' })
+  })
+
+  test('skips null slots', () => {
+    const cfg = {
+      grid: { cols: 2, rows: 2 },
+      pages: [{ id: 'pg', name: 'P', slots: [null, null, { componentType: 'button', label: 'X' }] }]
+    }
+    const result = migrateConfig(cfg)
+    expect(result.pages[0].components).toHaveLength(1)
+    expect(result.pages[0].components[0].label).toBe('X')
+  })
+
+  test('does not re-migrate pages that already have components', () => {
+    const cfg = {
+      grid: { cols: 3, rows: 4 },
+      pages: [{
+        id: 'pg',
+        name: 'P',
+        components: [{ id: 'c1', col: 1, row: 1, componentType: 'button', label: 'Keep' }]
+      }]
+    }
+    const result = migrateConfig(cfg)
+    expect(result.pages[0].components).toHaveLength(1)
+    expect(result.pages[0].components[0].label).toBe('Keep')
+  })
+
+  test('renames toggle componentType to switch', () => {
+    const cfg = {
+      grid: { cols: 3, rows: 4 },
+      pages: [{ id: 'pg', name: 'P', components: [{ id: 'c1', col: 1, row: 1, componentType: 'toggle', label: 'T' }] }]
+    }
+    const result = migrateConfig(cfg)
+    expect(result.pages[0].components[0].componentType).toBe('switch')
+  })
+
+  test('deletes slots array after migration', () => {
+    const cfg = {
+      grid: { cols: 3, rows: 4 },
+      pages: [{ id: 'pg', name: 'P', slots: [{ componentType: 'button', label: 'A' }] }]
+    }
+    const result = migrateConfig(cfg)
+    expect(result.pages[0].slots).toBeUndefined()
+  })
+
+  test('handles empty slots array', () => {
+    const cfg = {
+      grid: { cols: 3, rows: 4 },
+      pages: [{ id: 'pg', name: 'P', slots: [] }]
+    }
+    const result = migrateConfig(cfg)
+    expect(result.pages[0].components).toEqual([])
+  })
+
+  test('respects per-page cols override', () => {
+    const cfg = {
+      grid: { cols: 3, rows: 4 },
+      pages: [{
+        id: 'pg', name: 'P', cols: 2,
+        slots: [
+          { componentType: 'button', label: 'A' },
+          { componentType: 'button', label: 'B' },
+          { componentType: 'button', label: 'C' }
+        ]
+      }]
+    }
+    const result = migrateConfig(cfg)
+    const comps = result.pages[0].components
+    // col 2 → slot 1 is at col 2, row 1
+    expect(comps[1]).toMatchObject({ col: 2, row: 1, label: 'B' })
+    // col 2 → slot 2 is at col 1, row 2
+    expect(comps[2]).toMatchObject({ col: 1, row: 2, label: 'C' })
+  })
+})
+
+// ── Action dispatch logic ──────────────────────────────
+// Test the logic rules without running the server. We use inline dispatch
+// functions that mirror the server's switch statements exactly.
+
+function dispatchPress(action, toggleStates, key, pluginsMap, broadcast) {
+  if (!action) return null
+  switch (action.type) {
+    case 'builtin':  return { type: 'builtin',  key: action.key }
+    case 'hotkey':   return { type: 'hotkey',   combo: action.combo }
+    case 'command':  return { type: 'command',  command: action.command }
+    case 'sequence': return { type: 'sequence', commands: action.commands, delay: action.delay }
+    case 'page':     return { type: 'navigate', pageId: action.pageId }
+    case 'toggle': {
+      toggleStates[key] = !toggleStates[key]
+      const active = toggleStates[key]
+      return { type: 'toggle', active, cmd: active ? action.on : action.off }
+    }
+    default: return null
+  }
+}
+
+function dispatchSlide(action, value) {
+  if (!action) return null
+  const val = String(Math.round(value))
+  switch (action.type) {
+    case 'command':  return { type: 'command',  command: action.command.replace(/{value}/g, val) }
+    case 'builtin':  return { type: 'builtin',  key: action.key }
+    case 'hotkey':   return { type: 'hotkey',   combo: action.combo }
+    case 'sequence': return { type: 'sequence', commands: action.commands.map(c => c.replace(/{value}/g, val)) }
+    default: return null
+  }
+}
+
+describe('press action dispatch', () => {
+  test('builtin action', () => {
+    const result = dispatchPress({ type: 'builtin', key: 'media.playPause' }, {}, 'k', {})
+    expect(result).toEqual({ type: 'builtin', key: 'media.playPause' })
+  })
+
+  test('hotkey action', () => {
+    const result = dispatchPress({ type: 'hotkey', combo: 'ctrl+shift+t' }, {}, 'k', {})
+    expect(result).toEqual({ type: 'hotkey', combo: 'ctrl+shift+t' })
+  })
+
+  test('command action', () => {
+    const result = dispatchPress({ type: 'command', command: 'echo hello' }, {}, 'k', {})
+    expect(result).toEqual({ type: 'command', command: 'echo hello' })
+  })
+
+  test('sequence action', () => {
+    const result = dispatchPress({ type: 'sequence', commands: ['cmd1', 'cmd2'], delay: 100 }, {}, 'k', {})
+    expect(result).toEqual({ type: 'sequence', commands: ['cmd1', 'cmd2'], delay: 100 })
+  })
+
+  test('page navigate', () => {
+    const result = dispatchPress({ type: 'page', pageId: 'page-2' }, {}, 'k', {})
+    expect(result).toEqual({ type: 'navigate', pageId: 'page-2' })
+  })
+
+  test('toggle cycles state correctly', () => {
+    const states = {}
+    const key = 'pg:comp1'
+    const action = { type: 'toggle', on: 'on-cmd', off: 'off-cmd' }
+
+    const first = dispatchPress(action, states, key, {})
+    expect(states[key]).toBe(true)
+    expect(first.cmd).toBe('on-cmd')
+
+    const second = dispatchPress(action, states, key, {})
+    expect(states[key]).toBe(false)
+    expect(second.cmd).toBe('off-cmd')
+  })
+
+  test('null action returns null', () => {
+    expect(dispatchPress(null, {}, 'k', {})).toBeNull()
+    expect(dispatchPress(undefined, {}, 'k', {})).toBeNull()
+  })
+})
+
+describe('slide action dispatch', () => {
+  test('command with {value} substitution', () => {
+    const result = dispatchSlide({ type: 'command', command: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ {value}%' }, 73.7)
+    expect(result.command).toBe('wpctl set-volume @DEFAULT_AUDIO_SINK@ 74%')
+  })
+
+  test('command rounds value', () => {
+    const result = dispatchSlide({ type: 'command', command: 'vol {value}' }, 49.4)
+    expect(result.command).toBe('vol 49')
+    const result2 = dispatchSlide({ type: 'command', command: 'vol {value}' }, 49.6)
+    expect(result2.command).toBe('vol 50')
+  })
+
+  test('builtin action', () => {
+    const result = dispatchSlide({ type: 'builtin', key: 'media.volumeUp' }, 80)
+    expect(result).toEqual({ type: 'builtin', key: 'media.volumeUp' })
+  })
+
+  test('hotkey action', () => {
+    const result = dispatchSlide({ type: 'hotkey', combo: 'ctrl+up' }, 60)
+    expect(result).toEqual({ type: 'hotkey', combo: 'ctrl+up' })
+  })
+
+  test('sequence with {value} in each command', () => {
+    const result = dispatchSlide({
+      type: 'sequence',
+      commands: ['echo start {value}', 'echo end {value}'],
+      delay: 100
+    }, 42)
+    expect(result.commands).toEqual(['echo start 42', 'echo end 42'])
+  })
+
+  test('null action returns null', () => {
+    expect(dispatchSlide(null, 50)).toBeNull()
+  })
+})
+
+// ── Tile format logic ──────────────────────────────────
+describe('tile format template', () => {
+  function applyTileFormat(format, value) {
+    return (format || '{value}').replace(/{value}/g, value)
+  }
+
+  test('default format just shows value', () => {
+    expect(applyTileFormat('{value}', '42')).toBe('42')
+  })
+
+  test('wraps value in custom template', () => {
+    expect(applyTileFormat('CPU: {value}%', '73')).toBe('CPU: 73%')
+  })
+
+  test('replaces all occurrences', () => {
+    expect(applyTileFormat('{value} / {value}', '10')).toBe('10 / 10')
+  })
+
+  test('falls back to {value} when format is empty', () => {
+    expect(applyTileFormat('', 'hello')).toBe('hello')
+    expect(applyTileFormat(null, 'world')).toBe('world')
+  })
+})
+
+// ── Voice template logic ───────────────────────────────
+describe('voice template mode', () => {
+  function applyVoiceTemplate(template, transcript) {
+    if (!template) return null
+    return template.replace(/{transcript}/g, transcript.replace(/'/g, "\\'"))
+  }
+
+  test('substitutes transcript into template', () => {
+    const cmd = applyVoiceTemplate("notify-send '{transcript}'", 'hello world')
+    expect(cmd).toBe("notify-send 'hello world'")
+  })
+
+  test('escapes single quotes in transcript', () => {
+    const cmd = applyVoiceTemplate("echo '{transcript}'", "it's here")
+    expect(cmd).toBe("echo 'it\\'s here'")
+  })
+
+  test('returns null when template is empty', () => {
+    expect(applyVoiceTemplate('', 'test')).toBeNull()
+  })
+})

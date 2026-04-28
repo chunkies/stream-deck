@@ -19,9 +19,6 @@ let currentPageIdx  = 0
 let editingComp     = null
 let currentCompType = 'button'
 let pendingImages   = {}
-let proStatus       = { active: false }
-
-const PURCHASE_URL = 'https://chunkies.gumroad.com/l/streamdeck-pro'
 
 // ── Server info display ───────────────────────────────
 function applyServerInfo(info) {
@@ -58,19 +55,9 @@ async function init() {
   const autostart = await window.api.getAutostart()
   document.getElementById('autostart-toggle').checked = autostart
 
-  // Load Claude API key (masked display)
-  if (config.claudeApiKey) {
-    document.getElementById('claude-api-key').placeholder = '••••••••••••••••••••'
-  }
-
   // Grid settings
   document.getElementById('grid-cols').value = config.grid.cols
   document.getElementById('grid-rows').value = config.grid.rows
-
-  // Pro license
-  proStatus = await window.api.getProStatus()
-  renderProStatus()
-  wireProSection()
 
   if (serverInfo?.url) applyServerInfo(serverInfo)
 
@@ -98,15 +85,18 @@ async function init() {
 }
 
 function populateBuiltinSelect() {
-  const sel = document.getElementById('f-builtin-key')
-  sel.innerHTML = ''
-  let lastGroup = ''
-  for (const { group, key, label } of BUILTIN_ACTIONS) {
-    if (group !== lastGroup) {
-      const og = document.createElement('optgroup'); og.label = group; sel.appendChild(og)
-      lastGroup = group
+  for (const selId of ['f-builtin-key', 't-builtin-key', 's-builtin-key', 'k-builtin-key']) {
+    const sel = document.getElementById(selId)
+    if (!sel) continue
+    sel.innerHTML = ''
+    let lastGroup = ''
+    for (const { group, key, label } of BUILTIN_ACTIONS) {
+      if (group !== lastGroup) {
+        const og = document.createElement('optgroup'); og.label = group; sel.appendChild(og)
+        lastGroup = group
+      }
+      const opt = document.createElement('option'); opt.value = key; opt.textContent = label; sel.appendChild(opt)
     }
-    const opt = document.createElement('option'); opt.value = key; opt.textContent = label; sel.appendChild(opt)
   }
 }
 
@@ -160,6 +150,8 @@ async function loadAndPopulatePlugins() {
   populatePluginSelect(plugins)
 }
 
+const COMP_TYPE_LABELS = { button: 'btn', switch: 'sw', slider: 'slider', knob: 'knob' }
+
 function populatePluginSelect(plugins) {
   loadedPlugins = plugins || []
   const sel = document.getElementById('f-plugin-action')
@@ -167,20 +159,34 @@ function populatePluginSelect(plugins) {
   if (!loadedPlugins.length) {
     sel.innerHTML = '<option value="">— no plugins installed —</option>'
     renderPluginParams('', {})
+    populateCompPluginSelects()
+    renderComponentPanel()
     return
   }
   for (const plugin of loadedPlugins) {
     const og = document.createElement('optgroup')
     og.label = plugin.name
     for (const action of plugin.actions) {
-      const opt = document.createElement('option')
+      const ct   = action.componentType
+      const tag  = ct && COMP_TYPE_LABELS[ct] ? ` [${COMP_TYPE_LABELS[ct]}]` : ''
+      const opt  = document.createElement('option')
       opt.value = action.key
-      opt.textContent = action.label
+      opt.textContent = action.label + tag
       og.appendChild(opt)
     }
     sel.appendChild(og)
   }
   renderPluginParams(sel.value, {})
+  populateCompPluginSelects()
+  renderComponentPanel()
+}
+
+function populateCompPluginSelects() {
+  // plugin actions for switch/slider/knob removed — handled via component panel drag
+}
+
+function getPluginActionByKey(key) {
+  return loadedPlugins.flatMap(p => p.actions || []).find(a => a.key === key) || null
 }
 
 function renderPluginParams(actionKey, existingParams) {
@@ -230,13 +236,81 @@ function collectPluginParams() {
   return params
 }
 
+function showSliderActionFields(type) {
+  for (const t of ['builtin', 'hotkey', 'command', 'sequence']) {
+    document.getElementById(`s-action-${t}`).style.display = t === type ? '' : 'none'
+  }
+}
+function showKnobActionFields(type) {
+  for (const t of ['builtin', 'hotkey', 'command', 'sequence']) {
+    document.getElementById(`k-action-${t}`).style.display = t === type ? '' : 'none'
+  }
+}
+function showSwitchActionFields(type) {
+  for (const t of ['builtin', 'hotkey', 'command', 'sequence', 'page']) {
+    document.getElementById(`t-action-${t}`).style.display = t === type ? '' : 'none'
+  }
+  if (type === 'page') fillPageSelect('t-page-target', document.getElementById('t-page-target').value || null)
+}
+
+function renderCompPluginParams(containerIdPrefix, actionKey, existingParams) {
+  const container = document.getElementById(`${containerIdPrefix}-plugin-params`)
+  if (!container) return
+  container.innerHTML = ''
+  const action = getPluginActionByKey(actionKey)
+  if (!action?.params?.length) return
+  for (const param of action.params) {
+    const row   = document.createElement('div')
+    row.className = 'field-row'
+    const label = document.createElement('label')
+    label.textContent = param.label
+    const input = document.createElement('input')
+    input.type        = param.type === 'number' ? 'number' : 'text'
+    input.id          = `${containerIdPrefix}pp-${param.key}`
+    input.className   = 'plugin-param-input'
+    input.dataset.key = param.key
+    input.dataset.typ = param.type || 'text'
+    input.dataset.pfx = containerIdPrefix
+    input.value       = existingParams?.[param.key] ?? (param.default ?? '')
+    if (param.placeholder) input.placeholder = param.placeholder
+    row.appendChild(label)
+    row.appendChild(input)
+    container.appendChild(row)
+  }
+}
+
+function collectCompPluginParams(containerIdPrefix) {
+  const params = {}
+  document.querySelectorAll(`.plugin-param-input[data-pfx="${containerIdPrefix}"]`).forEach(el => {
+    params[el.dataset.key] = el.dataset.typ === 'number' ? (parseFloat(el.value) || 0) : el.value
+  })
+  return params
+}
+
 function wirePluginReload() {
   document.getElementById('plugin-reload-btn').addEventListener('click', async () => {
     const plugins = await window.api.reloadPlugins()
     populatePluginSelect(plugins)
   })
+
   document.getElementById('f-plugin-action').addEventListener('change', (e) => {
     renderPluginParams(e.target.value, {})
+    const action = getPluginActionByKey(e.target.value)
+    const hint   = document.getElementById('plugin-comp-hint')
+    if (action?.componentType && action.componentType !== 'button') {
+      const label = { switch: 'Switch', slider: 'Slider', knob: 'Knob' }[action.componentType] || action.componentType
+      hint.textContent = `💡 This action is designed for: ${label} — consider switching the type tab.`
+      hint.style.display = ''
+    } else {
+      hint.style.display = 'none'
+    }
+  })
+
+  document.getElementById('s-action-type').addEventListener('change', e => showSliderActionFields(e.target.value))
+  document.getElementById('k-action-type').addEventListener('change', e => showKnobActionFields(e.target.value))
+  document.getElementById('t-action-type').addEventListener('change', e => showSwitchActionFields(e.target.value))
+  document.getElementById('voice-mode').addEventListener('change', e => {
+    document.getElementById('voice-cmd-field').style.display = e.target.value === 'template' ? '' : 'none'
   })
 }
 
@@ -306,15 +380,22 @@ function renderGrid() {
   gridEl.style.gridTemplateRows    = `repeat(${rows}, 1fr)`
   gridEl.innerHTML = ''
 
-  // Ghost cells — background grid, click to add
+  // Ghost cells — background grid, drop targets for dragged components
   for (let r = 1; r <= rows; r++) {
     for (let c = 1; c <= cols; c++) {
       const ghost = document.createElement('div')
       ghost.className        = 'ghost-cell'
       ghost.style.gridColumn = c
       ghost.style.gridRow    = r
-      ghost.innerHTML        = '<div class="cell-add">+</div>'
-      ghost.addEventListener('click', () => openModal(currentPageIdx, null, c, r))
+      ghost.addEventListener('dragover',  (e) => { e.preventDefault(); ghost.classList.add('drag-over') })
+      ghost.addEventListener('dragleave', ()  => ghost.classList.remove('drag-over'))
+      ghost.addEventListener('drop', (e) => {
+        e.preventDefault()
+        ghost.classList.remove('drag-over')
+        let data
+        try { data = JSON.parse(e.dataTransfer.getData('application/json')) } catch { return }
+        createComponentAtCell(data.compType, data.pluginKey, data.label, c, r, data.options || {})
+      })
       gridEl.appendChild(ghost)
     }
   }
@@ -333,19 +414,82 @@ function renderGrid() {
     }
 
     switch (comp.componentType) {
-      case 'slider':
+      case 'slider': {
+        const horiz   = comp.orientation === 'horizontal'
+        const initPct = (isFinite(comp.min) && isFinite(comp.max) && comp.max > comp.min)
+          ? Math.max(0, Math.min(100, ((comp.defaultValue ?? 50) - comp.min) / (comp.max - comp.min) * 100))
+          : 50
+
         card.innerHTML = `
-          <div class="cell-type-badge">slider</div>
-          <div class="cell-slider-preview">
-            <div class="cell-slider-fill" style="height:${((comp.defaultValue - comp.min) / (comp.max - comp.min)) * 100}%"></div>
+          <div class="card-slider ${horiz ? 'horiz' : 'vert'}">
+            <div class="card-slider-track">
+              <div class="card-slider-fill"></div>
+              <div class="card-slider-thumb"></div>
+            </div>
+            <div class="card-slider-val">${Math.round(comp.defaultValue ?? 50)}</div>
           </div>
           <div class="cell-label">${comp.label || ''}</div>
           <div class="resize-handle"></div>`
+
+        const sliderTrack = card.querySelector('.card-slider-track')
+        const sliderFill  = card.querySelector('.card-slider-fill')
+        const sliderThumb = card.querySelector('.card-slider-thumb')
+        const sliderVal   = card.querySelector('.card-slider-val')
+        const HALF = 8
+
+        function applySliderPct(pct) {
+          const num = (comp.min ?? 0) + ((comp.max ?? 100) - (comp.min ?? 0)) * pct / 100
+          sliderVal.textContent = Math.round(num)
+          if (horiz) {
+            sliderFill.style.width  = `${pct}%`
+            sliderThumb.style.left  = `calc(${pct}% - ${HALF}px)`
+          } else {
+            sliderFill.style.height  = `${pct}%`
+            sliderThumb.style.bottom = `calc(${pct}% - ${HALF}px)`
+          }
+        }
+        applySliderPct(initPct)
+
+        sliderTrack.addEventListener('pointerdown', (e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          sliderTrack.setPointerCapture(e.pointerId)
+          sliderTrack.style.cursor = 'grabbing'
+
+          function getPct(e) {
+            const r = sliderTrack.getBoundingClientRect()
+            return horiz
+              ? Math.max(0, Math.min(100, (e.clientX - r.left)  / r.width  * 100))
+              : Math.max(0, Math.min(100, (r.bottom - e.clientY) / r.height * 100))
+          }
+
+          const onMove = (e) => applySliderPct(getPct(e))
+          const onUp   = (e) => {
+            const pct = getPct(e)
+            applySliderPct(pct)
+            comp.defaultValue = (comp.min ?? 0) + ((comp.max ?? 100) - (comp.min ?? 0)) * pct / 100
+            pushConfig()
+            sliderTrack.style.cursor = ''
+            sliderTrack.removeEventListener('pointermove', onMove)
+            sliderTrack.removeEventListener('pointerup',   onUp)
+          }
+          sliderTrack.addEventListener('pointermove', onMove)
+          sliderTrack.addEventListener('pointerup',   onUp)
+        })
         break
+      }
+      case 'switch':
       case 'toggle':
         card.innerHTML = `
-          <div class="cell-type-badge">toggle</div>
-          <div class="cell-icon">${comp.icon || ''}</div>
+          <div class="cell-type-badge">switch</div>
+          <div class="cell-switch-preview"><div class="cell-switch-thumb"></div></div>
+          <div class="cell-label">${comp.label || ''}</div>
+          <div class="resize-handle"></div>`
+        break
+      case 'knob':
+        card.innerHTML = `
+          <div class="cell-type-badge">knob</div>
+          <div class="cell-knob-preview">◎</div>
           <div class="cell-label">${comp.label || ''}</div>
           <div class="resize-handle"></div>`
         break
@@ -452,14 +596,15 @@ function pushConfig() { window.api.setConfig(config) }
 // ── Component type tabs ───────────────────────────────
 function setCompType(type) {
   currentCompType = type
-  document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === type))
-  for (const t of ['button', 'toggle', 'slider', 'spotify', 'tile', 'voice', 'plugin-tile']) {
-    document.getElementById(`comp-${t}`).style.display = t === type ? 'block' : 'none'
+  const uiType = type === 'toggle' ? 'switch' : type
+  document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === uiType))
+  for (const t of ['button', 'switch', 'slider', 'knob', 'spotify', 'tile', 'voice', 'plugin-tile']) {
+    document.getElementById(`comp-${t}`).style.display = t === uiType ? 'block' : 'none'
   }
 }
 
 function showActionFields(type) {
-  for (const t of ['builtin', 'hotkey', 'command', 'sequence', 'page', 'plugin']) {
+  for (const t of ['builtin', 'hotkey', 'command', 'sequence', 'page']) {
     document.getElementById(`action-${t}`).style.display = t === type ? 'block' : 'none'
   }
   if (type === 'page') populatePageTargets(document.getElementById('f-page-target').value || null)
@@ -479,8 +624,9 @@ function openModal(pageIdx, compId, col, row) {
 
   const compType = comp?.componentType || 'button'
   setCompType(compType)
+  const uiType = compType === 'toggle' ? 'switch' : compType
 
-  if (compType === 'button' || !compType) {
+  if (uiType === 'button' || !uiType) {
     document.getElementById('f-icon').value  = comp?.icon  || ''
     document.getElementById('f-label').value = comp?.label || ''
     document.getElementById('f-color').value = comp?.color || '#1e293b'
@@ -510,48 +656,85 @@ function openModal(pageIdx, compId, col, row) {
     document.getElementById('f-hold-command').value      = holdCmd
   }
 
-  if (compType === 'toggle') {
-    document.getElementById('t-icon').value         = comp?.icon        || ''
-    document.getElementById('t-label').value        = comp?.label       || ''
-    document.getElementById('t-color').value        = comp?.color       || '#1e293b'
-    document.getElementById('t-active-icon').value  = comp?.activeIcon  || ''
-    document.getElementById('t-active-label').value = comp?.activeLabel || ''
-    document.getElementById('t-active-color').value = comp?.activeColor || '#4f46e5'
-    document.getElementById('t-off-cmd').value      = comp?.action?.off || ''
-    document.getElementById('t-on-cmd').value       = comp?.action?.on  || ''
-    setImageField('t-img-preview',        't-img-clear-btn',        comp?.image)
-    setImageField('t-active-img-preview', 't-active-img-clear-btn', comp?.activeImage)
+  if (uiType === 'switch') {
+    document.getElementById('t-label').value = comp?.label || ''
+    document.getElementById('t-color').value = comp?.color || '#1e293b'
+    const rawAt = comp?.action?.type || 'command'
+    const tAt = rawAt === 'toggle' ? 'command' : rawAt
+    document.getElementById('t-action-type').value = tAt
+    showSwitchActionFields(tAt)
+    document.getElementById('t-off-cmd').value = comp?.action?.off || ''
+    document.getElementById('t-on-cmd').value  = comp?.action?.on  || ''
+    if (tAt === 'builtin')  document.getElementById('t-builtin-key').value = comp?.action?.key || BUILTIN_ACTIONS[0].key
+    if (tAt === 'hotkey')   document.getElementById('t-hotkey').value       = comp?.action?.combo || ''
+    if (tAt === 'sequence') {
+      document.getElementById('t-sequence').value  = (comp?.action?.commands || []).join('\n')
+      document.getElementById('t-seq-delay').value = comp?.action?.delay ?? 150
+    }
+    if (tAt === 'page') fillPageSelect('t-page-target', comp?.action?.pageId)
   }
 
-  if (compType === 'slider') {
-    document.getElementById('s-label').value   = comp?.label        || ''
-    document.getElementById('s-color').value   = comp?.color        || '#1e293b'
-    document.getElementById('s-min').value     = comp?.min          ?? 0
-    document.getElementById('s-max').value     = comp?.max          ?? 100
-    document.getElementById('s-step').value    = comp?.step         ?? 5
-    document.getElementById('s-default').value = comp?.defaultValue ?? 50
+  if (uiType === 'slider') {
+    document.getElementById('s-label').value       = comp?.label        || ''
+    document.getElementById('s-color').value       = comp?.color        || '#1e293b'
+    document.getElementById('s-min').value         = comp?.min          ?? 0
+    document.getElementById('s-max').value         = comp?.max          ?? 100
+    document.getElementById('s-step').value        = comp?.step         ?? 5
+    document.getElementById('s-default').value     = comp?.defaultValue ?? 50
+    const sAt = comp?.action?.type || 'command'
+    document.getElementById('s-action-type').value = sAt
+    showSliderActionFields(sAt)
     document.getElementById('s-command').value = comp?.action?.command || ''
+    if (sAt === 'builtin')  document.getElementById('s-builtin-key').value = comp?.action?.key || BUILTIN_ACTIONS[0].key
+    if (sAt === 'hotkey')   document.getElementById('s-hotkey').value       = comp?.action?.combo || ''
+    if (sAt === 'sequence') {
+      document.getElementById('s-sequence').value  = (comp?.action?.commands || []).join('\n')
+      document.getElementById('s-seq-delay').value = comp?.action?.delay ?? 150
+    }
   }
 
-  if (compType === 'tile') {
+  if (uiType === 'knob') {
+    document.getElementById('k-label').value   = comp?.label        || ''
+    document.getElementById('k-color').value   = comp?.color        || '#1e293b'
+    document.getElementById('k-min').value     = comp?.min          ?? 0
+    document.getElementById('k-max').value     = comp?.max          ?? 100
+    document.getElementById('k-step').value    = comp?.step         ?? 1
+    document.getElementById('k-default').value = comp?.defaultValue ?? 50
+    const kAt = comp?.action?.type || 'command'
+    document.getElementById('k-action-type').value = kAt
+    showKnobActionFields(kAt)
+    document.getElementById('k-command').value = comp?.action?.command || ''
+    if (kAt === 'builtin')  document.getElementById('k-builtin-key').value = comp?.action?.key || BUILTIN_ACTIONS[0].key
+    if (kAt === 'hotkey')   document.getElementById('k-hotkey').value       = comp?.action?.combo || ''
+    if (kAt === 'sequence') {
+      document.getElementById('k-sequence').value  = (comp?.action?.commands || []).join('\n')
+      document.getElementById('k-seq-delay').value = comp?.action?.delay ?? 150
+    }
+  }
+
+  if (uiType === 'tile') {
     document.getElementById('tile-label').value    = comp?.label        || ''
     document.getElementById('tile-color').value    = comp?.color        || '#0f172a'
     document.getElementById('tile-command').value  = comp?.pollCommand  || ''
     document.getElementById('tile-interval').value = comp?.pollInterval ?? 5
+    document.getElementById('tile-format').value   = comp?.tileFormat   || '{value}'
+    document.getElementById('tile-tap-cmd').value  = comp?.tileTapCmd   || ''
   }
 
-  if (compType === 'spotify') {
+  if (uiType === 'spotify') {
     document.getElementById('sp-color').value = comp?.color || '#0f172a'
   }
 
-  if (compType === 'voice') {
-    document.getElementById('voice-icon').value  = comp?.icon      || '🎤'
-    document.getElementById('voice-label').value = comp?.label     || 'Voice'
-    document.getElementById('voice-color').value = comp?.color     || '#1e293b'
-    document.getElementById('voice-mode').value  = comp?.voiceMode || 'smart'
+  if (uiType === 'voice') {
+    document.getElementById('voice-icon').value    = comp?.icon         || '🎤'
+    document.getElementById('voice-label').value   = comp?.label        || 'Voice'
+    document.getElementById('voice-color').value   = comp?.color        || '#1e293b'
+    document.getElementById('voice-mode').value    = comp?.voiceMode    || 'smart'
+    document.getElementById('voice-command').value = comp?.voiceCommand || ''
+    document.getElementById('voice-cmd-field').style.display = (comp?.voiceMode === 'template') ? '' : 'none'
   }
 
-  if (compType === 'plugin-tile') {
+  if (uiType === 'plugin-tile') {
     document.getElementById('ptile-label').value     = comp?.label           || ''
     document.getElementById('ptile-color').value     = comp?.color           || '#0f172a'
     document.getElementById('ptile-plugin-id').value = comp?.pluginTileId    || ''
@@ -559,13 +742,14 @@ function openModal(pageIdx, compId, col, row) {
     document.getElementById('ptile-field').value     = comp?.pluginTileField || 'value'
   }
 
-  document.getElementById('modal').style.display = 'flex'
+  document.getElementById('drawer').classList.add('open')
 }
 
-function closeModal() { document.getElementById('modal').style.display = 'none'; editingComp = null }
+function closeModal() { document.getElementById('drawer').classList.remove('open'); editingComp = null }
 
-function populatePageTargets(selectedId = null) {
-  const sel = document.getElementById('f-page-target')
+function fillPageSelect(selId, selectedId = null) {
+  const sel = document.getElementById(selId)
+  if (!sel) return
   sel.innerHTML = ''
   config.pages.forEach(p => {
     const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.name
@@ -573,6 +757,7 @@ function populatePageTargets(selectedId = null) {
     sel.appendChild(opt)
   })
 }
+function populatePageTargets(selectedId = null) { fillPageSelect('f-page-target', selectedId) }
 
 function saveModal() {
   const { pageIdx, compId, col, row } = editingComp
@@ -607,31 +792,64 @@ function saveModal() {
     }
   }
 
-  if (currentCompType === 'toggle') {
+  if (currentCompType === 'switch' || currentCompType === 'toggle') {
+    const tAt = document.getElementById('t-action-type').value
+    let tAction
+    switch (tAt) {
+      case 'builtin':  tAction = { type: 'builtin',  key:      document.getElementById('t-builtin-key').value }; break
+      case 'hotkey':   tAction = { type: 'hotkey',   combo:    document.getElementById('t-hotkey').value.trim() }; break
+      case 'sequence': tAction = { type: 'sequence', commands: document.getElementById('t-sequence').value.split('\n').map(s => s.trim()).filter(Boolean), delay: parseInt(document.getElementById('t-seq-delay').value) || 150 }; break
+      case 'page':     tAction = { type: 'page',     pageId:   document.getElementById('t-page-target').value }; break
+      default:         tAction = { type: 'toggle',   on:       document.getElementById('t-on-cmd').value.trim(), off: document.getElementById('t-off-cmd').value.trim() }
+    }
     fields = {
-      componentType: 'toggle',
-      icon:        document.getElementById('t-icon').value.trim(),
-      label:       document.getElementById('t-label').value.trim(),
-      color:       document.getElementById('t-color').value,
-      image:       pendingImages.image       !== undefined ? pendingImages.image       : (existing?.image       ?? null),
-      activeIcon:  document.getElementById('t-active-icon').value.trim(),
-      activeLabel: document.getElementById('t-active-label').value.trim(),
-      activeColor: document.getElementById('t-active-color').value,
-      activeImage: pendingImages.activeImage !== undefined ? pendingImages.activeImage : (existing?.activeImage ?? null),
-      action: { type: 'toggle', on: document.getElementById('t-on-cmd').value.trim(), off: document.getElementById('t-off-cmd').value.trim() }
+      componentType: 'switch',
+      label:  document.getElementById('t-label').value.trim(),
+      color:  document.getElementById('t-color').value,
+      action: tAction
     }
   }
 
   if (currentCompType === 'slider') {
+    const sAt = document.getElementById('s-action-type').value
+    let sAction
+    switch (sAt) {
+      case 'builtin':  sAction = { type: 'builtin',  key:      document.getElementById('s-builtin-key').value }; break
+      case 'hotkey':   sAction = { type: 'hotkey',   combo:    document.getElementById('s-hotkey').value.trim() }; break
+      case 'sequence': sAction = { type: 'sequence', commands: document.getElementById('s-sequence').value.split('\n').map(s => s.trim()).filter(Boolean), delay: parseInt(document.getElementById('s-seq-delay').value) || 150 }; break
+      default:         sAction = { type: 'command',  command:  document.getElementById('s-command').value.trim() }
+    }
     fields = {
       componentType: 'slider',
       label:        document.getElementById('s-label').value.trim(),
       color:        document.getElementById('s-color').value,
+      orientation:  existing?.orientation || 'vertical',
       min:          parseFloat(document.getElementById('s-min').value)     || 0,
       max:          parseFloat(document.getElementById('s-max').value)     || 100,
       step:         parseFloat(document.getElementById('s-step').value)    || 5,
       defaultValue: parseFloat(document.getElementById('s-default').value) || 50,
-      action: { type: 'command', command: document.getElementById('s-command').value.trim() }
+      action:       sAction
+    }
+  }
+
+  if (currentCompType === 'knob') {
+    const kAt = document.getElementById('k-action-type').value
+    let kAction
+    switch (kAt) {
+      case 'builtin':  kAction = { type: 'builtin',  key:      document.getElementById('k-builtin-key').value }; break
+      case 'hotkey':   kAction = { type: 'hotkey',   combo:    document.getElementById('k-hotkey').value.trim() }; break
+      case 'sequence': kAction = { type: 'sequence', commands: document.getElementById('k-sequence').value.split('\n').map(s => s.trim()).filter(Boolean), delay: parseInt(document.getElementById('k-seq-delay').value) || 150 }; break
+      default:         kAction = { type: 'command',  command:  document.getElementById('k-command').value.trim() }
+    }
+    fields = {
+      componentType: 'knob',
+      label:        document.getElementById('k-label').value.trim(),
+      color:        document.getElementById('k-color').value,
+      min:          parseFloat(document.getElementById('k-min').value)     || 0,
+      max:          parseFloat(document.getElementById('k-max').value)     || 100,
+      step:         parseFloat(document.getElementById('k-step').value)    || 1,
+      defaultValue: parseFloat(document.getElementById('k-default').value) || 50,
+      action:       kAction
     }
   }
 
@@ -641,7 +859,9 @@ function saveModal() {
       label:        document.getElementById('tile-label').value.trim(),
       color:        document.getElementById('tile-color').value,
       pollCommand:  document.getElementById('tile-command').value.trim(),
-      pollInterval: parseInt(document.getElementById('tile-interval').value) || 5
+      pollInterval: parseInt(document.getElementById('tile-interval').value) || 5,
+      tileFormat:   document.getElementById('tile-format').value.trim() || '{value}',
+      tileTapCmd:   document.getElementById('tile-tap-cmd').value.trim()
     }
   }
 
@@ -655,13 +875,13 @@ function saveModal() {
 
   if (currentCompType === 'voice') {
     const mode = document.getElementById('voice-mode').value
-    if (mode === 'ai' && !proStatus.active) { showUpgradeModal(); return }
     fields = {
       componentType: 'voice',
-      icon:      document.getElementById('voice-icon').value.trim() || '🎤',
-      label:     document.getElementById('voice-label').value.trim() || 'Voice',
-      color:     document.getElementById('voice-color').value,
-      voiceMode: mode
+      icon:         document.getElementById('voice-icon').value.trim() || '🎤',
+      label:        document.getElementById('voice-label').value.trim() || 'Voice',
+      color:        document.getElementById('voice-color').value,
+      voiceMode:    mode,
+      voiceCommand: document.getElementById('voice-command').value.trim()
     }
   }
 
@@ -712,14 +932,142 @@ function openPageModal() {
   document.getElementById('f-page-name').focus()
 }
 
+// ── Component panel ───────────────────────────────────
+function cpTypeIcon(compType) {
+  const icons = { button: '⬛', switch: '⊙', slider: '▮', knob: '◎', tile: '📊', spotify: '🎵', voice: '🎤', 'plugin-tile': '🔌' }
+  return icons[compType] || '⬛'
+}
+
+function compDefaults(compType) {
+  const base = { label: '', color: '#1e293b' }
+  switch (compType) {
+    case 'button':      return { ...base, icon: '', action: { type: 'builtin', key: 'media.playPause' }, holdAction: null }
+    case 'switch':      return { ...base, action: { type: 'toggle', on: '', off: '' } }
+    case 'slider':      return { ...base, orientation: 'vertical', min: 0, max: 100, step: 5, defaultValue: 50, action: { type: 'command', command: '' } }
+    case 'knob':        return { ...base, min: 0, max: 100, step: 1, defaultValue: 50, action: { type: 'command', command: '' } }
+    case 'tile':        return { ...base, color: '#0f172a', pollCommand: '', pollInterval: 5 }
+    case 'spotify':     return { color: '#0f172a', label: '', action: { type: 'builtin', key: 'media.playPause' } }
+    case 'voice':       return { icon: '🎤', label: 'Voice', color: '#1e293b', voiceMode: 'smart' }
+    case 'plugin-tile': return { ...base, color: '#0f172a', pluginTileId: '', pluginTileEvent: '', pluginTileField: 'value' }
+    default: return base
+  }
+}
+
+function createComponentAtCell(compType, pluginKey, label, col, row, options = {}) {
+  const page = config.pages[currentPageIdx]
+  const id   = `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+  const defs = compDefaults(compType)
+  Object.assign(defs, options)
+  if (pluginKey) defs.action = { type: 'plugin', pluginKey, params: {} }
+  const comp = { id, col, row, colSpan: 1, rowSpan: 1, componentType: compType, ...defs }
+  page.components.push(comp)
+  pushConfig()
+  renderGrid()
+  openModal(currentPageIdx, id, col, row)
+}
+
+const cpCollapsed = new Set()
+
+function makeCpSection(title, items) {
+  const section = document.createElement('div')
+  section.className = 'cp-section'
+
+  const hdr = document.createElement('div')
+  hdr.className = 'cp-section-title cp-collapsible'
+  const isCollapsed = cpCollapsed.has(title)
+  hdr.innerHTML = `<span>${title}</span><span class="cp-chevron">${isCollapsed ? '▸' : '▾'}</span>`
+
+  const grid = document.createElement('div')
+  grid.className = 'cp-grid'
+  if (isCollapsed) grid.style.display = 'none'
+
+  hdr.addEventListener('click', () => {
+    const collapsed = grid.style.display === 'none'
+    grid.style.display = collapsed ? '' : 'none'
+    hdr.querySelector('.cp-chevron').textContent = collapsed ? '▾' : '▸'
+    if (collapsed) cpCollapsed.delete(title)
+    else cpCollapsed.add(title)
+  })
+
+  for (const item of items) {
+    const el = document.createElement('div')
+    el.className = 'cp-item'
+    el.draggable = true
+    el.innerHTML = `<span class="cp-icon">${item.icon}</span><span class="cp-name">${item.label}</span><span class="cp-type">${item.compType}</span>`
+    el.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('application/json', JSON.stringify({
+        compType: item.compType,
+        pluginKey: item.pluginKey,
+        label: item.label,
+        options: item.options || {}
+      }))
+      e.dataTransfer.effectAllowed = 'copy'
+    })
+    grid.appendChild(el)
+  }
+
+  section.appendChild(hdr)
+  section.appendChild(grid)
+  return section
+}
+
+function renderComponentPanel() {
+  const panel = document.getElementById('component-panel')
+  if (!panel) return
+  panel.innerHTML = '<div class="cp-panel-title">Components</div>'
+
+  const coreItems = [
+    { compType: 'button', pluginKey: null, label: 'Button',   icon: '⬛', options: {} },
+    { compType: 'switch', pluginKey: null, label: 'Switch',   icon: '⊙',  options: {} },
+    { compType: 'slider', pluginKey: null, label: 'Slider ↕', icon: '▮',  options: {} },
+    { compType: 'slider', pluginKey: null, label: 'Slider ↔', icon: '▬',  options: { orientation: 'horizontal' } },
+    { compType: 'knob',   pluginKey: null, label: 'Knob',     icon: '◎',  options: {} },
+    { compType: 'tile',   pluginKey: null, label: 'Info Tile',icon: '📊', options: {} },
+    { compType: 'voice',  pluginKey: null, label: 'Voice',    icon: '🎤', options: {} },
+  ]
+  panel.appendChild(makeCpSection('Controls', coreItems))
+
+  if (loadedPlugins.length) {
+    const pluginsCollapsed = cpCollapsed.has('__plugins__')
+    const pluginsHdr = document.createElement('div')
+    pluginsHdr.className = 'cp-plugins-hdr cp-collapsible'
+    pluginsHdr.innerHTML = `<span>Plugins</span><span class="cp-chevron">${pluginsCollapsed ? '▸' : '▾'}</span>`
+
+    const pluginsBody = document.createElement('div')
+    pluginsBody.className = 'cp-plugins-body'
+    if (pluginsCollapsed) pluginsBody.style.display = 'none'
+
+    pluginsHdr.addEventListener('click', () => {
+      const collapsed = pluginsBody.style.display === 'none'
+      pluginsBody.style.display = collapsed ? '' : 'none'
+      pluginsHdr.querySelector('.cp-chevron').textContent = collapsed ? '▾' : '▸'
+      if (collapsed) cpCollapsed.delete('__plugins__')
+      else cpCollapsed.add('__plugins__')
+    })
+
+    for (const plugin of loadedPlugins) {
+      if (!plugin.actions?.length) continue
+      const items = plugin.actions.map(a => ({
+        compType:  a.componentType || 'button',
+        pluginKey: a.key,
+        label:     a.label,
+        icon:      cpTypeIcon(a.componentType || 'button'),
+        options:   {}
+      }))
+      pluginsBody.appendChild(makeCpSection(plugin.name, items))
+    }
+
+    panel.appendChild(pluginsHdr)
+    panel.appendChild(pluginsBody)
+  }
+}
+
 // ── Event wiring ──────────────────────────────────────
-document.querySelectorAll('.type-tab').forEach(btn => btn.addEventListener('click', () => setCompType(btn.dataset.type)))
 document.getElementById('f-action-type').addEventListener('change', e => showActionFields(e.target.value))
 document.getElementById('f-hold-enable').addEventListener('change', e => { document.getElementById('hold-fields').style.display = e.target.checked ? 'block' : 'none' })
-document.getElementById('modal-close').addEventListener('click', closeModal)
+document.getElementById('drawer-close').addEventListener('click', closeModal)
 document.getElementById('modal-save').addEventListener('click', saveModal)
 document.getElementById('modal-delete').addEventListener('click', deleteComp)
-document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal() })
 document.getElementById('add-page-btn').addEventListener('click', openPageModal)
 document.getElementById('marketplace-btn').addEventListener('click', () => window.api.openMarketplace())
 document.getElementById('page-modal-close').addEventListener('click', closePageModal)
@@ -731,15 +1079,6 @@ document.getElementById('autostart-toggle').addEventListener('change', e => {
   window.api.setAutostart(e.target.checked)
 })
 
-
-document.getElementById('claude-save-btn').addEventListener('click', () => {
-  const key = document.getElementById('claude-api-key').value.trim()
-  if (!key) return
-  config.claudeApiKey = key
-  document.getElementById('claude-api-key').value = ''
-  document.getElementById('claude-api-key').placeholder = '••••••••••••••••••••'
-  pushConfig()
-})
 
 // ── Grid settings ──────────────────────────────────────
 document.getElementById('grid-save-btn').addEventListener('click', () => {
@@ -776,74 +1115,5 @@ document.getElementById('rename-modal').addEventListener('click', (e) => {
 })
 document.getElementById('rename-modal-save').addEventListener('click', saveRename)
 document.getElementById('f-rename-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveRename() })
-
-// ── Pro license UI ─────────────────────────────────────
-function renderProStatus() {
-  const badge        = document.getElementById('pro-badge')
-  const activeView   = document.getElementById('pro-active-view')
-  const inactiveView = document.getElementById('pro-inactive-view')
-  if (proStatus.active) {
-    badge.textContent  = 'Pro'
-    badge.className    = 'pro-badge pro-badge-pro'
-    activeView.style.display   = ''
-    inactiveView.style.display = 'none'
-  } else {
-    badge.textContent  = 'Free'
-    badge.className    = 'pro-badge pro-badge-free'
-    activeView.style.display   = 'none'
-    inactiveView.style.display = ''
-  }
-}
-
-function wireProSection() {
-  document.getElementById('pro-buy-link').href = PURCHASE_URL
-  document.getElementById('pro-buy-link').addEventListener('click', (e) => {
-    e.preventDefault()
-    window.api.openMarketplace && window.open ? null : null
-    // openExternal via server-info link trick — just open directly
-    const a = document.createElement('a')
-    a.href = PURCHASE_URL; a.target = '_blank'; a.rel = 'noopener'; a.click()
-  })
-
-  document.getElementById('pro-activate-btn').addEventListener('click', async () => {
-    const key = document.getElementById('pro-license-key').value.trim()
-    const err = document.getElementById('pro-error')
-    err.style.display = 'none'
-    if (!key) return
-    const result = await window.api.activateLicense(key)
-    if (result.ok) {
-      proStatus = await window.api.getProStatus()
-      renderProStatus()
-      document.getElementById('pro-license-key').value = ''
-    } else {
-      err.textContent = result.error || 'Activation failed'
-      err.style.display = ''
-    }
-  })
-
-  document.getElementById('pro-deactivate-btn').addEventListener('click', async () => {
-    await window.api.deactivateLicense()
-    proStatus = { active: false }
-    renderProStatus()
-  })
-
-  // Upgrade modal
-  document.getElementById('upgrade-modal-close').addEventListener('click', closeUpgradeModal)
-  document.getElementById('upgrade-modal').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('upgrade-modal')) closeUpgradeModal()
-  })
-  document.getElementById('upgrade-buy-btn').addEventListener('click', () => {
-    const a = document.createElement('a')
-    a.href = PURCHASE_URL; a.target = '_blank'; a.rel = 'noopener'; a.click()
-  })
-}
-
-function showUpgradeModal() {
-  document.getElementById('upgrade-modal').style.display = 'flex'
-}
-
-function closeUpgradeModal() {
-  document.getElementById('upgrade-modal').style.display = 'none'
-}
 
 init()

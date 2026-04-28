@@ -1,0 +1,45 @@
+{
+  "id": "spotify",
+  "name": "Spotify",
+  "version": "1.0.0",
+  "description": "Control Spotify playback — play/pause, skip tracks, adjust volume, and show now-playing info.",
+  "author": "Stream Deck",
+  "actions": [
+    {
+      "key": "spotify.playPause",
+      "label": "Play / Pause",
+      "componentType": "button",
+      "description": "Toggle Spotify play/pause"
+    },
+    {
+      "key": "spotify.next",
+      "label": "Next Track",
+      "componentType": "button",
+      "description": "Skip to next track"
+    },
+    {
+      "key": "spotify.previous",
+      "label": "Previous Track",
+      "componentType": "button",
+      "description": "Go to previous track"
+    },
+    {
+      "key": "spotify.volumeUp",
+      "label": "Volume Up",
+      "componentType": "slider",
+      "description": "Increase Spotify volume"
+    },
+    {
+      "key": "spotify.volumeDown",
+      "label": "Volume Down",
+      "componentType": "slider",
+      "description": "Decrease Spotify volume"
+    },
+    {
+      "key": "spotify.nowPlaying",
+      "label": "Now Playing",
+      "componentType": "tile",
+      "description": "Displays current track and artist"
+    }
+  ]
+}

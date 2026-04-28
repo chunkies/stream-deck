@@ -9,6 +9,7 @@ const SHELL = os.platform() === 'win32' ? 'cmd.exe' : '/bin/sh'
 
 function createSDK(pluginId, pluginsDataDir, broadcastFn) {
   const storageFile = path.join(pluginsDataDir, `${pluginId}.json`)
+  const _handlers   = {}
 
   function loadStorage() {
     try { return JSON.parse(fs.readFileSync(storageFile, 'utf8')) } catch { return {} }
@@ -55,7 +56,23 @@ function createSDK(pluginId, pluginsDataDir, broadcastFn) {
     },
 
     // Broadcast a message to all connected PWA clients
-    broadcast: (event) => broadcastFn({ type: 'pluginEvent', pluginId, ...event }),
+    broadcast: (event, data) => {
+      const payload = (typeof event === 'string' && data)
+        ? { type: 'pluginEvent', pluginId, event, ...data }
+        : { type: 'pluginEvent', pluginId, ...event }
+      broadcastFn(payload)
+    },
+
+    // Register an action handler (key → async fn)
+    on: (key, fn) => { _handlers[key] = fn },
+
+    // Emit an action (called by the server when a button/slider fires)
+    emit: async (key, params) => {
+      if (_handlers[key]) await _handlers[key](params)
+    },
+
+    // Internal: used by the plugin loader to extract registered handlers
+    _handlers,
 
     // WebSocket constructor (ws package) — lets plugins open outbound WS connections
     // without bundling ws themselves
