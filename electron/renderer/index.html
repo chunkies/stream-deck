@@ -84,6 +84,35 @@
       </div>
     </div>
 
+    <!-- Grid settings -->
+    <div class="obs-block">
+      <div class="section-label">Grid</div>
+      <div style="display:flex;gap:8px">
+        <div class="obs-field" style="flex:1">
+          <label>Columns</label>
+          <input id="grid-cols" type="number" value="3" min="1" max="8">
+        </div>
+        <div class="obs-field" style="flex:1">
+          <label>Rows</label>
+          <input id="grid-rows" type="number" value="4" min="1" max="8">
+        </div>
+      </div>
+      <div class="obs-actions" style="margin-top:2px">
+        <button id="grid-save-btn" class="btn-secondary">Apply</button>
+        <span class="field-hint" style="font-size:11px">Per-page cols override this</span>
+      </div>
+    </div>
+
+    <!-- Import / export -->
+    <div class="obs-block">
+      <div class="section-label">Layout</div>
+      <div class="obs-actions" style="gap:6px">
+        <button id="export-btn" class="btn-secondary" style="flex:1">Export</button>
+        <button id="import-btn" class="btn-secondary" style="flex:1">Import</button>
+      </div>
+      <div class="field-hint" style="font-size:11px;margin-top:2px">Backup or restore your button layout</div>
+    </div>
+
     <!-- Actions -->
     <div class="sidebar-actions">
       <button id="add-page-btn" class="btn-secondary">+ Add Page</button>
@@ -393,6 +422,22 @@
     </div>
     <div class="modal-footer">
       <button id="page-modal-save" class="btn-primary">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Rename Page Modal ── -->
+<div class="modal-overlay" id="rename-modal" style="display:none">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <h2>Rename Page</h2>
+      <button class="modal-close" id="rename-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row"><label>Name</label><input id="f-rename-name" type="text" placeholder="Page name"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="rename-modal-save" class="btn-primary">Rename</button>
     </div>
   </div>
 </div>

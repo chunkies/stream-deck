@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('api', {
   getProStatus:       ()        => ipcRenderer.invoke('get-pro-status'),
   activateLicense:    (key)     => ipcRenderer.invoke('activate-license', key),
   deactivateLicense:  ()        => ipcRenderer.invoke('deactivate-license'),
+  exportConfig:       ()        => ipcRenderer.invoke('export-config'),
+  importConfig:       ()        => ipcRenderer.invoke('import-config'),
   onDeckEvent:   (cb)           => ipcRenderer.on('deck-event',   (_, e) => cb(e)),
   onServerReady: (cb)           => ipcRenderer.on('server-ready', (_, i) => cb(i))
 })

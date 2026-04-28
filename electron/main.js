@@ -273,6 +273,38 @@ ipcMain.handle('deactivate-license', () => {
   return { ok: true }
 })
 
+// ── Config import / export ────────────────────────────
+ipcMain.handle('export-config', async () => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export layout',
+    defaultPath: 'stream-deck-layout.json',
+    filters: [{ name: 'JSON', extensions: ['json'] }]
+  })
+  if (result.canceled || !result.filePath) return { ok: false }
+  const cfg = server.getConfig()
+  fs.writeFileSync(result.filePath, JSON.stringify(cfg, null, 2))
+  return { ok: true }
+})
+
+ipcMain.handle('import-config', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Import layout',
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+    properties: ['openFile']
+  })
+  if (result.canceled || !result.filePaths.length) return { ok: false }
+  let parsed
+  try { parsed = JSON.parse(fs.readFileSync(result.filePaths[0], 'utf8')) } catch {
+    return { ok: false, error: 'Invalid JSON file' }
+  }
+  if (!parsed.pages || !Array.isArray(parsed.pages)) return { ok: false, error: 'Not a valid layout file' }
+  // Strip sensitive fields from imported config
+  delete parsed.claudeApiKey
+  delete parsed.pro
+  server.setConfig(parsed)
+  return { ok: true, config: server.getConfig() }
+})
+
 ipcMain.handle('mp:load-local', async (event) => {
   const result = await dialog.showOpenDialog(marketplaceWindow || mainWindow, {
     title: 'Select plugin folder',

@@ -62,6 +62,10 @@ async function init() {
     document.getElementById('claude-api-key').placeholder = '••••••••••••••••••••'
   }
 
+  // Grid settings
+  document.getElementById('grid-cols').value = config.grid.cols
+  document.getElementById('grid-rows').value = config.grid.rows
+
   // Pro license
   proStatus = await window.api.getProStatus()
   renderProStatus()
@@ -255,14 +259,17 @@ function wireOBSActionSelect() {
 // ── Rendering ─────────────────────────────────────────
 function renderAll() { renderTabs(); renderGrid() }
 
+let renamingPageIdx = null
+
 function renderTabs() {
   const tabs = document.getElementById('page-tabs')
   tabs.innerHTML = ''
   config.pages.forEach((page, i) => {
     const tab = document.createElement('div')
     tab.className = 'tab' + (i === currentPageIdx ? ' active' : '')
-    tab.innerHTML = `<span>${page.name}</span>${config.pages.length > 1 ? `<button class="tab-del" data-i="${i}">✕</button>` : ''}`
+    tab.innerHTML = `<span class="tab-name">${page.name}</span>${config.pages.length > 1 ? `<button class="tab-del" data-i="${i}">✕</button>` : ''}`
     tab.addEventListener('click', (e) => { if (!e.target.classList.contains('tab-del')) { currentPageIdx = i; renderAll() } })
+    tab.querySelector('.tab-name').addEventListener('dblclick', (e) => { e.stopPropagation(); openRenameModal(i) })
     tabs.appendChild(tab)
   })
   tabs.querySelectorAll('.tab-del').forEach(btn => {
@@ -274,6 +281,27 @@ function renderTabs() {
       pushConfig(); renderAll()
     })
   })
+}
+
+function openRenameModal(pageIdx) {
+  renamingPageIdx = pageIdx
+  document.getElementById('f-rename-name').value = config.pages[pageIdx].name
+  document.getElementById('rename-modal').style.display = 'flex'
+  setTimeout(() => document.getElementById('f-rename-name').select(), 50)
+}
+
+function closeRenameModal() {
+  document.getElementById('rename-modal').style.display = 'none'
+  renamingPageIdx = null
+}
+
+function saveRename() {
+  if (renamingPageIdx === null) return
+  const name = document.getElementById('f-rename-name').value.trim()
+  if (!name) return
+  config.pages[renamingPageIdx].name = name
+  pushConfig(); renderTabs()
+  closeRenameModal()
 }
 
 function renderGrid() {
@@ -686,6 +714,42 @@ document.getElementById('claude-save-btn').addEventListener('click', () => {
   document.getElementById('claude-api-key').placeholder = '••••••••••••••••••••'
   pushConfig()
 })
+
+// ── Grid settings ──────────────────────────────────────
+document.getElementById('grid-save-btn').addEventListener('click', () => {
+  const cols = parseInt(document.getElementById('grid-cols').value)
+  const rows = parseInt(document.getElementById('grid-rows').value)
+  if (!cols || !rows || cols < 1 || rows < 1) return
+  config.grid.cols = cols
+  config.grid.rows = rows
+  pushConfig(); renderAll()
+})
+
+// ── Import / export ────────────────────────────────────
+document.getElementById('export-btn').addEventListener('click', async () => {
+  await window.api.exportConfig()
+})
+
+document.getElementById('import-btn').addEventListener('click', async () => {
+  const result = await window.api.importConfig()
+  if (!result.ok) {
+    if (result.error) alert(result.error)
+    return
+  }
+  config = result.config
+  document.getElementById('grid-cols').value = config.grid.cols
+  document.getElementById('grid-rows').value = config.grid.rows
+  currentPageIdx = 0
+  renderAll()
+})
+
+// ── Rename page modal ──────────────────────────────────
+document.getElementById('rename-modal-close').addEventListener('click', closeRenameModal)
+document.getElementById('rename-modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('rename-modal')) closeRenameModal()
+})
+document.getElementById('rename-modal-save').addEventListener('click', saveRename)
+document.getElementById('f-rename-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveRename() })
 
 // ── Pro license UI ─────────────────────────────────────
 function renderProStatus() {
