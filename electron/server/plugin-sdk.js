@@ -20,7 +20,9 @@ function createSDK(pluginId, pluginsDataDir, broadcastFn) {
   }
 
   return {
-    // Run shell commands
+    // Run shell commands.
+    // exec() is synchronous — blocks the server thread for the duration. Only use it for
+    // fast commands (<50ms, e.g. reading /proc files). Use execAsync() for everything else.
     shell: {
       exec: (cmd, opts = {}) =>
         execSync(cmd, { shell: SHELL, timeout: opts.timeout || 5000 }).toString().trim(),

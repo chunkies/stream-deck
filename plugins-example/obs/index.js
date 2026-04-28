@@ -75,7 +75,7 @@ module.exports = (sdk) => {
 
   // ── Handlers ──────────────────────────────────────────
   return {
-    'obs.connect': async ({ params }) => {
+    'obs.connect': async (params) => {
       const host     = params.host     || 'localhost'
       const port     = parseInt(params.port) || 4455
       const password = params.password || ''
@@ -88,7 +88,7 @@ module.exports = (sdk) => {
       sdk.log.info('OBS connected and credentials saved')
     },
 
-    'obs.switchScene': async ({ params }) => {
+    'obs.switchScene': async (params) => {
       const ws = await getOBS()
       sendRequest(ws, 'SetCurrentProgramScene', { sceneName: params.scene })
     },
@@ -103,7 +103,7 @@ module.exports = (sdk) => {
       sendRequest(ws, 'ToggleStream')
     },
 
-    'obs.muteToggle': async ({ params }) => {
+    'obs.muteToggle': async (params) => {
       const ws = await getOBS()
       sendRequest(ws, 'ToggleInputMute', { inputName: params.source })
     }

@@ -11,6 +11,11 @@ const { execSync, exec }                               = require('child_process'
 const { getCert }                                      = require('./cert')
 const { executeCommand, executeBuiltin, executeHotkey, OS } = require('./keyboard')
 const { PLATFORMS, ACTION_TYPES, COMPONENT_TYPES, MESSAGE_TYPES, TIMINGS } = require('./constants')
+const { semverGt } = require('./plugin-installer')
+
+const APP_VERSION = (() => {
+  try { return require('../../package.json').version } catch { return '0.0.0' }
+})()
 
 const DEFAULT_CONFIG = {
   grid: { cols: 3, rows: 4 },
@@ -108,6 +113,12 @@ function loadPlugins(pluginsDir) {
       if (!fs.existsSync(manifestPath) || !fs.existsSync(indexPath)) continue
 
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+
+      if (manifest.minAppVersion && semverGt(manifest.minAppVersion, APP_VERSION)) {
+        console.warn(`Plugin "${manifest.id}" requires MacroPad v${manifest.minAppVersion} (current: v${APP_VERSION}) — skipping`)
+        continue
+      }
+
       const raw       = require(indexPath)
 
       // Support two plugin patterns:
