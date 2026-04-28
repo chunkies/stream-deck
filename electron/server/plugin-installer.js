@@ -149,14 +149,11 @@ function loadLocalPlugin(srcDir, pluginsDir) {
 
   const destDir = path.join(pluginsDir, manifest.id)
   if (fs.existsSync(destDir)) fs.rmSync(destDir, { recursive: true })
-  fs.mkdirSync(destDir, { recursive: true })
 
-  // Copy all plugin files
-  for (const f of fs.readdirSync(srcDir)) {
-    fs.copyFileSync(path.join(srcDir, f), path.join(destDir, f))
-  }
+  // Recursive copy — handles subdirectories (lib/, assets/, etc.)
+  fs.cpSync(srcDir, destDir, { recursive: true })
 
-  // Mark as local dev plugin
+  // Mark as local dev plugin so update checks skip it
   manifest._local = true
   fs.writeFileSync(path.join(destDir, 'manifest.json'), JSON.stringify(manifest, null, 2))
   return manifest

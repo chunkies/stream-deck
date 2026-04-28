@@ -318,6 +318,93 @@ function handleSlide(pageId, slotIndex, value) {
   }
 }
 
+// ── Voice command ──────────────────────────────────────
+async function handleVoiceCommand(transcript, pageId, slotIndex, voiceMode) {
+  if (!transcript) return
+  const mode = voiceMode || 'smart'
+  console.log(`Voice [${mode}]: "${transcript}"`)
+
+  if (mode === 'command') {
+    executeCommand(transcript)
+    return
+  }
+
+  if (mode === 'smart') {
+    const allSlots = config.pages.flatMap(pg =>
+      (pg.slots || []).filter(Boolean).map((s, idx) => ({ slot: s, page: pg, idx }))
+    ).filter(e => e.slot.label)
+
+    const q = transcript.toLowerCase()
+    let best = null; let bestScore = 0
+    for (const entry of allSlots) {
+      const label = entry.slot.label.toLowerCase()
+      const words = q.split(/\s+/)
+      const hits  = words.filter(w => w.length > 2 && label.includes(w)).length
+      const score = hits / words.length
+      if (score > bestScore) { bestScore = score; best = entry }
+    }
+
+    if (best && bestScore >= 0.3) {
+      handlePress(best.page.id, best.idx, false)
+      broadcast({ type: 'voiceResult', matched: best.slot.label, transcript })
+    } else {
+      broadcast({ type: 'voiceResult', matched: null, transcript })
+    }
+    return
+  }
+
+  if (mode === 'ai' && config.claudeApiKey) {
+    try {
+      const allSlots = config.pages.flatMap(pg =>
+        (pg.slots || []).filter(Boolean).map((s, idx) => ({ label: s.label, pageId: pg.id, idx }))
+      ).filter(e => e.label)
+
+      const buttonList = allSlots.map((e, i) => `${i}: ${e.label}`).join('\n')
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': config.claudeApiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 64,
+          messages: [{
+            role: 'user',
+            content: `User said: "${transcript}"\n\nButtons:\n${buttonList}\n\nReply with JSON only — one of:\n{"button":0} to press button by index\n{"command":"shell cmd"} to run a command\n{"none":true} if nothing fits`
+          }]
+        }),
+        signal: AbortSignal.timeout(8000)
+      })
+
+      if (!res.ok) throw new Error(`Claude API ${res.status}`)
+      const data   = await res.json()
+      const text   = data.content?.[0]?.text?.trim() || '{}'
+      const result = JSON.parse(text)
+
+      if (result.button !== undefined && allSlots[result.button]) {
+        const target = allSlots[result.button]
+        handlePress(target.pageId, target.idx, false)
+        broadcast({ type: 'voiceResult', matched: target.label, transcript })
+      } else if (result.command) {
+        executeCommand(result.command)
+        broadcast({ type: 'voiceResult', matched: result.command, transcript })
+      } else {
+        broadcast({ type: 'voiceResult', matched: null, transcript })
+      }
+    } catch (err) {
+      console.error('Voice AI error:', err.message)
+      broadcast({ type: 'voiceResult', matched: null, transcript })
+    }
+    return
+  }
+
+  // AI mode but no key — fall back to smart
+  handleVoiceCommand(transcript, pageId, slotIndex, 'smart')
+}
+
 // ── Public API ─────────────────────────────────────────
 function getConfig()  { return config }
 function getInfo()    { return serverInfo }
@@ -392,8 +479,9 @@ async function start(onEvent, port = 3000, paths = {}) {
     ws.on('message', (data) => {
       try {
         const event = JSON.parse(data.toString())
-        if (event.type === 'press') { handlePress(event.pageId, event.slot, event.hold || false); onEvent(event) }
-        if (event.type === 'slide') { handleSlide(event.pageId, event.slot, event.value); onEvent(event) }
+        if (event.type === 'press')        { handlePress(event.pageId, event.slot, event.hold || false); onEvent(event) }
+        if (event.type === 'slide')        { handleSlide(event.pageId, event.slot, event.value); onEvent(event) }
+        if (event.type === 'voiceCommand') { handleVoiceCommand(event.transcript, event.pageId, event.slot, event.voiceMode) }
       } catch {}
     })
 

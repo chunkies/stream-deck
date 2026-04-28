@@ -5,25 +5,44 @@ let config         = null
 let currentPageIdx = 0
 let toggleStates   = {}
 let touchStartX    = 0
+let reconnectTimer = null
 
-const grid       = document.getElementById('grid')
-const pageDots   = document.getElementById('page-dots')
-const pageNameEl = document.getElementById('page-name')
-const wsStatusEl = document.getElementById('ws-status')
-const wsDotEl    = document.getElementById('ws-dot')
+const grid         = document.getElementById('grid')
+const pageDots     = document.getElementById('page-dots')
+const pageNameEl   = document.getElementById('page-name')
+const wsStatusEl   = document.getElementById('ws-status')
+const wsDotEl      = document.getElementById('ws-dot')
+const offlineEl    = document.getElementById('offline-overlay')
 
 // ── WebSocket ─────────────────────────────────────────
 function connect() {
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
   ws = new WebSocket(`wss://${location.hostname}:${location.port}`)
-  ws.onopen  = () => { wsStatusEl.textContent = 'Connected';    wsDotEl.className = 'dot connected' }
-  ws.onclose = () => { wsStatusEl.textContent = 'Disconnected'; wsDotEl.className = 'dot disconnected'; setTimeout(connect, 2000) }
+
+  ws.onopen = () => {
+    wsStatusEl.textContent = 'Connected'
+    wsDotEl.className = 'dot connected'
+    offlineEl.classList.remove('visible')
+  }
+
+  ws.onclose = () => {
+    wsStatusEl.textContent = 'Reconnecting…'
+    wsDotEl.className = 'dot disconnected'
+    offlineEl.classList.add('visible')
+    reconnectTimer = setTimeout(connect, 2500)
+  }
+
+  ws.onerror = () => ws.close()
+
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data)
     if (msg.type === 'config')        { config = msg.config; currentPageIdx = 0; toggleStates = {}; render() }
     if (msg.type === 'toggleState')   { toggleStates[msg.key] = msg.active; updateToggleBtn(msg.key, msg.active) }
     if (msg.type === 'tileUpdate')    { updateTile(msg.key, msg.text) }
     if (msg.type === 'spotifyUpdate') { updateSpotifyTile(msg) }
-    if (msg.type === 'navigate')      {
+    if (msg.type === 'voiceResult')   { showVoiceResult(msg.matched, msg.transcript) }
+    if (msg.type === 'pluginEvent')   { updatePluginTile(msg.pluginId, msg.event, msg) }
+    if (msg.type === 'navigate') {
       const idx = config?.pages.findIndex(p => p.id === msg.pageId)
       if (idx >= 0) { currentPageIdx = idx; render() }
     }
@@ -36,8 +55,9 @@ function send(data) { if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.string
 function render() { if (!config) return; renderGrid(); renderDots() }
 
 function renderGrid() {
-  const page       = config.pages[currentPageIdx]
-  const { cols, rows } = config.grid
+  const page = config.pages[currentPageIdx]
+  const cols = page.cols || config.grid.cols
+  const rows = config.grid.rows
   grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`
   grid.style.gridTemplateRows    = `repeat(${rows}, 1fr)`
   grid.innerHTML = ''
@@ -49,11 +69,13 @@ function renderGrid() {
     if (!slot) { const el = document.createElement('div'); el.className = 'btn empty'; grid.appendChild(el); continue }
 
     switch (slot.componentType) {
-      case 'slider':  grid.appendChild(createSlider(slot, page, i));  break
-      case 'toggle':  grid.appendChild(createToggle(slot, page, i));  break
-      case 'tile':    grid.appendChild(createTile(slot, page, i));    break
-      case 'spotify': grid.appendChild(createSpotifyTile(slot, page, i)); break
-      default:        grid.appendChild(createButton(slot, page, i));  break
+      case 'slider':      grid.appendChild(createSlider(slot, page, i));      break
+      case 'toggle':      grid.appendChild(createToggle(slot, page, i));      break
+      case 'tile':        grid.appendChild(createTile(slot, page, i));        break
+      case 'spotify':     grid.appendChild(createSpotifyTile(slot, page, i)); break
+      case 'voice':       grid.appendChild(createVoiceButton(slot, page, i)); break
+      case 'plugin-tile': grid.appendChild(createPluginTile(slot, page, i));  break
+      default:            grid.appendChild(createButton(slot, page, i));      break
     }
   }
 }
@@ -179,6 +201,32 @@ function updateTile(key, text) {
   if (el) el.textContent = text
 }
 
+// ── Plugin tile ───────────────────────────────────────
+function createPluginTile(slot, page, i) {
+  const cell = document.createElement('div')
+  cell.className = 'tile-cell plugin-tile-cell'
+  cell.style.background = slot.color || '#0f172a'
+  cell.dataset.pluginId  = slot.pluginTileId    || ''
+  cell.dataset.eventName = slot.pluginTileEvent || ''
+  cell.dataset.field     = slot.pluginTileField || 'value'
+  cell.innerHTML = `
+    <div class="tile-label">${slot.label || ''}</div>
+    <div class="tile-value">—</div>
+  `
+  return cell
+}
+
+function updatePluginTile(pluginId, eventName, msg) {
+  document.querySelectorAll('.plugin-tile-cell').forEach(cell => {
+    if (cell.dataset.pluginId !== pluginId) return
+    if (cell.dataset.eventName !== eventName) return
+    const field = cell.dataset.field || 'value'
+    const val = msg[field] ?? msg.value ?? JSON.stringify(msg)
+    const el = cell.querySelector('.tile-value')
+    if (el) el.textContent = val
+  })
+}
+
 // ── Spotify tile ──────────────────────────────────────
 function createSpotifyTile(slot, page, i) {
   const cell = document.createElement('div')
@@ -217,6 +265,77 @@ function updateSpotifyTile(state) {
     } else {
       artEl.style.backgroundImage = ''
     }
+  })
+}
+
+// ── Voice button ──────────────────────────────────────
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+
+function createVoiceButton(slot, page, i) {
+  const btn = document.createElement('div')
+  btn.className = 'btn voice-btn'
+  applyBg(btn, slot.color, slot.image)
+
+  if (!SpeechRecognition) {
+    btn.innerHTML = `<div class="btn-icon">${slot.icon || '🎤'}</div><div class="btn-label">${slot.label || 'Voice'}</div><div class="voice-unsupported">Not supported</div>`
+    btn.style.opacity = '0.5'
+    return btn
+  }
+
+  btn.innerHTML = `
+    <div class="btn-icon">${slot.icon || '🎤'}</div>
+    <div class="btn-label voice-label">${slot.label || 'Voice'}</div>
+    <div class="voice-ring"></div>
+  `
+
+  const rec = new SpeechRecognition()
+  rec.continuous     = false
+  rec.interimResults = false
+  rec.lang           = slot.voiceLang || 'en-US'
+
+  let listening = false
+
+  rec.onresult = (e) => {
+    const transcript = e.results[0][0].transcript.trim()
+    stopListening()
+    const labelEl = btn.querySelector('.voice-label')
+    if (labelEl) { labelEl.textContent = `"${transcript}"`; setTimeout(() => { labelEl.textContent = slot.label || 'Voice' }, 3000) }
+    send({ type: 'voiceCommand', transcript, pageId: page.id, slot: i, voiceMode: slot.voiceMode || 'smart' })
+  }
+
+  rec.onerror = (e) => {
+    stopListening()
+    if (e.error === 'not-allowed') {
+      const labelEl = btn.querySelector('.voice-label')
+      if (labelEl) { labelEl.textContent = 'Mic blocked'; setTimeout(() => { labelEl.textContent = slot.label || 'Voice' }, 3000) }
+    }
+  }
+
+  rec.onend = () => stopListening()
+
+  function startListening() {
+    try { rec.start(); listening = true; btn.classList.add('listening'); navigator.vibrate?.([40, 20, 40]) } catch {}
+  }
+
+  function stopListening() {
+    listening = false
+    btn.classList.remove('listening')
+    try { rec.stop() } catch {}
+  }
+
+  btn.addEventListener('pointerdown', (e) => {
+    e.preventDefault()
+    if (listening) { stopListening() } else { startListening() }
+  })
+
+  return btn
+}
+
+function showVoiceResult(matched, transcript) {
+  document.querySelectorAll('.voice-btn .voice-label').forEach(el => {
+    const original = el.closest('.btn')?.querySelector('.btn-label')?.textContent || 'Voice'
+    el.textContent = matched ? `→ ${matched}` : 'No match'
+    setTimeout(() => { el.textContent = original }, 3000)
   })
 }
 
@@ -290,7 +409,7 @@ function applyBg(el, color, image) {
 grid.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX }, { passive: true })
 grid.addEventListener('touchend', e => {
   if (!config) return
-  if (e.target.closest('.slider-cell') || e.target.closest('.tile-cell') || e.target.closest('.spotify-cell')) return
+  if (e.target.closest('.slider-cell') || e.target.closest('.tile-cell') || e.target.closest('.spotify-cell') || e.target.closest('.voice-btn')) return
   const dx = e.changedTouches[0].clientX - touchStartX
   if (Math.abs(dx) < 60) return
   if (dx < 0 && currentPageIdx < config.pages.length - 1) { currentPageIdx++; render() }

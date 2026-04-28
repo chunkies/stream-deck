@@ -48,6 +48,19 @@
       </div>
     </div>
 
+    <!-- Claude API key (for AI voice) -->
+    <div class="obs-block">
+      <div class="section-label">AI Voice (optional)</div>
+      <div class="obs-field">
+        <label>Claude API key</label>
+        <input id="claude-api-key" type="password" placeholder="sk-ant-…" autocomplete="off">
+      </div>
+      <div class="obs-actions">
+        <button id="claude-save-btn" class="btn-secondary">Save key</button>
+        <span class="field-hint" style="font-size:11px">Used by Voice buttons in AI mode</span>
+      </div>
+    </div>
+
     <!-- Actions -->
     <div class="sidebar-actions">
       <button id="add-page-btn" class="btn-secondary">+ Add Page</button>
@@ -82,6 +95,8 @@
           <button class="type-tab" data-type="slider">Slider</button>
           <button class="type-tab" data-type="tile">Tile</button>
           <button class="type-tab" data-type="spotify">Spotify</button>
+          <button class="type-tab" data-type="voice">Voice</button>
+          <button class="type-tab" data-type="plugin-tile">Plugin Tile</button>
         </div>
       </div>
 
@@ -265,6 +280,46 @@
         </div>
       </div>
 
+      <!-- ── Voice button fields ── -->
+      <div id="comp-voice" style="display:none">
+        <div class="field-row"><label>Icon</label><input id="voice-icon" type="text" maxlength="4" placeholder="🎤"></div>
+        <div class="field-row"><label>Label</label><input id="voice-label" type="text" placeholder="Voice"></div>
+        <div class="field-row"><label>Color</label><input id="voice-color" type="color" value="#1e293b"></div>
+        <div class="field-row">
+          <label>Mode</label>
+          <select id="voice-mode">
+            <option value="smart">Smart — match to button label</option>
+            <option value="command">Command — run transcript as shell command</option>
+            <option value="ai">AI — Claude interprets intent (requires API key)</option>
+          </select>
+        </div>
+        <div class="field-hint" style="padding:4px 0 8px">
+          Tap to start/stop listening. Needs microphone permission in browser.<br>
+          AI mode requires a Claude API key in Settings (sidebar).
+        </div>
+      </div>
+
+      <!-- ── Plugin tile fields ── -->
+      <div id="comp-plugin-tile" style="display:none">
+        <div class="field-row"><label>Label</label><input id="ptile-label" type="text" placeholder="CPU"></div>
+        <div class="field-row"><label>Color</label><input id="ptile-color" type="color" value="#0f172a"></div>
+        <div class="field-row">
+          <label>Plugin ID</label>
+          <input id="ptile-plugin-id" type="text" placeholder="system-info">
+        </div>
+        <div class="field-row">
+          <label>Event name</label>
+          <input id="ptile-event" type="text" placeholder="cpu">
+        </div>
+        <div class="field-row">
+          <label>Display field</label>
+          <input id="ptile-field" type="text" placeholder="value" value="value">
+        </div>
+        <div class="field-hint" style="padding:4px 0 8px">
+          Shows data from plugin <code>sdk.broadcast()</code> events. The plugin must broadcast <code>{ event: '…', value: '…' }</code>.
+        </div>
+      </div>
+
     </div>
     <div class="modal-footer">
       <button id="modal-delete" class="btn-danger">Remove</button>
@@ -282,6 +337,13 @@
     </div>
     <div class="modal-body">
       <div class="field-row"><label>Name</label><input id="f-page-name" type="text" placeholder="e.g. Gaming"></div>
+      <div class="field-row">
+        <label>Columns</label>
+        <div>
+          <input id="f-page-cols" type="number" value="" min="1" max="8" placeholder="default">
+          <div class="field-hint">Leave blank to use the global column setting</div>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button id="page-modal-save" class="btn-primary">Create</button>

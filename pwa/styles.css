@@ -295,3 +295,59 @@ html, body {
   font-weight: 600;
   color: rgba(255,255,255,0.85);
 }
+
+/* ── Offline overlay ── */
+.offline-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,15,30,0.92);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.offline-overlay.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+.offline-content { text-align: center }
+.offline-icon { font-size: 48px; margin-bottom: 16px; animation: pulse 2s ease-in-out infinite }
+.offline-title { font-size: 20px; font-weight: 700; color: #e2e8f0; margin-bottom: 8px }
+.offline-sub   { font-size: 14px; color: #64748b; max-width: 240px; line-height: 1.5 }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1 }
+  50%       { opacity: 0.4 }
+}
+
+/* ── Voice button ── */
+.voice-btn {
+  position: relative;
+  overflow: visible;
+}
+.voice-btn .voice-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid rgba(124,58,237,0);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  pointer-events: none;
+}
+.voice-btn.listening .voice-ring {
+  border-color: rgba(124,58,237,0.8);
+  box-shadow: 0 0 0 4px rgba(124,58,237,0.25);
+  animation: voice-pulse 1s ease-in-out infinite;
+}
+@keyframes voice-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(124,58,237,0.25) }
+  50%       { box-shadow: 0 0 0 10px rgba(124,58,237,0.08) }
+}
+.voice-btn.listening { opacity: 0.9 }
+.voice-unsupported { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 4px }
+
+/* ── Plugin tile ── */
+.plugin-tile-cell .tile-label { color: rgba(167,139,250,0.8) }

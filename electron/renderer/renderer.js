@@ -54,6 +54,11 @@ async function init() {
   const autostart = await window.api.getAutostart()
   document.getElementById('autostart-toggle').checked = autostart
 
+  // Load Claude API key (masked display)
+  if (config.claudeApiKey) {
+    document.getElementById('claude-api-key').placeholder = '••••••••••••••••••••'
+  }
+
   window.api.onServerReady((info) => {
     serverInfo = info
     const url  = `https://${info.ip}:${info.port}`
@@ -266,7 +271,8 @@ function renderTabs() {
 function renderGrid() {
   const grid = document.getElementById('grid')
   const page = config.pages[currentPageIdx]
-  const { cols, rows } = config.grid
+  const cols = page.cols || config.grid.cols
+  const rows = config.grid.rows
   grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`
   grid.style.gridTemplateRows    = `repeat(${rows}, 1fr)`
   grid.innerHTML = ''
@@ -314,6 +320,18 @@ function renderGrid() {
             <div class="cell-icon">🎵</div>
             <div class="cell-label">Spotify tile</div>`
           break
+        case 'voice':
+          cell.innerHTML = `
+            <div class="cell-type-badge">voice</div>
+            <div class="cell-icon">${slot.icon || '🎤'}</div>
+            <div class="cell-label">${slot.label || 'Voice'}</div>`
+          break
+        case 'plugin-tile':
+          cell.innerHTML = `
+            <div class="cell-type-badge">plugin</div>
+            <div class="cell-tile-cmd">${slot.pluginTileId || ''}:${slot.pluginTileEvent || ''}</div>
+            <div class="cell-label">${slot.label || ''}</div>`
+          break
         default:
           cell.innerHTML = `
             <div class="cell-icon">${slot.icon || ''}</div>
@@ -358,7 +376,7 @@ function pushConfig() { window.api.setConfig(config) }
 function setCompType(type) {
   currentCompType = type
   document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === type))
-  for (const t of ['button', 'toggle', 'slider', 'spotify', 'tile']) {
+  for (const t of ['button', 'toggle', 'slider', 'spotify', 'tile', 'voice', 'plugin-tile']) {
     document.getElementById(`comp-${t}`).style.display = t === type ? 'block' : 'none'
   }
 }
@@ -453,6 +471,21 @@ function openModal(pageIdx, slotIdx) {
     document.getElementById('sp-color').value = slot?.color || '#0f172a'
   }
 
+  if (compType === 'voice') {
+    document.getElementById('voice-icon').value  = slot?.icon      || '🎤'
+    document.getElementById('voice-label').value = slot?.label     || 'Voice'
+    document.getElementById('voice-color').value = slot?.color     || '#1e293b'
+    document.getElementById('voice-mode').value  = slot?.voiceMode || 'smart'
+  }
+
+  if (compType === 'plugin-tile') {
+    document.getElementById('ptile-label').value     = slot?.label           || ''
+    document.getElementById('ptile-color').value     = slot?.color           || '#0f172a'
+    document.getElementById('ptile-plugin-id').value = slot?.pluginTileId    || ''
+    document.getElementById('ptile-event').value     = slot?.pluginTileEvent || ''
+    document.getElementById('ptile-field').value     = slot?.pluginTileField || 'value'
+  }
+
   document.getElementById('modal').style.display = 'flex'
 }
 
@@ -544,6 +577,27 @@ function saveModal() {
     }
   }
 
+  if (currentCompType === 'voice') {
+    slot = {
+      componentType: 'voice',
+      icon:      document.getElementById('voice-icon').value.trim() || '🎤',
+      label:     document.getElementById('voice-label').value.trim() || 'Voice',
+      color:     document.getElementById('voice-color').value,
+      voiceMode: document.getElementById('voice-mode').value
+    }
+  }
+
+  if (currentCompType === 'plugin-tile') {
+    slot = {
+      componentType:   'plugin-tile',
+      label:           document.getElementById('ptile-label').value.trim(),
+      color:           document.getElementById('ptile-color').value,
+      pluginTileId:    document.getElementById('ptile-plugin-id').value.trim(),
+      pluginTileEvent: document.getElementById('ptile-event').value.trim(),
+      pluginTileField: document.getElementById('ptile-field').value.trim() || 'value'
+    }
+  }
+
   config.pages[pageIdx].slots[slotIdx] = slot
   pushConfig(); renderGrid(); closeModal()
 }
@@ -554,15 +608,25 @@ function deleteSlot() {
 }
 
 // ── Add Page ──────────────────────────────────────────
-function openPageModal()  { document.getElementById('f-page-name').value = ''; document.getElementById('page-modal').style.display = 'flex'; document.getElementById('f-page-name').focus() }
 function closePageModal() { document.getElementById('page-modal').style.display = 'none' }
 function saveNewPage() {
-  const name = document.getElementById('f-page-name').value.trim()
+  const name    = document.getElementById('f-page-name').value.trim()
   if (!name) return
   const { cols, rows } = config.grid
-  config.pages.push({ id: 'page-' + Date.now(), name, slots: Array(cols * rows).fill(null) })
+  const pageCols = parseInt(document.getElementById('f-page-cols').value) || undefined
+  const total    = (pageCols || cols) * rows
+  const page     = { id: 'page-' + Date.now(), name, slots: Array(total).fill(null) }
+  if (pageCols) page.cols = pageCols
+  config.pages.push(page)
   currentPageIdx = config.pages.length - 1
   pushConfig(); renderAll(); closePageModal()
+}
+
+function openPageModal() {
+  document.getElementById('f-page-name').value = ''
+  document.getElementById('f-page-cols').value = ''
+  document.getElementById('page-modal').style.display = 'flex'
+  document.getElementById('f-page-name').focus()
 }
 
 // ── Event wiring ──────────────────────────────────────
@@ -598,6 +662,15 @@ document.getElementById('obs-connect-btn').addEventListener('click', async () =>
   setOBSBadge(ok)
 
   config.obsSettings = { host, port } // password not persisted — re-enter each session
+  pushConfig()
+})
+
+document.getElementById('claude-save-btn').addEventListener('click', () => {
+  const key = document.getElementById('claude-api-key').value.trim()
+  if (!key) return
+  config.claudeApiKey = key
+  document.getElementById('claude-api-key').value = ''
+  document.getElementById('claude-api-key').placeholder = '••••••••••••••••••••'
   pushConfig()
 })
 
