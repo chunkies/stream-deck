@@ -45,6 +45,7 @@ async function init() {
     document.getElementById('cert-url').href          = `${url}/cert.crt`
     const qr = document.getElementById('qr-img')
     qr.src = info.qr; qr.style.display = 'block'
+    renderGrid() // re-render so image backgrounds resolve with the now-known server URL
   })
 
   window.api.onDeckEvent((event) => {
@@ -157,7 +158,10 @@ function renderGrid() {
     } else {
       cell.className = 'cell filled'
       cell.style.background = slot.color || '#1e293b'
-      if (slot.image) { cell.style.backgroundImage = `url(${slot.image})`; cell.style.backgroundSize = 'cover' }
+      if (slot.image && serverInfo) {
+        cell.style.backgroundImage = `url(https://${serverInfo.ip}:${serverInfo.port}${slot.image})`
+        cell.style.backgroundSize = 'cover'
+      }
 
       switch (slot.componentType) {
         case 'slider':
@@ -205,6 +209,7 @@ function showActionFields(type) {
   for (const t of ['builtin', 'command', 'sequence', 'page']) {
     document.getElementById(`action-${t}`).style.display = t === type ? 'block' : 'none'
   }
+  if (type === 'page') populatePageTargets(document.getElementById('f-page-target').value || null)
 }
 
 // ── Modal ─────────────────────────────────────────────
@@ -271,7 +276,7 @@ function setImageField(previewId, clearId, url) {
 
 function closeModal() { document.getElementById('modal').style.display = 'none'; editingSlot = null }
 
-function populatePageTargets(selectedId) {
+function populatePageTargets(selectedId = null) {
   const sel = document.getElementById('f-page-target')
   sel.innerHTML = ''
   config.pages.forEach(p => {

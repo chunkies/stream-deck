@@ -7,6 +7,12 @@ const server = require('./server/index')
 let mainWindow
 let mediaPath
 
+// Trust our own self-signed cert so admin panel can load images from the local server
+app.on('certificate-error', (event, webContents, url, error, cert, callback) => {
+  event.preventDefault()
+  callback(true)
+})
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 960,
@@ -35,6 +41,7 @@ app.whenReady().then(async () => {
   const userData   = app.getPath('userData')
   const pwaPath    = app.isPackaged ? path.join(process.resourcesPath, 'pwa') : path.join(__dirname, '../pwa')
   const configPath = path.join(userData, 'config.json')
+  const certDir    = path.join(userData, 'cert')
   mediaPath        = path.join(userData, 'media')
   fs.mkdirSync(mediaPath, { recursive: true })
 
@@ -49,7 +56,7 @@ app.whenReady().then(async () => {
   serverInfo = await server.start(
     (event) => mainWindow?.webContents.send('deck-event', event),
     3000,
-    { pwaPath, configPath, mediaPath }
+    { pwaPath, configPath, mediaPath, certDir }
   )
 
   if (windowReady) await sendServerReady(serverInfo)

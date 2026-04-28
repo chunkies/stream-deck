@@ -77,7 +77,9 @@ function handlePress(pageId, slotIndex) {
     case 'sequence':
       action.commands.forEach((cmd, i) => setTimeout(() => executeCommand(cmd), i * (action.delay ?? 150)))
       break
-    case 'page': break
+    case 'page':
+      broadcast({ type: 'navigate', pageId: action.pageId })
+      break
   }
 }
 
@@ -105,12 +107,13 @@ function setConfig(newConfig) {
 async function start(onEvent, port = 3000, paths = {}) {
   const pwaPath   = paths.pwaPath   || path.join(__dirname, '../../pwa')
   const mediaPath = paths.mediaPath || path.join(__dirname, '../../media')
+  const certDir   = paths.certDir   || path.join(__dirname, '../../.cert')
   configFilePath  = paths.configPath || path.join(__dirname, '../../config.json')
   config = loadConfig(configFilePath)
 
   fs.mkdirSync(mediaPath, { recursive: true })
 
-  const { key, cert, ip } = generateCert()
+  const { key, cert, ip } = generateCert(certDir)
   const app = express()
 
   // Media upload + serving

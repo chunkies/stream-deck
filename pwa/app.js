@@ -21,6 +21,7 @@ function connect() {
     const msg = JSON.parse(e.data)
     if (msg.type === 'config')      { config = msg.config; currentPageIdx = 0; toggleStates = {}; render() }
     if (msg.type === 'toggleState') { toggleStates[msg.key] = msg.active; updateToggleBtn(msg.key, msg.active) }
+    if (msg.type === 'navigate')    { const idx = config?.pages.findIndex(p => p.id === msg.pageId); if (idx >= 0) { currentPageIdx = idx; render() } }
   }
 }
 

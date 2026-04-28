@@ -3,11 +3,6 @@ const os  = require('os')
 const fs  = require('fs')
 const path = require('path')
 
-const CERT_DIR  = path.join(__dirname, '../../.cert')
-const KEY_FILE  = path.join(CERT_DIR, 'key.pem')
-const CERT_FILE = path.join(CERT_DIR, 'cert.pem')
-const IP_FILE   = path.join(CERT_DIR, 'ip.txt')
-
 function getLocalIP() {
   const interfaces = os.networkInterfaces()
   for (const ifaces of Object.values(interfaces)) {
@@ -18,10 +13,14 @@ function getLocalIP() {
   return '127.0.0.1'
 }
 
-function generateCert() {
+// certDir must be a writable directory (caller passes app.getPath('userData'))
+function generateCert(certDir) {
+  const KEY_FILE  = path.join(certDir, 'key.pem')
+  const CERT_FILE = path.join(certDir, 'cert.pem')
+  const IP_FILE   = path.join(certDir, 'ip.txt')
+
   const ip = getLocalIP()
 
-  // Reuse saved cert if IP hasn't changed
   try {
     if (fs.existsSync(KEY_FILE) && fs.existsSync(CERT_FILE)) {
       const savedIP = fs.existsSync(IP_FILE) ? fs.readFileSync(IP_FILE, 'utf8').trim() : null
@@ -35,7 +34,6 @@ function generateCert() {
     }
   } catch {}
 
-  // Generate new cert and persist it
   const pems = selfsigned.generate([{ name: 'commonName', value: ip }], {
     days: 3650,
     keySize: 2048,
@@ -48,7 +46,7 @@ function generateCert() {
     }]
   })
 
-  fs.mkdirSync(CERT_DIR, { recursive: true })
+  fs.mkdirSync(certDir, { recursive: true })
   fs.writeFileSync(KEY_FILE,  pems.private)
   fs.writeFileSync(CERT_FILE, pems.cert)
   fs.writeFileSync(IP_FILE,   ip)
