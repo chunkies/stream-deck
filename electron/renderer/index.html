@@ -98,23 +98,77 @@
 
   <div class="drawer-body">
 
+    <!-- ── LEFT: Appearance editor (shared across all component types) ── -->
+    <div class="editor-left">
+
+      <!-- Live preview -->
+      <div class="editor-preview" id="ea-preview" style="background:#1e293b">
+        <div class="preview-icon" id="ea-preview-icon"></div>
+        <div class="preview-label" id="ea-preview-label">Button</div>
+      </div>
+
+      <!-- Icon -->
+      <div class="ea-section" id="ea-icon-section">
+        <div class="ea-label">Icon</div>
+        <div class="ea-icon-row">
+          <input id="ea-icon" type="text" maxlength="4" placeholder="🎮" class="ea-icon-input">
+          <button class="btn-sm emoji-picker-btn" id="ea-emoji-toggle">Pick emoji ▾</button>
+        </div>
+        <div class="emoji-picker-panel" id="ea-emoji-panel" style="display:none">
+          <input id="ea-emoji-search" type="text" placeholder="Search emojis..." class="emoji-search">
+          <div class="emoji-cats" id="ea-emoji-cats"></div>
+          <div class="emoji-grid" id="ea-emoji-grid"></div>
+        </div>
+      </div>
+
+      <!-- Label -->
+      <div class="ea-section" id="ea-label-section">
+        <div class="ea-label">Label</div>
+        <input id="ea-label" type="text" placeholder="Button label">
+      </div>
+
+      <!-- Background -->
+      <div class="ea-section">
+        <div class="ea-label">Background</div>
+        <div class="swatch-grid" id="ea-solid-swatches"></div>
+        <div class="ea-label" style="margin-top:8px">Gradients</div>
+        <div class="swatch-grid" id="ea-gradient-swatches"></div>
+        <div class="ea-color-row">
+          <input id="ea-color" type="color" value="#1e293b" title="Custom color">
+          <span class="ea-custom-label">Custom</span>
+        </div>
+      </div>
+
+      <!-- Active-state color (switch only) -->
+      <div class="ea-section" id="ea-active-section" style="display:none">
+        <div class="ea-label">Active color</div>
+        <div class="swatch-grid" id="ea-active-swatches"></div>
+        <div class="ea-color-row">
+          <input id="ea-active-color" type="color" value="#4f46e5" title="Active state color">
+          <span class="ea-custom-label">Custom</span>
+        </div>
+      </div>
+
+      <!-- Image / GIF -->
+      <div class="ea-section" id="ea-image-section">
+        <div class="ea-label">Image / GIF</div>
+        <div id="ea-img-preview" class="ea-img-preview" style="display:none"></div>
+        <div class="ea-img-actions">
+          <button class="btn-sm" id="ea-img-upload-btn">Upload</button>
+          <button class="btn-sm btn-sm-danger" id="ea-img-clear-btn" style="display:none">Remove</button>
+        </div>
+        <input id="ea-img-url" type="text" placeholder="Paste image or GIF URL…" class="ea-img-url">
+        <input id="ea-img-file" type="file" accept="image/*" style="display:none">
+      </div>
+
+    </div>
+
+    <!-- ── RIGHT: Action config ── -->
+    <div class="editor-right">
+
     <!-- ── Button fields ── -->
     <div id="comp-button">
       <div class="drawer-fields">
-        <div class="field-row"><label>Icon</label><input id="f-icon" type="text" maxlength="4" placeholder="emoji"></div>
-        <div class="field-row"><label>Label</label><input id="f-label" type="text" placeholder="Button label"></div>
-        <div class="field-row"><label>Color</label><input id="f-color" type="color" value="#1e293b"></div>
-        <div class="field-row">
-          <label>Image</label>
-          <div class="image-field">
-            <div id="img-preview" class="img-preview" style="display:none"></div>
-            <div class="image-actions">
-              <button class="btn-sm" id="img-upload-btn">Upload image / GIF</button>
-              <button class="btn-sm btn-sm-danger" id="img-clear-btn" style="display:none">Remove</button>
-            </div>
-            <input id="img-file-input" type="file" accept="image/*" style="display:none">
-          </div>
-        </div>
         <div class="field-row">
           <label>Action</label>
           <select id="f-action-type">
@@ -166,13 +220,15 @@
           <div class="field-row"><label>Hold cmd</label><input id="f-hold-command" type="text" placeholder="e.g. systemctl suspend"></div>
         </div>
       </div>
+      <!-- compat hidden inputs -->
+      <input id="f-icon" type="hidden"><input id="f-label" type="hidden"><input id="f-color" type="hidden" value="#1e293b">
+      <input id="img-file-input" type="hidden"><div id="img-preview" style="display:none"></div>
+      <button id="img-upload-btn" style="display:none"></button><button id="img-clear-btn" style="display:none"></button>
     </div>
 
     <!-- ── Switch fields ── -->
     <div id="comp-switch" style="display:none">
       <div class="drawer-fields">
-        <div class="field-row"><label>Label</label><input id="t-label" type="text" placeholder="e.g. Mute"></div>
-        <div class="field-row"><label>Color</label><input id="t-color" type="color" value="#1e293b"></div>
         <div class="field-row">
           <label>Action</label>
           <select id="t-action-type">
@@ -197,6 +253,8 @@
         <div class="field-row"><label>Delay ms</label><input id="t-seq-delay" type="number" value="150" min="0"></div>
       </div>
       <div id="t-action-page" style="display:none"><div class="field-row"><label>Page</label><select id="t-page-target"></select></div></div>
+      <!-- hidden compat -->
+      <input id="t-label" type="hidden"><input id="t-color" type="hidden" value="#1e293b">
       <input id="t-icon" type="hidden"><input id="t-active-icon" type="hidden">
       <input id="t-active-label" type="hidden"><input id="t-active-color" type="hidden" value="#4f46e5">
       <input id="t-img-file-input" type="hidden"><input id="t-active-img-file-input" type="hidden">
@@ -207,9 +265,8 @@
 
     <!-- ── Slider fields ── -->
     <div id="comp-slider" style="display:none">
+      <input id="s-label" type="hidden"><input id="s-color" type="hidden" value="#1e293b">
       <div class="drawer-fields">
-        <div class="field-row"><label>Label</label><input id="s-label" type="text" placeholder="e.g. Volume"></div>
-        <div class="field-row"><label>Color</label><input id="s-color" type="color" value="#1e293b"></div>
         <div class="field-row"><label>Min</label><input id="s-min" type="number" value="0"></div>
         <div class="field-row"><label>Max</label><input id="s-max" type="number" value="100"></div>
         <div class="field-row"><label>Step</label><input id="s-step" type="number" value="5" min="1"></div>
@@ -273,9 +330,8 @@
 
     <!-- ── Knob fields ── -->
     <div id="comp-knob" style="display:none">
+      <input id="k-label" type="hidden"><input id="k-color" type="hidden" value="#1e293b">
       <div class="drawer-fields">
-        <div class="field-row"><label>Label</label><input id="k-label" type="text" placeholder="e.g. Gain"></div>
-        <div class="field-row"><label>Color</label><input id="k-color" type="color" value="#1e293b"></div>
         <div class="field-row"><label>Min</label><input id="k-min" type="number" value="0"></div>
         <div class="field-row"><label>Max</label><input id="k-max" type="number" value="100"></div>
         <div class="field-row"><label>Step</label><input id="k-step" type="number" value="1" min="1"></div>
@@ -339,23 +395,14 @@
 
     <!-- ── Spotify fields ── -->
     <div id="comp-spotify" style="display:none">
-      <div class="drawer-fields">
-        <div class="field-row">
-          <label>Color</label>
-          <div>
-            <input id="sp-color" type="color" value="#0f172a">
-            <div class="field-hint">Fallback background when no album art</div>
-          </div>
-        </div>
-      </div>
-      <div class="field-hint" style="padding:4px 0">Shows live album art, track &amp; artist. Tap to play/pause.</div>
+      <input id="sp-color" type="hidden" value="#0f172a">
+      <div class="field-hint" style="padding:14px 0">Shows live album art, track &amp; artist. Tap to play/pause.<br>Background color is the fallback when no album art is available.</div>
     </div>
 
     <!-- ── Tile fields ── -->
     <div id="comp-tile" style="display:none">
+      <input id="tile-label" type="hidden"><input id="tile-color" type="hidden" value="#0f172a">
       <div class="drawer-fields">
-        <div class="field-row"><label>Label</label><input id="tile-label" type="text" placeholder="Now Playing"></div>
-        <div class="field-row"><label>Color</label><input id="tile-color" type="color" value="#0f172a"></div>
         <div class="field-row">
           <label>Command</label>
           <div>
@@ -388,10 +435,8 @@
 
     <!-- ── Voice fields ── -->
     <div id="comp-voice" style="display:none">
+      <input id="voice-icon" type="hidden"><input id="voice-label" type="hidden"><input id="voice-color" type="hidden" value="#1e293b">
       <div class="drawer-fields">
-        <div class="field-row"><label>Icon</label><input id="voice-icon" type="text" maxlength="4" placeholder="🎤"></div>
-        <div class="field-row"><label>Label</label><input id="voice-label" type="text" placeholder="Voice"></div>
-        <div class="field-row"><label>Color</label><input id="voice-color" type="color" value="#1e293b"></div>
         <div class="field-row">
           <label>Mode</label>
           <select id="voice-mode">
@@ -415,9 +460,8 @@
 
     <!-- ── Plugin tile fields ── -->
     <div id="comp-plugin-tile" style="display:none">
+      <input id="ptile-label" type="hidden"><input id="ptile-color" type="hidden" value="#0f172a">
       <div class="drawer-fields">
-        <div class="field-row"><label>Label</label><input id="ptile-label" type="text" placeholder="CPU"></div>
-        <div class="field-row"><label>Color</label><input id="ptile-color" type="color" value="#0f172a"></div>
         <div class="field-row"><label>Plugin ID</label><input id="ptile-plugin-id" type="text" placeholder="system-info"></div>
         <div class="field-row"><label>Event</label><input id="ptile-event" type="text" placeholder="cpu"></div>
         <div class="field-row"><label>Field</label><input id="ptile-field" type="text" placeholder="value" value="value"></div>
@@ -425,8 +469,9 @@
       <div class="field-hint" style="padding:4px 0">Shows data from plugin <code>sdk.broadcast()</code> events.</div>
     </div>
 
-  </div>
-</div>
+    </div><!-- /editor-right -->
+  </div><!-- /drawer-body -->
+</div><!-- /drawer -->
 
 <!-- ── Add Page Modal ── -->
 <div class="modal-overlay" id="page-modal" style="display:none">
