@@ -40,6 +40,35 @@ let serverInfo      = null
 let wss             = null
 let connectedClients = 0
 
+// ── Plugins ────────────────────────────────────────────
+let pluginsMap  = {}
+let pluginsMeta = []
+
+function loadPlugins(pluginsDir) {
+  pluginsMap  = {}
+  pluginsMeta = []
+  if (!fs.existsSync(pluginsDir)) return
+  for (const name of fs.readdirSync(pluginsDir)) {
+    const dir = path.join(pluginsDir, name)
+    try {
+      if (!fs.statSync(dir).isDirectory()) continue
+      const manifestPath = path.join(dir, 'manifest.json')
+      const indexPath    = path.join(dir, 'index.js')
+      if (!fs.existsSync(manifestPath) || !fs.existsSync(indexPath)) continue
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+      const handlers  = require(indexPath)
+      pluginsMeta.push({ id: manifest.id, name: manifest.name, actions: manifest.actions || [] })
+      Object.assign(pluginsMap, handlers)
+      console.log(`Plugin loaded: ${manifest.name}`)
+    } catch (err) {
+      console.error(`Plugin "${name}" failed to load:`, err.message)
+    }
+  }
+}
+
+function getPlugins() { return pluginsMeta }
+function reloadPlugins(pluginsDir) { loadPlugins(pluginsDir); broadcast({ type: 'pluginsReloaded' }) }
+
 // ── Tile polling ───────────────────────────────────────
 let tileTimers = {}
 let tileCache  = {}
@@ -230,6 +259,18 @@ function handlePress(pageId, slotIndex, hold = false) {
     case 'obs':
       handleOBSAction(action).catch(err => console.error('OBS:', err.message))
       break
+    case 'plugin': {
+      const fn = pluginsMap[action.pluginKey]
+      if (fn) {
+        try {
+          const result = fn(action.params || {})
+          if (result?.catch) result.catch(err => console.error('Plugin error:', err.message))
+        } catch (err) { console.error('Plugin error:', err.message) }
+      } else {
+        console.warn('Unknown plugin action:', action.pluginKey)
+      }
+      break
+    }
   }
 }
 
@@ -258,14 +299,17 @@ function setConfig(newConfig) {
 
 // ── Server start ───────────────────────────────────────
 async function start(onEvent, port = 3000, paths = {}) {
-  const pwaPath   = paths.pwaPath   || path.join(__dirname, '../../pwa')
-  const mediaPath = paths.mediaPath || path.join(__dirname, '../../media')
-  const certDir   = paths.certDir   || path.join(__dirname, '../../.cert')
-  configFilePath  = paths.configPath || path.join(__dirname, '../../config.json')
+  const pwaPath     = paths.pwaPath     || path.join(__dirname, '../../pwa')
+  const mediaPath   = paths.mediaPath   || path.join(__dirname, '../../media')
+  const certDir     = paths.certDir     || path.join(__dirname, '../../.cert')
+  const pluginsDir  = paths.pluginsPath || path.join(__dirname, '../../plugins')
+  configFilePath    = paths.configPath  || path.join(__dirname, '../../config.json')
   config = loadConfig(configFilePath)
 
-  fs.mkdirSync(mediaPath, { recursive: true })
+  fs.mkdirSync(mediaPath,  { recursive: true })
+  fs.mkdirSync(pluginsDir, { recursive: true })
   spotifyMediaPath = mediaPath
+  loadPlugins(pluginsDir)
 
   const { key, cert, ip } = generateCert(certDir)
   const app = express()
@@ -339,4 +383,4 @@ async function start(onEvent, port = 3000, paths = {}) {
   return serverInfo
 }
 
-module.exports = { start, getConfig, setConfig, getInfo, connectOBS, isOBSReady }
+module.exports = { start, getConfig, setConfig, getInfo, connectOBS, isOBSReady, getPlugins, reloadPlugins }

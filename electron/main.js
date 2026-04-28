@@ -9,6 +9,7 @@ const server = require('./server/index')
 
 let mainWindow
 let mediaPath
+let pluginsPath
 let tray = null
 
 // Trust our own self-signed cert so the admin panel can load images from the local server
@@ -140,8 +141,10 @@ app.whenReady().then(async () => {
   const pwaPath    = app.isPackaged ? path.join(process.resourcesPath, 'pwa') : path.join(__dirname, '../pwa')
   const configPath = path.join(userData, 'config.json')
   const certDir    = path.join(userData, 'cert')
-  mediaPath        = path.join(userData, 'media')
-  fs.mkdirSync(mediaPath, { recursive: true })
+  mediaPath   = path.join(userData, 'media')
+  pluginsPath = path.join(userData, 'plugins')
+  fs.mkdirSync(mediaPath,   { recursive: true })
+  fs.mkdirSync(pluginsPath, { recursive: true })
 
   let serverInfo  = null
   let windowReady = false
@@ -154,7 +157,7 @@ app.whenReady().then(async () => {
   serverInfo = await server.start(
     (event) => mainWindow?.webContents.send('deck-event', event),
     3000,
-    { pwaPath, configPath, mediaPath, certDir }
+    { pwaPath, configPath, mediaPath, certDir, pluginsPath }
   )
 
   if (windowReady) await sendServerReady(serverInfo)
@@ -169,6 +172,8 @@ ipcMain.handle('get-autostart',   ()            => getAutostart())
 ipcMain.handle('set-autostart',   (_, enable)   => setAutostart(enable))
 ipcMain.handle('connect-obs',     (_, opts)     => server.connectOBS(opts.host, opts.port, opts.password))
 ipcMain.handle('get-obs-status',  ()            => server.isOBSReady())
+ipcMain.handle('get-plugins',     ()            => server.getPlugins())
+ipcMain.handle('reload-plugins',  ()            => { server.reloadPlugins(pluginsPath); return server.getPlugins() })
 
 ipcMain.handle('upload-media', (_, srcPath) => {
   const ext      = path.extname(srcPath)

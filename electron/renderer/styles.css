@@ -345,3 +345,6 @@ body {
 /* ── Tile cell in admin grid ── */
 .cell.filled[style*="background"] { }
 
+/* ── Plugin action ── */
+.plugin-reload-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; padding: 0 0 4px }
+

@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('api', {
   setAutostart:  (val)          => ipcRenderer.invoke('set-autostart', val),
   connectOBS:    (opts)         => ipcRenderer.invoke('connect-obs', opts),
   getOBSStatus:  ()             => ipcRenderer.invoke('get-obs-status'),
+  getPlugins:    ()             => ipcRenderer.invoke('get-plugins'),
+  reloadPlugins: ()             => ipcRenderer.invoke('reload-plugins'),
   onDeckEvent:   (cb)           => ipcRenderer.on('deck-event',   (_, e) => cb(e)),
   onServerReady: (cb)           => ipcRenderer.on('server-ready', (_, i) => cb(i))
 })

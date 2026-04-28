@@ -37,6 +37,8 @@ async function init() {
   populateBuiltinSelect()
   wireImageUploads()
   wireOBSActionSelect()
+  wirePluginReload()
+  await loadAndPopulatePlugins()
   renderAll()
 
   // Load OBS settings (password not persisted)
@@ -142,6 +144,39 @@ function setImageField(previewId, clearId, url) {
 }
 
 // ── OBS action select ─────────────────────────────────
+// ── Plugin support ────────────────────────────────────
+async function loadAndPopulatePlugins() {
+  const plugins = await window.api.getPlugins()
+  populatePluginSelect(plugins)
+}
+
+function populatePluginSelect(plugins) {
+  const sel = document.getElementById('f-plugin-action')
+  sel.innerHTML = ''
+  if (!plugins || plugins.length === 0) {
+    sel.innerHTML = '<option value="">— no plugins installed —</option>'
+    return
+  }
+  for (const plugin of plugins) {
+    const og = document.createElement('optgroup')
+    og.label = plugin.name
+    for (const action of plugin.actions) {
+      const opt = document.createElement('option')
+      opt.value = action.key
+      opt.textContent = action.label
+      og.appendChild(opt)
+    }
+    sel.appendChild(og)
+  }
+}
+
+function wirePluginReload() {
+  document.getElementById('plugin-reload-btn').addEventListener('click', async () => {
+    const plugins = await window.api.reloadPlugins()
+    populatePluginSelect(plugins)
+  })
+}
+
 function wireOBSActionSelect() {
   document.getElementById('f-obs-action').addEventListener('change', (e) => {
     document.getElementById('obs-scene-row').style.display  = e.target.value === 'switchScene' ? 'grid' : 'none'
@@ -274,7 +309,7 @@ function setCompType(type) {
 }
 
 function showActionFields(type) {
-  for (const t of ['builtin', 'hotkey', 'command', 'sequence', 'page', 'obs']) {
+  for (const t of ['builtin', 'hotkey', 'command', 'sequence', 'page', 'obs', 'plugin']) {
     document.getElementById(`action-${t}`).style.display = t === type ? 'block' : 'none'
   }
   if (type === 'page') populatePageTargets(document.getElementById('f-page-target').value || null)
@@ -316,6 +351,9 @@ function openModal(pageIdx, slotIdx) {
       document.getElementById('f-obs-scene').value  = a.obsScene  || ''
       document.getElementById('f-obs-source').value = a.obsSource || ''
       document.getElementById('f-obs-action').dispatchEvent(new Event('change'))
+    }
+    if (a?.type === 'plugin') {
+      document.getElementById('f-plugin-action').value = a.pluginKey || ''
     }
 
     // Hold action
@@ -389,6 +427,7 @@ function saveModal() {
       case 'sequence': action = { type: 'sequence', commands: document.getElementById('f-sequence').value.split('\n').map(s => s.trim()).filter(Boolean), delay: parseInt(document.getElementById('f-seq-delay').value) || 150 }; break
       case 'page':     action = { type: 'page',     pageId:   document.getElementById('f-page-target').value }; break
       case 'obs':      action = { type: 'obs', obsAction: document.getElementById('f-obs-action').value, obsScene: document.getElementById('f-obs-scene').value.trim(), obsSource: document.getElementById('f-obs-source').value.trim() }; break
+      case 'plugin':   action = { type: 'plugin', pluginKey: document.getElementById('f-plugin-action').value }; break
     }
     const holdEnabled = document.getElementById('f-hold-enable').checked
     const holdCmd     = document.getElementById('f-hold-command').value.trim()

@@ -1,0 +1,10 @@
+{
+  "id": "hello-world",
+  "name": "Hello World",
+  "version": "1.0.0",
+  "description": "Example plugin — shows a notification",
+  "actions": [
+    { "key": "hello-world.notify",    "label": "Send notification" },
+    { "key": "hello-world.openUrl",   "label": "Open URL in browser" }
+  ]
+}

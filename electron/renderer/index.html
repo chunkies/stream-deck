@@ -109,6 +109,7 @@
             <option value="sequence">Sequence</option>
             <option value="page">Go to Page</option>
             <option value="obs">OBS Action</option>
+            <option value="plugin">Plugin</option>
           </select>
         </div>
         <div id="action-builtin"><div class="field-row"><label>Action</label><select id="f-builtin-key"></select></div></div>
@@ -127,6 +128,18 @@
           <div class="field-row"><label>Delay ms</label><input id="f-seq-delay" type="number" value="150" min="0"></div>
         </div>
         <div id="action-page" style="display:none"><div class="field-row"><label>Page</label><select id="f-page-target"></select></div></div>
+        <div id="action-plugin" style="display:none">
+          <div class="field-row">
+            <label>Action</label>
+            <select id="f-plugin-action">
+              <option value="">— no plugins installed —</option>
+            </select>
+          </div>
+          <div class="plugin-reload-row">
+            <button class="btn-sm" id="plugin-reload-btn">⟳ Reload plugins</button>
+            <span class="field-hint">Plugins live in <code>userData/plugins/</code></span>
+          </div>
+        </div>
         <div id="action-obs" style="display:none">
           <div class="field-row">
             <label>OBS Action</label>
