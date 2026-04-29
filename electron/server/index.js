@@ -105,9 +105,9 @@ function makeActionCaller(pluginId, key) {
       setTimeout(() => {
         if (pw.pending.has(id)) {
           pw.pending.delete(id)
-          reject(new Error(`Plugin "${key}" timed out after ${TIMINGS.PLUGIN_TIMEOUT}ms`))
+          reject(new Error(`Plugin "${key}" timed out after ${TIMINGS.PLUGIN_TIMEOUT_MS}ms`))
         }
-      }, TIMINGS.PLUGIN_TIMEOUT)
+      }, TIMINGS.PLUGIN_TIMEOUT_MS)
     })
   }
 }
@@ -433,7 +433,7 @@ function handleSlide(pageId, compId, value) {
       const v = Math.round(value)
       if (OS === PLATFORMS.LINUX)  executeCommand(`wpctl set-volume @DEFAULT_AUDIO_SINK@ ${v}%`)
       else if (OS === PLATFORMS.DARWIN) executeCommand(`osascript -e 'set volume output volume ${v}'`)
-      else executeCommand(`powershell -c "$vol=[math]::Round(${v}/100,2); (New-Object -ComObject WScript.Shell).SendKeys([char]174)"`)
+      else executeCommand(`nircmd setsysvolume ${Math.round(v / 100 * 65535)}`)
       break
     }
     case ACTION_TYPES.SCROLL: {
@@ -457,7 +457,20 @@ function handleSlide(pageId, compId, value) {
       }
       break
     }
-    case ACTION_TYPES.COMMAND:  executeCommand(a.command.replace(/{value}/g, val)); break
+    case ACTION_TYPES.COMMAND: {
+      let cmd = a.command.replace(/{value}/g, val)
+      if (comp.infiniteScroll) {
+        const last  = slideLastValues[key] ?? value
+        const raw   = value - last
+        slideLastValues[key] = value
+        if (Math.abs(raw) > 15) break
+        const delta = Math.round(raw)
+        if (delta === 0) break
+        cmd = a.command.replace(/{delta}/g, delta).replace(/{value}/g, val)
+      }
+      executeCommand(cmd)
+      break
+    }
     case ACTION_TYPES.BUILTIN:  executeBuiltin(a.key); break
     case ACTION_TYPES.HOTKEY:   executeHotkey(a.combo); break
     case ACTION_TYPES.SEQUENCE:
@@ -534,8 +547,9 @@ function setConfig(newConfig) {
     console.error('setConfig: rejected invalid config structure')
     return
   }
-  config       = migrateConfig(newConfig)
-  toggleStates = {}
+  config          = migrateConfig(newConfig)
+  toggleStates    = {}
+  slideLastValues = {}
   saveConfig(configFilePath, config)
   broadcast({ type: MESSAGE_TYPES.CONFIG, config })
   startTilePollers()

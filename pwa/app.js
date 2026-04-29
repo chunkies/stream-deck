@@ -41,7 +41,8 @@ function connect() {
   ws.onerror = () => ws.close()
 
   ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data)
+    let msg
+    try { msg = JSON.parse(e.data) } catch { return }
     if (msg.type === 'config')        { config = msg.config; currentPages = config.pages; currentPageIdx = 0; navStack = []; toggleStates = {}; render() }
     if (msg.type === 'toggleState')   { toggleStates[msg.key] = msg.active; updateToggleBtn(msg.key, msg.active) }
     if (msg.type === 'tileUpdate')    { updateTile(msg.key, msg.text) }
@@ -164,6 +165,7 @@ function createSwitch(comp, page) {
   cell.dataset.key    = key
   cell.dataset.compId = comp.id
   cell.dataset.pageId = page.id
+  applyBg(cell, comp.color, comp.image)
 
   cell.innerHTML = `
     <div class="switch-label">${comp.label || ''}</div>
@@ -222,6 +224,7 @@ function knobSVG(pct) {
 function createKnob(comp, page) {
   const cell = document.createElement('div')
   cell.className = 'knob-cell'
+  applyBg(cell, comp.color, comp.image)
 
   const min  = comp.min ?? 0
   const max  = comp.max ?? 100
@@ -300,7 +303,7 @@ function createKnob(comp, page) {
 function createTile(comp, page) {
   const cell = document.createElement('div')
   cell.className = 'tile-cell'
-  cell.style.background = comp.color || '#0f172a'
+  applyBg(cell, comp.color, comp.image)
   cell.dataset.key = `${page.id}:${comp.id}`
   cell.innerHTML = `
     <div class="tile-label">${comp.label || ''}</div>
@@ -322,7 +325,7 @@ function updateTile(key, text) {
 function createPluginTile(comp, page) {
   const cell = document.createElement('div')
   cell.className = 'tile-cell plugin-tile-cell'
-  cell.style.background  = comp.color           || '#0f172a'
+  applyBg(cell, comp.color, comp.image)
   cell.dataset.pluginId  = comp.pluginTileId    || ''
   cell.dataset.eventName = comp.pluginTileEvent || ''
   cell.dataset.field     = comp.pluginTileField || 'value'
@@ -465,7 +468,7 @@ function createSlider(comp, page) {
   const horiz = comp.orientation === 'horizontal'
   const cell  = document.createElement('div')
   cell.className = 'slider-cell' + (horiz ? ' horizontal' : '')
-  cell.style.background = comp.color || '#1e293b'
+  applyBg(cell, comp.color, comp.image)
 
   const min  = comp.min          ?? 0
   const max  = comp.max          ?? 100

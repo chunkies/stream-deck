@@ -833,6 +833,7 @@ function saveModal() {
       componentType: 'switch',
       label:       ea.label,
       color:       ea.color,
+      image:       ea.image,
       activeColor: document.getElementById('ea-active-color').value,
       action:      tAction
     }
@@ -852,6 +853,7 @@ function saveModal() {
       componentType:  'slider',
       label:          ea.label,
       color:          ea.color,
+      image:          ea.image,
       orientation:    existing?.orientation || 'vertical',
       min:            parseFloat(document.getElementById('s-min').value)     || 0,
       max:            parseFloat(document.getElementById('s-max').value)     || 100,
@@ -876,6 +878,7 @@ function saveModal() {
       componentType:  'knob',
       label:          ea.label,
       color:          ea.color,
+      image:          ea.image,
       min:            parseFloat(document.getElementById('k-min').value)     || 0,
       max:            parseFloat(document.getElementById('k-max').value)     || 100,
       step:           parseFloat(document.getElementById('k-step').value)    || 1,
@@ -890,6 +893,7 @@ function saveModal() {
       componentType: 'tile',
       label:        ea.label,
       color:        ea.color,
+      image:        ea.image,
       pollCommand:  document.getElementById('tile-command').value.trim(),
       pollInterval: parseInt(document.getElementById('tile-interval').value) || 5,
       tileFormat:   document.getElementById('tile-format').value.trim() || '{value}',
@@ -912,6 +916,7 @@ function saveModal() {
       icon:         ea.icon || '🎤',
       label:        ea.label || 'Voice',
       color:        ea.color,
+      image:        ea.image,
       voiceMode:    mode,
       voiceCommand: document.getElementById('voice-command').value.trim()
     }
@@ -922,6 +927,7 @@ function saveModal() {
       componentType:   'plugin-tile',
       label:           ea.label,
       color:           ea.color,
+      image:           ea.image,
       pluginTileId:    document.getElementById('ptile-plugin-id').value.trim(),
       pluginTileEvent: document.getElementById('ptile-event').value.trim(),
       pluginTileField: document.getElementById('ptile-field').value.trim() || 'value'
@@ -934,6 +940,7 @@ function saveModal() {
       icon:  ea.icon  || '📁',
       label: ea.label || 'Folder',
       color: ea.color,
+      image: ea.image,
       pages: existing?.pages || []
     }
   }
@@ -1008,7 +1015,7 @@ function createComponentAtCell(compType, pluginKey, label, col, row, options = {
   page.components.push(comp)
   pushConfig()
   renderGrid()
-  openModal(currentPageIdx, id, col, row)
+  openModal(adminIdx(), id, col, row)
 }
 
 const cpCollapsed = new Set()
@@ -1333,18 +1340,26 @@ function updatePreviewNow() {
 
 function setAppearanceFromComp(comp, uiType) {
   const defaultColor = ['tile','spotify','plugin-tile'].includes(uiType) ? '#0f172a' : '#1e293b'
-  currentGradient    = null
+  const saved = comp?.color || defaultColor
 
   document.getElementById('ea-icon').value    = comp?.icon  || ''
   document.getElementById('ea-label').value   = comp?.label || ''
-  document.getElementById('ea-color').value   = comp?.color || defaultColor
   document.getElementById('ea-img-url').value = ''
   document.getElementById('ea-emoji-panel').style.display = 'none'
   document.getElementById('ea-emoji-toggle').textContent  = 'Pick emoji ▾'
 
   document.querySelectorAll('#ea-solid-swatches .swatch').forEach(s => s.classList.remove('selected'))
   document.querySelectorAll('#ea-gradient-swatches .gradient-swatch').forEach(s => s.classList.remove('selected'))
-  highlightSwatch('ea-solid-swatches', comp?.color || defaultColor)
+
+  if (saved.startsWith('linear-gradient') || saved.startsWith('radial-gradient')) {
+    currentGradient = saved
+    document.getElementById('ea-color').value = defaultColor
+    highlightGradientSwatch(saved)
+  } else {
+    currentGradient = null
+    document.getElementById('ea-color').value = saved
+    highlightSwatch('ea-solid-swatches', saved)
+  }
 
   if (comp?.image) showEaImagePreview(comp.image)
   else {
@@ -1353,7 +1368,7 @@ function setAppearanceFromComp(comp, uiType) {
   }
 
   const hasIcon   = ['button','voice','folder'].includes(uiType)
-  const hasImage  = uiType === 'button'
+  const hasImage  = !['spotify'].includes(uiType)
   const hasLabel  = uiType !== 'spotify'
   const hasActive = uiType === 'switch'
 
@@ -1465,7 +1480,9 @@ document.getElementById('import-btn').addEventListener('click', async () => {
   config = result.config
   document.getElementById('grid-cols').value = config.grid.cols
   document.getElementById('grid-rows').value = config.grid.rows
-  currentPageIdx = 0
+  currentPageIdx   = 0
+  adminFolderStack = []
+  closeModal()
   renderAll()
 })
 

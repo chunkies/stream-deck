@@ -462,6 +462,7 @@ body {
   background: rgba(0,0,0,0.45);
   border-radius: 8px;
   overflow: visible;
+  pointer-events: none;
   cursor: pointer;
   flex-shrink: 0;
 }

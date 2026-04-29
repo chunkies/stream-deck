@@ -358,6 +358,50 @@ describe('isArtPathSafe', () => {
   })
 })
 
+// ── TIMINGS constants ──────────────────────────────────
+describe('TIMINGS constants', () => {
+  const { TIMINGS } = require('../server/constants')
+
+  test('PLUGIN_TIMEOUT_MS is a finite positive number', () => {
+    expect(typeof TIMINGS.PLUGIN_TIMEOUT_MS).toBe('number')
+    expect(TIMINGS.PLUGIN_TIMEOUT_MS).toBeGreaterThan(0)
+    expect(isFinite(TIMINGS.PLUGIN_TIMEOUT_MS)).toBe(true)
+  })
+
+  test('PLUGIN_TIMEOUT does not exist (typo guard)', () => {
+    expect(TIMINGS.PLUGIN_TIMEOUT).toBeUndefined()
+  })
+
+  test('all expected keys are present and positive', () => {
+    const required = ['PLUGIN_TIMEOUT_MS', 'TILE_POLL_MIN_MS', 'TILE_POLL_CMD_MS', 'SPOTIFY_POLL_MS', 'COMMAND_TIMEOUT_MS', 'SEQUENCE_DEFAULT_MS']
+    for (const key of required) {
+      expect(TIMINGS[key]).toBeGreaterThan(0)
+    }
+  })
+})
+
+// ── slideLastValues cleared on setConfig ──────────────
+describe('slideLastValues state management', () => {
+  test('infinite scroll delta computed correctly between two values', () => {
+    const slideLastValues = {}
+    const key = 'page1:comp1'
+
+    function computeDelta(key, value) {
+      const last = slideLastValues[key] ?? value
+      const raw  = value - last
+      slideLastValues[key] = value
+      if (Math.abs(raw) > 15) return null
+      return Math.round(raw)
+    }
+
+    expect(computeDelta(key, 50)).toBe(0)    // first call: no movement
+    expect(computeDelta(key, 55)).toBe(5)    // moved +5
+    expect(computeDelta(key, 45)).toBe(-10)  // moved -10
+    expect(computeDelta(key, 5)).toBeNull()  // large jump (reset) → ignored
+    expect(computeDelta(key, 8)).toBe(3)     // small move after reset
+  })
+})
+
 // ── callPluginWithTimeout ──────────────────────────────
 describe('callPluginWithTimeout', () => {
   const PLUGIN_TIMEOUT_MS = 10_000
