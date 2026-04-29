@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Plugin Marketplace</title>
+  <link rel="stylesheet" href="./src/styles/marketplace.css">
+</head>
+<body>
+
+<div class="mp-layout">
+
+  <!-- Header -->
+  <div class="mp-header">
+    <div class="mp-title">🔌 Plugin Marketplace</div>
+    <div class="mp-search-wrap">
+      <input id="search" class="mp-search" type="text" placeholder="Search plugins…" autocomplete="off">
+    </div>
+    <div class="mp-tabs">
+      <button class="mp-tab active" data-tab="browse">Browse</button>
+      <button class="mp-tab" data-tab="installed">Installed <span id="installed-count" class="mp-count"></span></button>
+      <button class="mp-tab" data-tab="dev">Developer</button>
+    </div>
+  </div>
+
+  <!-- Browse tab -->
+  <div id="tab-browse" class="mp-tab-content active">
+    <div class="mp-filters" id="tag-filters">
+      <button class="mp-tag-btn active" data-tag="">All</button>
+    </div>
+    <div id="browse-status" class="mp-status">Loading registry…</div>
+    <div class="mp-grid" id="browse-grid"></div>
+  </div>
+
+  <!-- Installed tab -->
+  <div id="tab-installed" class="mp-tab-content">
+    <div class="mp-toolbar">
+      <button class="mp-btn-sm" id="check-updates-btn">Check for updates</button>
+      <button class="mp-btn-sm" id="open-dir-btn">Open plugins folder</button>
+    </div>
+    <div id="installed-status" class="mp-status" style="display:none"></div>
+    <div class="mp-list" id="installed-list"></div>
+  </div>
+
+  <!-- Developer tab -->
+  <div id="tab-dev" class="mp-tab-content">
+    <div class="mp-dev-body">
+      <div class="mp-dev-section">
+        <h2>Build a plugin</h2>
+        <p>Plugins live in <code>userData/plugins/&lt;id&gt;/</code>. Each plugin needs two files:</p>
+        <div class="mp-code">
+<pre>my-plugin/
+  manifest.json   ← metadata, actions list, price
+  index.js        ← action handlers (optionally using the SDK)</pre>
+        </div>
+      </div>
+
+      <div class="mp-dev-section">
+        <h2>manifest.json</h2>
+        <div class="mp-code">
+<pre>{
+  "id": "my-plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "description": "What it does",
+  "author": "Your Name",
+  "authorUrl": "https://yoursite.com",
+  "homepage": "https://github.com/you/my-plugin",
+  "icon": "icon.png",
+  "price": 0,
+  "purchaseUrl": "https://buy.stripe.com/your-link",
+  "downloadUrl": "https://github.com/you/my-plugin/releases/download/v1.0.0/my-plugin.zip",
+  "license": "MIT",
+  "tags": ["productivity"],
+  "actions": [
+    { "key": "my-plugin.doThing", "label": "Do Thing" }
+  ]
+}</pre>
+        </div>
+        <p class="mp-hint">Set <code>price: 0</code> for free. For paid plugins, set your price in cents and add a <code>purchaseUrl</code> (Stripe, Gumroad, Lemon Squeezy — your choice, you keep the money).</p>
+      </div>
+
+      <div class="mp-dev-section">
+        <h2>index.js — with SDK</h2>
+        <div class="mp-code">
+<pre>module.exports = (sdk) => ({
+
+  'my-plugin.doThing': async (params) => {
+    // Shell commands
+    const out = await sdk.shell.execAsync('date')
+    sdk.log.info('date output: ' + out)
+
+    // Per-plugin storage
+    const count = sdk.storage.get('count') || 0
+    sdk.storage.set('count', count + 1)
+
+    // HTTP requests
+    const data = await sdk.http.get('https://api.example.com/data')
+
+    // Send event to all connected phone clients
+    sdk.broadcast({ event: 'myEvent', payload: data })
+  }
+
+})</pre>
+        </div>
+        <p class="mp-hint">Export a factory function that receives <code>sdk</code> for full API access. Or export a plain object for simple command-based plugins.</p>
+      </div>
+
+      <div class="mp-dev-section">
+        <h2>Publish to marketplace</h2>
+        <p>Submit a PR to the <a href="#" id="registry-link" class="mp-link">macropad registry repo</a> adding your plugin to <code>registry.json</code>. Your downloadUrl should point to a zip of your plugin folder.</p>
+      </div>
+
+      <div class="mp-dev-section mp-dev-local">
+        <h2>Load local plugin</h2>
+        <p>Pick a folder containing your <code>manifest.json</code> and <code>index.js</code>. It will be copied into the plugins directory and marked as a local dev plugin (skips update checks).</p>
+        <button class="mp-install-btn" id="load-local-btn">📂 Load from folder</button>
+        <div id="load-local-status" class="mp-hint" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module" src="./src/marketplace.ts"></script>
+</body>
+</html>

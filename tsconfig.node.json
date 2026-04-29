@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "moduleResolution": "node"
+  },
+  "include": [
+    "src/main/**/*",
+    "src/preload/**/*",
+    "src/server/**/*",
+    "tests/unit/**/*",
+    "electron.vite.config.ts"
+  ]
+}
