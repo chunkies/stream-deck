@@ -15,7 +15,32 @@
       <img id="qr-img" class="qr" style="display:none">
       <div class="url-row"><span class="label">URL</span><a id="server-url" class="url" href="#" target="_blank">—</a></div>
       <div class="url-row" id="cert-row"><span class="label">Cert</span><a id="cert-url" class="url" href="#" target="_blank">Download →</a></div>
-      <div id="cert-hint" class="cert-hint"></div>
+
+      <div class="cert-setup" id="cert-setup">
+        <button class="cert-setup-toggle" id="cert-setup-toggle">📱 First time? Phone setup ▾</button>
+        <div class="cert-setup-body" id="cert-setup-body">
+          <p class="cert-intro">Your phone will show "Not Secure" until you install the local certificate once. Takes 30 seconds.</p>
+          <div class="cert-tabs">
+            <button class="cert-tab active" data-os="ios">iOS</button>
+            <button class="cert-tab" data-os="android">Android</button>
+          </div>
+          <ol class="cert-steps" id="cert-steps-ios">
+            <li>On your phone, open the URL above or scan the QR code</li>
+            <li>Tap <strong>Cert → Download →</strong> to download the certificate</li>
+            <li>Go to <strong>Settings → General → VPN &amp; Device Management</strong></li>
+            <li>Tap the <em>MacroPad</em> profile → <strong>Install</strong></li>
+            <li>Go to <strong>Settings → General → About → Certificate Trust Settings</strong></li>
+            <li>Enable full trust for <em>MacroPad</em> → <strong>Continue</strong></li>
+          </ol>
+          <ol class="cert-steps" id="cert-steps-android" style="display:none">
+            <li>On your phone, open the URL above or scan the QR code</li>
+            <li>Tap <strong>Cert → Download →</strong> to download the certificate</li>
+            <li>Go to <strong>Settings → Security → Install certificates</strong></li>
+            <li>Choose <strong>CA Certificate</strong> and select the downloaded file</li>
+            <li>Confirm install — the warning will be gone next visit</li>
+          </ol>
+        </div>
+      </div>
     </div>
 
     <div class="status-block">

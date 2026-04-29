@@ -112,6 +112,27 @@ body {
 .url { color: #60a5fa; text-decoration: none; word-break: break-all; font-size: 11px }
 .url:hover { text-decoration: underline }
 .cert-hint { font-size: 10px; color: var(--text-muted); line-height: 1.4 }
+
+/* Cert install walkthrough */
+.cert-setup { margin-top: 6px }
+.cert-setup-toggle {
+  background: none; border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text-muted); font-size: 10px; padding: 4px 8px; cursor: pointer;
+  width: 100%; text-align: left;
+}
+.cert-setup-toggle:hover { background: rgba(255,255,255,0.04); color: var(--text) }
+.cert-setup-body { margin-top: 6px; font-size: 11px; color: var(--text-muted) }
+.cert-intro { margin: 0 0 8px; line-height: 1.4; font-size: 10px }
+.cert-tabs { display: flex; gap: 4px; margin-bottom: 8px }
+.cert-tab {
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text-muted); font-size: 10px;
+  padding: 3px 0; cursor: pointer;
+}
+.cert-tab.active { background: var(--accent); color: #fff; border-color: var(--accent) }
+.cert-steps { margin: 0; padding-left: 16px; line-height: 1.8; font-size: 10px; color: var(--text-muted) }
+.cert-steps strong { color: var(--text) }
+.cert-steps em { color: #60a5fa }
 .muted { color: var(--text-muted); font-size: 12px }
 
 .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 600 }

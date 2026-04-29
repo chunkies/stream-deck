@@ -13,17 +13,31 @@ import { BUILTIN_ACTIONS } from './constants'
 function applyServerInfo(info) {
   document.getElementById('server-url').textContent = info.url
   document.getElementById('server-url').href        = info.url
-  const certRow  = document.getElementById('cert-row')
-  const certHint = document.getElementById('cert-hint')
-  if (info.mode === 'traefik') {
-    if (certRow)  certRow.style.display  = 'none'
-    if (certHint) certHint.textContent   = 'Trusted cert via traefik.me — just scan and go'
-  } else {
-    if (certRow)  certRow.style.display  = ''
-    document.getElementById('cert-url').href = `${info.url}/cert.crt`
-  }
+  document.getElementById('cert-url').href          = `${info.url}/cert.crt`
+
   const qr = document.getElementById('qr-img')
   if (info.qr) { qr.src = info.qr; qr.style.display = 'block' }
+
+  // Wire cert-setup toggle
+  const toggle = document.getElementById('cert-setup-toggle')
+  const body   = document.getElementById('cert-setup-body')
+  if (toggle && body) {
+    toggle.addEventListener('click', () => {
+      const open = body.style.display !== 'none'
+      body.style.display = open ? 'none' : ''
+      toggle.textContent = open ? '📱 First time? Phone setup ▾' : '📱 First time? Phone setup ▴'
+    })
+    // OS tab switching
+    document.querySelectorAll('.cert-tab').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const os = (e.currentTarget as HTMLElement).dataset.os
+        document.querySelectorAll('.cert-tab').forEach(b => b.classList.remove('active'))
+        ;(e.currentTarget as HTMLElement).classList.add('active')
+        document.getElementById('cert-steps-ios').style.display     = os === 'ios'     ? '' : 'none'
+        document.getElementById('cert-steps-android').style.display = os === 'android' ? '' : 'none'
+      })
+    })
+  }
 }
 
 // ── Builtin action selects ────────────────────────────
