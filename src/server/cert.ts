@@ -1,14 +1,18 @@
-'use strict'
+import https from 'https'
+import os    from 'os'
+import fs    from 'fs'
+import path  from 'path'
 
-const https      = require('https')
-const selfsigned = require('selfsigned')
-const os         = require('os')
-const fs         = require('fs')
-const path       = require('path')
+// selfsigned has no @types package
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const selfsigned = require('selfsigned') as { generate: (attrs: object[], opts: object) => { private: string; cert: string } }
 
-function getLocalIP() {
+interface CertPair { cert: string; key: string }
+
+function getLocalIP(): string {
   const interfaces = os.networkInterfaces()
   for (const ifaces of Object.values(interfaces)) {
+    if (!ifaces) continue
     for (const iface of ifaces) {
       if (iface.family === 'IPv4' && !iface.internal) return iface.address
     }
@@ -16,11 +20,11 @@ function getLocalIP() {
   return '127.0.0.1'
 }
 
-function fetchText(url) {
+function fetchText(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const req = https.get(url, { timeout: 8000 }, res => {
       let data = ''
-      res.on('data', d => { data += d })
+      res.on('data', (d: Buffer) => { data += d })
       res.on('end', () => resolve(data))
     })
     req.on('error', reject)
@@ -32,13 +36,13 @@ function fetchText(url) {
 // Their DNS resolves 192-168-1-5.traefik.me → 192.168.1.5 automatically.
 // Browsers trust the cert without any manual install step on the phone.
 // The private key is intentionally public (shared dev cert) — acceptable for a LAN macro pad.
-async function getTraefikCert(certDir) {
+async function getTraefikCert(certDir: string): Promise<CertPair> {
   const certFile = path.join(certDir, 'traefik-fullchain.pem')
   const keyFile  = path.join(certDir, 'traefik-privkey.pem')
   const metaFile = path.join(certDir, 'traefik-meta.json')
 
   try {
-    const meta = JSON.parse(fs.readFileSync(metaFile, 'utf8'))
+    const meta = JSON.parse(fs.readFileSync(metaFile, 'utf8')) as { fetchedAt: number }
     if (Date.now() - meta.fetchedAt < 25 * 24 * 60 * 60 * 1000) {
       return {
         cert: fs.readFileSync(certFile, 'utf8'),
@@ -64,7 +68,7 @@ async function getTraefikCert(certDir) {
   return { cert, key }
 }
 
-function selfSignedCert(certDir, ip) {
+function selfSignedCert(certDir: string, ip: string): CertPair {
   const KEY_FILE  = path.join(certDir, 'key.pem')
   const CERT_FILE = path.join(certDir, 'cert.pem')
   const IP_FILE   = path.join(certDir, 'ip.txt')
@@ -93,7 +97,7 @@ function selfSignedCert(certDir, ip) {
 
 // Returns { key, cert, ip, host, mode }
 // host = hostname to use in URLs — traefik.me encoded IP when online, raw IP as fallback
-async function getCert(certDir) {
+export async function getCert(certDir: string): Promise<CertPair & { ip: string; host: string; mode: string }> {
   fs.mkdirSync(certDir, { recursive: true })
   const ip = getLocalIP()
 
@@ -101,10 +105,10 @@ async function getCert(certDir) {
     const { cert, key } = await getTraefikCert(certDir)
     return { key, cert, ip, host: ip.replace(/\./g, '-') + '.traefik.me', mode: 'traefik' }
   } catch (err) {
-    console.warn('traefik.me unavailable, falling back to self-signed:', err.message)
+    console.warn('traefik.me unavailable, falling back to self-signed:', (err as Error).message)
     const { key, cert } = selfSignedCert(certDir, ip)
     return { key, cert, ip, host: ip, mode: 'self-signed' }
   }
 }
 
-module.exports = { getCert, getLocalIP }
+export { getLocalIP }

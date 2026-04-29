@@ -24,9 +24,9 @@ beforeEach(() => {
   cp.execSync = execSync
   cp.exec     = exec
 
-  const sdkPath = _require.resolve('../../../src/server/plugin-sdk')
+  const sdkPath = _require.resolve('../../../out/server/plugin-sdk')
   delete _require.cache[sdkPath]
-  const sdk = _require('../../../src/server/plugin-sdk')
+  const sdk = _require('../../../out/server/plugin-sdk')
   createSDK = sdk.createSDK
 })
 

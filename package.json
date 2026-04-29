@@ -4,16 +4,16 @@
   "description": "Configurable phone-to-PC macro pad",
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "dev": "tsc -p tsconfig.server.json && electron-vite dev",
+    "build": "tsc -p tsconfig.server.json && electron-vite build",
     "package": "npm run build && electron-builder",
     "package:linux": "npm run build && electron-builder --linux",
     "package:mac": "npm run build && electron-builder --mac",
     "package:win": "npm run build && electron-builder --win",
     "package:all": "npm run build && electron-builder --linux --mac --win",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
-    "test": "vitest run --workspace vitest.workspace.ts",
-    "test:watch": "vitest --workspace vitest.workspace.ts"
+    "test": "tsc -p tsconfig.server.json && vitest run --workspace vitest.workspace.ts",
+    "test:watch": "tsc -p tsconfig.server.json && vitest --workspace vitest.workspace.ts"
   },
   "build": {
     "appId": "com.chunkies.macropad",
@@ -22,8 +22,7 @@
       "output": "dist"
     },
     "files": [
-      "out/**/*",
-      "src/server/**/*"
+      "out/**/*"
     ],
     "extraResources": [
       {

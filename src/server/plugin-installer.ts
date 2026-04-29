@@ -1,22 +1,50 @@
-'use strict'
+import fs           from 'fs'
+import path         from 'path'
+import { execFile } from 'child_process'
 
-const fs             = require('fs')
-const path           = require('path')
-const { execFile }   = require('child_process')
-const NPM            = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+// adm-zip has no @types package
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const AdmZip = require('adm-zip') as new (filePath?: string) => {
+  getEntries(): Array<{ entryName: string }>
+  extractAllTo(destDir: string, overwrite: boolean): void
+}
 
+const NPM          = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const REGISTRY_URL = 'https://raw.githubusercontent.com/chunkies/macropad/master/registry/registry.json'
 const CACHE_TTL    = 5 * 60 * 1000
 
-let registryCache     = null
-let registryCacheTime = 0
-
-// ── Semver ─────────────────────────────────────────────
-function parseVer(v) {
-  return ((v || '0.0.0').replace(/^v/, '').split('.').map(n => parseInt(n) || 0))
+interface PluginManifest {
+  id:      string
+  name?:   string
+  version?: string
+  _dir?:   string
+  _local?: boolean
+  [key: string]: unknown
 }
 
-function semverGt(a, b) {
+interface RegistryPlugin {
+  id:          string
+  name:        string
+  version:     string
+  downloadUrl: string
+}
+
+interface Registry {
+  plugins?: RegistryPlugin[]
+}
+
+type ProgressFn = (status: { status: string; pct: number }) => void
+
+let registryCache:     Registry | null = null
+let registryCacheTime: number          = 0
+
+// ── Semver ─────────────────────────────────────────────
+function parseVer(v: string | undefined): [number, number, number] {
+  const parts = ((v ?? '0.0.0').replace(/^v/, '').split('.').map(n => parseInt(n) || 0))
+  return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0]
+}
+
+export function semverGt(a: string | undefined, b: string | undefined): boolean {
   const [ma, mia, pa] = parseVer(a)
   const [mb, mib, pb] = parseVer(b)
   if (ma !== mb) return ma > mb
@@ -25,14 +53,14 @@ function semverGt(a, b) {
 }
 
 // ── Registry ───────────────────────────────────────────
-async function fetchRegistry(force = false) {
+export async function fetchRegistry(force = false): Promise<Registry> {
   if (!force && registryCache && Date.now() - registryCacheTime < CACHE_TTL) {
     return registryCache
   }
   try {
     const res = await fetch(REGISTRY_URL, { signal: AbortSignal.timeout(10000) })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    registryCache     = await res.json()
+    registryCache     = await res.json() as Registry
     registryCacheTime = Date.now()
     return registryCache
   } catch (err) {
@@ -42,8 +70,8 @@ async function fetchRegistry(force = false) {
 }
 
 // ── Installed manifests ────────────────────────────────
-function getInstalledManifests(pluginsDir) {
-  const installed = []
+export function getInstalledManifests(pluginsDir: string): PluginManifest[] {
+  const installed: PluginManifest[] = []
   if (!fs.existsSync(pluginsDir)) return installed
   for (const name of fs.readdirSync(pluginsDir)) {
     const dir          = path.join(pluginsDir, name)
@@ -51,7 +79,7 @@ function getInstalledManifests(pluginsDir) {
     try {
       if (!fs.statSync(dir).isDirectory()) continue
       if (!fs.existsSync(manifestPath)) continue
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as PluginManifest
       installed.push({ ...manifest, _dir: name })
     } catch {}
   }
@@ -59,15 +87,15 @@ function getInstalledManifests(pluginsDir) {
 }
 
 // ── Download ───────────────────────────────────────────
-async function downloadFile(url, destPath, onProgress) {
+async function downloadFile(url: string, destPath: string, onProgress: (pct: number) => void): Promise<void> {
   const res = await fetch(url, { signal: AbortSignal.timeout(60000) })
   if (!res.ok) throw new Error(`Download failed: HTTP ${res.status}`)
 
-  const total  = parseInt(res.headers.get('content-length') || '0')
+  const total  = parseInt(res.headers.get('content-length') ?? '0')
   let received = 0
-  const chunks = []
+  const chunks: Uint8Array[] = []
 
-  const reader = res.body.getReader()
+  const reader = res.body!.getReader()
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
@@ -80,10 +108,9 @@ async function downloadFile(url, destPath, onProgress) {
 }
 
 // ── Safe extraction via adm-zip ────────────────────────
-function extractZip(zipPath, destDir) {
-  const AdmZip       = require('adm-zip')
-  const zip          = new AdmZip(zipPath)
-  const normalDest   = path.resolve(destDir) + path.sep
+function extractZip(zipPath: string, destDir: string): void {
+  const zip        = new AdmZip(zipPath)
+  const normalDest = path.resolve(destDir) + path.sep
 
   // Validate all entries before extracting — prevents path traversal
   for (const entry of zip.getEntries()) {
@@ -110,8 +137,8 @@ function extractZip(zipPath, destDir) {
 }
 
 // ── Install from URL ───────────────────────────────────
-async function installPlugin(pluginId, downloadUrl, pluginsDir, onProgress) {
-  const tmpZip = path.join(pluginsDir, `_tmp_${pluginId}.zip`)
+export async function installPlugin(pluginId: string, downloadUrl: string, pluginsDir: string, onProgress?: ProgressFn): Promise<PluginManifest> {
+  const tmpZip  = path.join(pluginsDir, `_tmp_${pluginId}.zip`)
   const destDir = path.join(pluginsDir, pluginId)
 
   try {
@@ -125,7 +152,7 @@ async function installPlugin(pluginId, downloadUrl, pluginsDir, onProgress) {
     const manifestPath = path.join(destDir, 'manifest.json')
     if (!fs.existsSync(manifestPath)) throw new Error('Invalid plugin: missing manifest.json')
 
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as PluginManifest
 
     // Validate plugin id matches folder name
     if (manifest.id && manifest.id !== pluginId) {
@@ -136,7 +163,7 @@ async function installPlugin(pluginId, downloadUrl, pluginsDir, onProgress) {
     const packageJsonPath = path.join(destDir, 'package.json')
     if (fs.existsSync(packageJsonPath)) {
       if (onProgress) onProgress({ status: 'installing', pct: 100 })
-      await new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         execFile(NPM, ['install', '--omit=dev', '--no-audit', '--no-fund'], { cwd: destDir, timeout: 120000 }, (err) => {
           if (err) reject(new Error(`npm install failed: ${err.message}`))
           else resolve()
@@ -155,10 +182,10 @@ async function installPlugin(pluginId, downloadUrl, pluginsDir, onProgress) {
 }
 
 // ── Load from local folder (dev mode) ─────────────────
-function loadLocalPlugin(srcDir, pluginsDir) {
+export function loadLocalPlugin(srcDir: string, pluginsDir: string): PluginManifest {
   const manifestPath = path.join(srcDir, 'manifest.json')
   if (!fs.existsSync(manifestPath)) throw new Error('No manifest.json found in selected folder')
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as PluginManifest
   if (!manifest.id) throw new Error('manifest.json must have an "id" field')
 
   const destDir = path.join(pluginsDir, manifest.id)
@@ -174,17 +201,17 @@ function loadLocalPlugin(srcDir, pluginsDir) {
 }
 
 // ── Uninstall ──────────────────────────────────────────
-function uninstallPlugin(pluginId, pluginsDir) {
+export function uninstallPlugin(pluginId: string, pluginsDir: string): void {
   const dir = path.join(pluginsDir, pluginId)
   if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true })
 }
 
 // ── Check for updates (proper semver) ─────────────────
-async function checkUpdates(pluginsDir) {
+export async function checkUpdates(pluginsDir: string): Promise<Array<{ id: string; name?: string; installedVersion?: string; newVersion: string; downloadUrl: string }>> {
   const installed = getInstalledManifests(pluginsDir)
   if (!installed.length) return []
 
-  let registry
+  let registry: Registry
   try { registry = await fetchRegistry() } catch { return [] }
 
   return installed
@@ -196,7 +223,5 @@ async function checkUpdates(pluginsDir) {
       }
       return null
     })
-    .filter(Boolean)
+    .filter((x): x is NonNullable<typeof x> => x !== null)
 }
-
-module.exports = { fetchRegistry, getInstalledManifests, installPlugin, loadLocalPlugin, uninstallPlugin, checkUpdates, semverGt }

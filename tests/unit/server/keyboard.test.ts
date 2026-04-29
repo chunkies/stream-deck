@@ -16,9 +16,9 @@ beforeEach(() => {
   execSync = vi.fn()
   cp.execSync = execSync                                   // patch before module loads
 
-  const kbdPath = _require.resolve('../../../src/server/keyboard')
+  const kbdPath = _require.resolve('../../../out/server/keyboard')
   delete _require.cache[kbdPath]                          // force re-require
-  const kbd = _require('../../../src/server/keyboard')
+  const kbd = _require('../../../out/server/keyboard')
   executeCommand = kbd.executeCommand
   executeBuiltin = kbd.executeBuiltin
   executeHotkey  = kbd.executeHotkey

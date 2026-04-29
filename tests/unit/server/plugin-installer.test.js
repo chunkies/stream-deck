@@ -1,6 +1,6 @@
 'use strict'
 
-const { semverGt, getInstalledManifests, installPlugin } = require('../../../src/server/plugin-installer')
+const { semverGt, getInstalledManifests, installPlugin } = require('../../../out/server/plugin-installer')
 const fs   = require('fs')
 const path = require('path')
 const os   = require('os')

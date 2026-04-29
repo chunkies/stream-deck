@@ -1,20 +1,36 @@
-'use strict'
+import { execSync, exec } from 'child_process'
+import fs   from 'fs'
+import path from 'path'
+import { platform } from 'os'
+import WebSocket from 'ws'
 
-const { execSync, exec } = require('child_process')
-const fs   = require('fs')
-const path = require('path')
-const os   = require('os')
+const SHELL = platform() === 'win32' ? 'cmd.exe' : '/bin/sh'
 
-const SHELL = os.platform() === 'win32' ? 'cmd.exe' : '/bin/sh'
+type BroadcastFn = (payload: Record<string, unknown>) => void
 
-function createSDK(pluginId, pluginsDataDir, broadcastFn) {
+interface ShellOpts { timeout?: number }
+interface HttpOpts  { timeout?: number; headers?: Record<string, string>; raw?: boolean }
+
+export interface PluginSDK {
+  shell:     { exec: (cmd: string, opts?: ShellOpts) => string; execAsync: (cmd: string, opts?: ShellOpts) => Promise<string> }
+  storage:   { get: (key?: string) => unknown; set: (key: string, value: unknown) => void; delete: (key: string) => void; clear: () => void }
+  http:      { get: (url: string, opts?: HttpOpts) => Promise<unknown>; post: (url: string, body: unknown, opts?: HttpOpts) => Promise<unknown>; request: (url: string, init?: RequestInit) => Promise<Response> }
+  broadcast: (event: string | Record<string, unknown>, data?: Record<string, unknown>) => void
+  on:        (key: string, fn: (params: unknown) => Promise<void> | void) => void
+  emit:      (key: string, params: unknown) => Promise<void>
+  _handlers: Record<string, (params: unknown) => Promise<void> | void>
+  ws:        typeof WebSocket
+  log:       { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void }
+}
+
+export function createSDK(pluginId: string, pluginsDataDir: string, broadcastFn: BroadcastFn): PluginSDK {
   const storageFile = path.join(pluginsDataDir, `${pluginId}.json`)
-  const _handlers   = {}
+  const _handlers: Record<string, (params: unknown) => Promise<void> | void> = {}
 
-  function loadStorage() {
-    try { return JSON.parse(fs.readFileSync(storageFile, 'utf8')) } catch { return {} }
+  function loadStorage(): Record<string, unknown> {
+    try { return JSON.parse(fs.readFileSync(storageFile, 'utf8')) as Record<string, unknown> } catch { return {} }
   }
-  function saveStorage(data) {
+  function saveStorage(data: Record<string, unknown>): void {
     fs.mkdirSync(pluginsDataDir, { recursive: true })
     fs.writeFileSync(storageFile, JSON.stringify(data, null, 2))
   }
@@ -25,10 +41,10 @@ function createSDK(pluginId, pluginsDataDir, broadcastFn) {
     // fast commands (<50ms, e.g. reading /proc files). Use execAsync() for everything else.
     shell: {
       exec: (cmd, opts = {}) =>
-        execSync(cmd, { shell: SHELL, timeout: opts.timeout || 5000 }).toString().trim(),
+        execSync(cmd, { shell: SHELL, timeout: opts.timeout ?? 5000 }).toString().trim(),
       execAsync: (cmd, opts = {}) =>
         new Promise((resolve, reject) =>
-          exec(cmd, { shell: SHELL, timeout: opts.timeout || 5000 }, (err, stdout) =>
+          exec(cmd, { shell: SHELL, timeout: opts.timeout ?? 5000 }, (err, stdout) =>
             err ? reject(err) : resolve(stdout.trim())
           )
         )
@@ -45,14 +61,14 @@ function createSDK(pluginId, pluginsDataDir, broadcastFn) {
     // HTTP helpers
     http: {
       get:  (url, opts = {}) =>
-        fetch(url, { signal: AbortSignal.timeout(opts.timeout || 8000), headers: opts.headers })
+        fetch(url, { signal: AbortSignal.timeout(opts.timeout ?? 8000), headers: opts.headers })
           .then(r => opts.raw ? r : r.json()),
       post: (url, body, opts = {}) =>
         fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+          headers: { 'Content-Type': 'application/json', ...(opts.headers ?? {}) },
           body: JSON.stringify(body),
-          signal: AbortSignal.timeout(opts.timeout || 8000)
+          signal: AbortSignal.timeout(opts.timeout ?? 8000)
         }).then(r => opts.raw ? r : r.json()),
       request: (url, init) => fetch(url, init)
     },
@@ -61,7 +77,7 @@ function createSDK(pluginId, pluginsDataDir, broadcastFn) {
     broadcast: (event, data) => {
       const payload = (typeof event === 'string' && data)
         ? { type: 'pluginEvent', pluginId, event, ...data }
-        : { type: 'pluginEvent', pluginId, ...event }
+        : { type: 'pluginEvent', pluginId, ...(event as Record<string, unknown>) }
       broadcastFn(payload)
     },
 
@@ -78,7 +94,7 @@ function createSDK(pluginId, pluginsDataDir, broadcastFn) {
 
     // WebSocket constructor (ws package) — lets plugins open outbound WS connections
     // without bundling ws themselves
-    ws: require('ws'),
+    ws: WebSocket,
 
     // Logging (prefixed so dev knows which plugin logged)
     log: {
@@ -88,5 +104,3 @@ function createSDK(pluginId, pluginsDataDir, broadcastFn) {
     }
   }
 }
-
-module.exports = { createSDK }

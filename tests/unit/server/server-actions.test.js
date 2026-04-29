@@ -360,7 +360,7 @@ describe('isArtPathSafe', () => {
 
 // ── TIMINGS constants ──────────────────────────────────
 describe('TIMINGS constants', () => {
-  const { TIMINGS } = require('../../../src/server/constants')
+  const { TIMINGS } = require('../../../out/server/constants')
 
   test('PLUGIN_TIMEOUT_MS is a finite positive number', () => {
     expect(typeof TIMINGS.PLUGIN_TIMEOUT_MS).toBe('number')
