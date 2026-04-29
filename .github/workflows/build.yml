@@ -32,36 +32,29 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: electron/package-lock.json
 
       - name: Install dependencies
-        working-directory: electron
         run: npm ci
 
       - name: Run tests
-        working-directory: electron
         run: npm test
 
-      - name: Build (Linux)
+      - name: Build & package (Linux)
         if: matrix.platform == 'linux'
-        working-directory: electron
-        run: npm run build:linux
+        run: npm run package:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build (macOS)
+      - name: Build & package (macOS)
         if: matrix.platform == 'mac'
-        working-directory: electron
-        run: npm run build:mac
+        run: npm run package:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Unsigned build — users can right-click → Open to bypass Gatekeeper
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Build (Windows)
+      - name: Build & package (Windows)
         if: matrix.platform == 'win'
-        working-directory: electron
-        run: npm run build:win
+        run: npm run package:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
