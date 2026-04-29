@@ -13,7 +13,11 @@
     "package:all": "npm run build && electron-builder --linux --mac --win",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "test": "tsc -p tsconfig.server.json && vitest run --workspace vitest.workspace.ts",
-    "test:watch": "tsc -p tsconfig.server.json && vitest --workspace vitest.workspace.ts"
+    "test:watch": "tsc -p tsconfig.server.json && vitest --workspace vitest.workspace.ts",
+    "test:e2e": "npm run build && playwright test",
+    "test:e2e:pwa": "playwright test --project=pwa",
+    "test:e2e:renderer": "npm run build && playwright test --project=renderer",
+    "test:all": "npm test && npm run test:e2e"
   },
   "build": {
     "appId": "com.chunkies.macropad",
@@ -79,6 +83,7 @@
     "ws": "^8.17.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/express": "^4.17.21",
     "@types/multer": "^1.4.11",
     "@types/node": "^20.0.0",
