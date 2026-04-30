@@ -191,6 +191,8 @@ async function sendServerReady(info: ServerInfo): Promise<void> {
 
 // ── Auto-updater ───────────────────────────────────────
 function setupAutoUpdater(): void {
+  autoUpdater.autoInstallOnAppQuit = true
+
   autoUpdater.on('update-available', (info) => {
     const payload: AppUpdateInfo = {
       version:      info.version,
@@ -211,7 +213,7 @@ function setupAutoUpdater(): void {
     mainWindow?.webContents.send('app-update-downloaded', payload)
   })
 
-  autoUpdater.checkForUpdatesAndNotify()
+  autoUpdater.checkForUpdates()
     .catch(err => console.error('Update check failed:', (err as Error).message))
 }
 

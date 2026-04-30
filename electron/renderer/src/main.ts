@@ -41,13 +41,26 @@ function populateBuiltinSelect(): void {
   }
 }
 
-// ── About section (version + update notifications) ────
+// ── Update banner ─────────────────────────────────────
+function setupUpdateBanner(): void {
+  const banner  = el('update-banner')
+  const msg     = el('update-banner-msg')
+  const btn     = el('update-banner-btn')
+
+  btn.addEventListener('click', () => window.api.installAppUpdate())
+
+  window.api.onAppUpdateDownloaded((info) => {
+    msg.textContent = `MacroPad v${info.version} is ready.`
+    banner.style.display = 'flex'
+  })
+}
+
+// ── About section (version + manual update check) ─────
 function setupAboutSection(): void {
   const versionEl  = el('about-version')
   const statusEl   = el('about-update-status')
   const checkBtn   = el('about-check-btn')
   const restartBtn = el('about-restart-btn')
-  const openBtn    = el('settings-open-btn')
 
   window.api.getAppVersion().then(v => { versionEl.textContent = `v${v}` })
 
@@ -58,7 +71,7 @@ function setupAboutSection(): void {
     checkBtn.removeAttribute('disabled')
     checkBtn.textContent = 'Check for updates'
     if (info) {
-      statusEl.textContent = `v${info.version} available`
+      statusEl.textContent = `v${info.version} available — downloading…`
     } else {
       statusEl.textContent = 'Up to date'
     }
@@ -68,13 +81,11 @@ function setupAboutSection(): void {
 
   window.api.onAppUpdateAvailable((info) => {
     statusEl.textContent = `v${info.version} available — downloading…`
-    openBtn.classList.add('has-update')
   })
 
   window.api.onAppUpdateDownloaded((info) => {
     statusEl.textContent = `v${info.version} ready to install`
     restartBtn.style.display = ''
-    openBtn.classList.add('has-update')
   })
 }
 
@@ -173,6 +184,7 @@ async function init(): Promise<void> {
     renderGrid()
   })
 
+  setupUpdateBanner()
   setupAboutSection()
   await setupWebhookSettings()
   await setupLicenseUI()
