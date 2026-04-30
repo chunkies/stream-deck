@@ -7,10 +7,12 @@
     "moduleResolution": "node"
   },
   "include": [
-    "src/main/**/*",
-    "src/preload/**/*",
-    "src/server/**/*",
-    "tests/unit/**/*",
+    "electron/shared/**/*",
+    "electron/main/**/*",
+    "electron/preload/**/*",
+    "electron/server/**/*",
+    "electron/tests/server/**/*",
+    "electron/tests/setup.ts",
     "electron.vite.config.ts"
   ]
 }

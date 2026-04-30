@@ -1,0 +1,30 @@
+{
+  "id": "system-info",
+  "name": "System Info",
+  "version": "1.0.0",
+  "description": "Real-time CPU, memory, disk, and network stats — polled every 5 seconds and broadcast to PWA clients.",
+  "author": "MacroPad",
+  "icon": "📊",
+  "actions": [
+    {
+      "key": "system-info.getCpu",
+      "label": "CPU Usage",
+      "componentType": "button"
+    },
+    {
+      "key": "system-info.getMemory",
+      "label": "Memory Usage",
+      "componentType": "button"
+    },
+    {
+      "key": "system-info.getDisk",
+      "label": "Disk Usage",
+      "componentType": "button"
+    },
+    {
+      "key": "system-info.getNetwork",
+      "label": "Network Speed",
+      "componentType": "button"
+    }
+  ]
+}

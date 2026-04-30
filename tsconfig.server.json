@@ -5,8 +5,8 @@
     "moduleResolution": "node",
     "lib": ["ES2022"],
     "types": ["node"],
-    "outDir": "out/server",
-    "rootDir": "src/server"
+    "outDir": "dist/electron",
+    "rootDir": "electron"
   },
-  "include": ["src/server/**/*"]
+  "include": ["electron/server/**/*", "electron/shared/**/*"]
 }

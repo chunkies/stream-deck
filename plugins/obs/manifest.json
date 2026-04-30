@@ -1,0 +1,41 @@
+{
+  "id": "obs",
+  "name": "OBS Studio",
+  "version": "1.0.0",
+  "description": "Control OBS Studio via WebSocket v5 — toggle recording/streaming, switch scenes, mute sources, and poll live status.",
+  "author": "MacroPad",
+  "icon": "🎬",
+  "actions": [
+    {
+      "key": "obs.toggleRecording",
+      "label": "Toggle Recording",
+      "componentType": "button"
+    },
+    {
+      "key": "obs.toggleStream",
+      "label": "Toggle Stream",
+      "componentType": "button"
+    },
+    {
+      "key": "obs.switchScene",
+      "label": "Switch Scene",
+      "componentType": "button",
+      "params": [
+        { "key": "scene", "label": "Scene Name", "type": "text" }
+      ]
+    },
+    {
+      "key": "obs.toggleMute",
+      "label": "Toggle Mute Source",
+      "componentType": "button",
+      "params": [
+        { "key": "source", "label": "Source Name", "type": "text" }
+      ]
+    },
+    {
+      "key": "obs.getStatus",
+      "label": "Get Status",
+      "componentType": "button"
+    }
+  ]
+}

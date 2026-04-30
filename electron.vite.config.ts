@@ -5,17 +5,20 @@ export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
     build: {
-      outDir: 'out/main',
+      outDir: 'dist/electron/main',
+      lib: {
+        entry: resolve('electron/main/index.ts'),
+      },
     },
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
     build: {
-      outDir: 'out/preload',
+      outDir: 'dist/electron/preload',
       rollupOptions: {
         input: {
-          index:       resolve('src/preload/index.ts'),
-          marketplace: resolve('src/preload/marketplace.ts'),
+          index:       resolve('electron/preload/index.ts'),
+          marketplace: resolve('electron/preload/marketplace.ts'),
         },
         output: {
           entryFileNames: '[name].js',
@@ -24,13 +27,13 @@ export default defineConfig({
     },
   },
   renderer: {
-    root: 'src/renderer',
+    root: 'electron/renderer',
     build: {
-      outDir: 'out/renderer',
+      outDir: 'dist/electron/renderer',
       rollupOptions: {
         input: {
-          index:       resolve('src/renderer/index.html'),
-          marketplace: resolve('src/renderer/marketplace.html'),
+          index:       resolve('electron/renderer/index.html'),
+          marketplace: resolve('electron/renderer/marketplace.html'),
         },
       },
     },

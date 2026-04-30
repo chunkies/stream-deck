@@ -1,0 +1,50 @@
+{
+  "id": "audio-switcher",
+  "name": "Audio Switcher",
+  "version": "1.0.0",
+  "description": "Switch audio output/input devices on Linux (pactl) and macOS (SwitchAudioSource).",
+  "author": "MacroPad Team",
+  "homepage": "https://github.com/chunkies/macropad",
+  "price": 0,
+  "license": "MIT",
+  "tags": ["audio", "system"],
+  "icon": "🔊",
+  "actions": [
+    {
+      "key": "audio-switcher.listOutputs",
+      "label": "List Output Devices",
+      "componentType": "button",
+      "description": "Broadcasts a list of available audio output devices."
+    },
+    {
+      "key": "audio-switcher.listInputs",
+      "label": "List Input Devices",
+      "componentType": "button",
+      "description": "Broadcasts a list of available audio input devices."
+    },
+    {
+      "key": "audio-switcher.setOutput",
+      "label": "Set Output Device",
+      "componentType": "button",
+      "description": "Switch the default audio output to the first device matching the given name (partial match OK).",
+      "params": [
+        { "key": "device", "label": "Device Name (partial match OK)", "type": "text" }
+      ]
+    },
+    {
+      "key": "audio-switcher.setInput",
+      "label": "Set Input Device",
+      "componentType": "button",
+      "description": "Switch the default audio input to the first device matching the given name (partial match OK).",
+      "params": [
+        { "key": "device", "label": "Device Name (partial match OK)", "type": "text" }
+      ]
+    },
+    {
+      "key": "audio-switcher.getDefault",
+      "label": "Get Current Default",
+      "componentType": "button",
+      "description": "Broadcasts the current default audio input and output device names."
+    }
+  ]
+}

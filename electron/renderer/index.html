@@ -2,8 +2,9 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' wss: ws:; font-src 'self'">
   <title>MacroPad</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="./src/styles/main.css">
 </head>
 <body>
 <div class="layout">
@@ -15,7 +16,32 @@
       <img id="qr-img" class="qr" style="display:none">
       <div class="url-row"><span class="label">URL</span><a id="server-url" class="url" href="#" target="_blank">—</a></div>
       <div class="url-row" id="cert-row"><span class="label">Cert</span><a id="cert-url" class="url" href="#" target="_blank">Download →</a></div>
-      <div id="cert-hint" class="cert-hint"></div>
+
+      <div class="cert-setup" id="cert-setup">
+        <button class="cert-setup-toggle" id="cert-setup-toggle">📱 First time? Phone setup ▾</button>
+        <div class="cert-setup-body" id="cert-setup-body">
+          <p class="cert-intro">Your phone will show "Not Secure" until you install the local certificate once. Takes 30 seconds.</p>
+          <div class="cert-tabs">
+            <button class="cert-tab active" data-os="ios">iOS</button>
+            <button class="cert-tab" data-os="android">Android</button>
+          </div>
+          <ol class="cert-steps" id="cert-steps-ios">
+            <li>On your phone, open the URL above or scan the QR code</li>
+            <li>Tap <strong>Cert → Download →</strong> to download the certificate</li>
+            <li>Go to <strong>Settings → General → VPN &amp; Device Management</strong></li>
+            <li>Tap the <em>MacroPad</em> profile → <strong>Install</strong></li>
+            <li>Go to <strong>Settings → General → About → Certificate Trust Settings</strong></li>
+            <li>Enable full trust for <em>MacroPad</em> → <strong>Continue</strong></li>
+          </ol>
+          <ol class="cert-steps" id="cert-steps-android" style="display:none">
+            <li>On your phone, open the URL above or scan the QR code</li>
+            <li>Tap <strong>Cert → Download →</strong> to download the certificate</li>
+            <li>Go to <strong>Settings → Security → Install certificates</strong></li>
+            <li>Choose <strong>CA Certificate</strong> and select the downloaded file</li>
+            <li>Confirm install — the warning will be gone next visit</li>
+          </ol>
+        </div>
+      </div>
     </div>
 
     <div class="status-block">
@@ -59,9 +85,88 @@
       </div>
     </div>
 
+    <div class="s-card" id="webhook-card">
+      <div class="section-label">Inbound Webhook</div>
+      <div class="status-row" style="margin-bottom:6px">
+        <span class="label">Enabled</span>
+        <label class="sw">
+          <input type="checkbox" id="webhook-toggle">
+          <span class="sw-track"><span class="sw-thumb"></span></span>
+        </label>
+      </div>
+      <div id="webhook-url-row" style="display:none">
+        <div class="field-hint" style="font-size:10px;margin-bottom:4px">POST this URL to trigger a button</div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <input id="webhook-url-input" type="text" readonly style="flex:1;font-size:10px;font-family:monospace" value="">
+          <button id="webhook-copy-btn" class="btn-secondary" style="padding:3px 7px;font-size:11px">Copy</button>
+        </div>
+        <div class="field-hint" style="margin-top:4px;font-size:10px">Replace :pageId and :buttonId with IDs</div>
+      </div>
+    </div>
+
+    <div class="s-card" id="cron-card">
+      <div class="section-label">Cron Triggers</div>
+      <div id="cron-list" style="margin-bottom:6px"></div>
+      <button id="cron-add-btn" class="btn-secondary" style="width:100%;font-size:11px">+ Add Cron</button>
+      <div id="cron-form" style="display:none;margin-top:8px">
+        <div class="field-row" style="margin-bottom:4px">
+          <label style="font-size:11px">Label</label>
+          <input id="cron-label" type="text" placeholder="e.g. Morning" style="font-size:11px">
+        </div>
+        <div class="field-row" style="margin-bottom:4px">
+          <label style="font-size:11px">Cron</label>
+          <input id="cron-expr" type="text" placeholder="*/5 * * * *" style="font-size:11px;font-family:monospace">
+        </div>
+        <div class="field-row" style="margin-bottom:4px">
+          <label style="font-size:11px">Page</label>
+          <select id="cron-page" style="font-size:11px"></select>
+        </div>
+        <div class="field-row" style="margin-bottom:4px">
+          <label style="font-size:11px">Button</label>
+          <select id="cron-comp" style="font-size:11px"></select>
+        </div>
+        <div class="field-row" style="margin-bottom:6px">
+          <label style="font-size:11px">Enabled</label>
+          <label class="sw sw-sm">
+            <input type="checkbox" id="cron-enabled" checked>
+            <span class="sw-track"><span class="sw-thumb"></span></span>
+          </label>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button id="cron-save-btn" class="btn-primary" style="flex:1;font-size:11px">Save</button>
+          <button id="cron-cancel-btn" class="btn-secondary" style="flex:1;font-size:11px">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="s-card" id="license-card">
+      <div class="section-label">License</div>
+      <div id="license-status-row" class="status-row" style="margin-bottom:6px">
+        <span class="label">Plan</span>
+        <span id="license-badge" class="badge disconnected">Free</span>
+      </div>
+      <div id="license-activate-row">
+        <div style="display:flex;gap:4px;align-items:center">
+          <input id="license-key-input" type="text" placeholder="XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX" style="flex:1;font-size:11px;font-family:monospace">
+          <button id="license-activate-btn" class="btn-secondary" style="padding:3px 7px;font-size:11px">Activate</button>
+        </div>
+        <div id="license-error" class="field-hint" style="color:#ef4444;margin-top:3px;display:none">Invalid license key.</div>
+      </div>
+    </div>
+
+    <div class="s-card">
+      <div class="section-label">Custom CSS</div>
+      <div class="field-hint" style="font-size:10px;margin-bottom:6px">Injected into connected PWA clients</div>
+      <textarea id="custom-css-input" rows="5" style="width:100%;font-size:11px;font-family:monospace;resize:vertical" placeholder="/* e.g. .btn { border-radius: 0 } */"></textarea>
+      <div class="s-row" style="margin-top:6px">
+        <button id="custom-css-apply-btn" class="btn-secondary">Apply</button>
+      </div>
+    </div>
+
     <div class="sidebar-actions">
       <button id="add-page-btn" class="btn-secondary">+ Add Page</button>
       <button id="marketplace-btn" class="btn-secondary">🔌 Plugins</button>
+      <button id="templates-btn" class="btn-secondary">📋 Templates</button>
     </div>
   </aside>
 
@@ -177,6 +282,8 @@
             <option value="command">Command</option>
             <option value="sequence">Sequence</option>
             <option value="page">Go to Page</option>
+            <option value="webhook">Webhook (HTTP request)</option>
+            <option value="conditional">Conditional</option>
           </select>
         </div>
       </div>
@@ -207,6 +314,84 @@
           <span class="field-hint">Plugins live in <code>userData/plugins/</code></span>
         </div>
         <div id="plugin-params"></div>
+      </div>
+      <div id="action-webhook" style="display:none">
+        <div class="field-row">
+          <label>URL</label>
+          <div>
+            <input id="f-webhook-url" type="text" placeholder="https://example.com/api">
+            <div class="field-hint">Must start with http:// or https://</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Method</label>
+          <select id="f-webhook-method">
+            <option value="POST" selected>POST</option>
+            <option value="GET">GET</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Body</label>
+          <div>
+            <textarea id="f-webhook-body" rows="3" placeholder='{"key":"value"}'></textarea>
+            <div class="field-hint">Optional body for POST / PUT requests</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Headers</label>
+          <div>
+            <textarea id="f-webhook-headers" rows="2" placeholder="Authorization: Bearer token&#10;X-Custom: value"></textarea>
+            <div class="field-hint">One <code>Key: Value</code> per line</div>
+          </div>
+        </div>
+      </div>
+      <div id="action-conditional" style="display:none">
+        <div class="field-row">
+          <label>Condition</label>
+          <select id="f-cond-condition">
+            <option value="toggle">Toggle active</option>
+            <option value="tile">Tile contains</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Key</label>
+          <div>
+            <input id="f-cond-key" type="text" placeholder="page1:button1">
+            <div class="field-hint">pageId:componentId of the toggle or tile</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Value</label>
+          <div>
+            <input id="f-cond-value" type="text" placeholder="running (for tile contains)">
+            <div class="field-hint">Text the tile must contain (tile condition only)</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Then</label>
+          <div>
+            <select id="f-cond-then-type">
+              <option value="command">Command</option>
+              <option value="hotkey">Hotkey</option>
+              <option value="builtin">Built-in</option>
+            </select>
+            <input id="f-cond-then-cmd" type="text" placeholder="command or combo" style="margin-top:4px">
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Else</label>
+          <div>
+            <select id="f-cond-else-type">
+              <option value="">(none)</option>
+              <option value="command">Command</option>
+              <option value="hotkey">Hotkey</option>
+              <option value="builtin">Built-in</option>
+            </select>
+            <input id="f-cond-else-cmd" type="text" placeholder="command or combo (optional)" style="margin-top:4px">
+          </div>
+        </div>
       </div>
       <div class="hold-section">
         <div class="hold-header">
@@ -482,6 +667,57 @@
       <button class="btn-primary" id="folder-edit-btn" style="margin-top:14px;width:100%">Enter Folder →</button>
     </div>
 
+    <!-- ── Counter fields ── -->
+    <div id="comp-counter" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row"><label>Min</label><input id="ctr-min" type="number" value="0"></div>
+        <div class="field-row"><label>Max</label><div><input id="ctr-max" type="number" placeholder="unlimited"><div class="field-hint">Leave blank for unlimited</div></div></div>
+        <div class="field-row"><label>Step</label><input id="ctr-step" type="number" value="1" min="1"></div>
+      </div>
+      <div class="field-hint" style="padding:4px 0">Tap to increment. Hold to decrement. Double-tap to reset.</div>
+    </div>
+
+    <!-- ── Clock fields ── -->
+    <div id="comp-clock" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row"><label>Format</label><div><input id="clk-format" type="text" value="HH:mm"><div class="field-hint">Tokens: HH hh mm ss A</div></div></div>
+        <div class="field-row">
+          <label>Show date</label>
+          <label class="sw sw-sm"><input type="checkbox" id="clk-show-date"><span class="sw-track"><span class="sw-thumb"></span></span></label>
+        </div>
+        <div class="field-row"><label>Date format</label><div><input id="clk-date-format" type="text" placeholder="ddd D MMM"><div class="field-hint">Tokens: ddd D MMM YYYY</div></div></div>
+        <div class="field-row"><label>Timezone</label><div><input id="clk-timezone" type="text" placeholder="America/New_York"><div class="field-hint">IANA timezone (blank = local)</div></div></div>
+      </div>
+    </div>
+
+    <!-- ── Stopwatch fields ── -->
+    <div id="comp-stopwatch" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row">
+          <label>Show ms</label>
+          <label class="sw sw-sm"><input type="checkbox" id="sw-show-ms"><span class="sw-track"><span class="sw-thumb"></span></span></label>
+        </div>
+      </div>
+      <div class="field-hint" style="padding:4px 0">Tap to start/stop. Hold to reset.</div>
+    </div>
+
+    <!-- ── Countdown fields ── -->
+    <div id="comp-countdown" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row"><label>Duration</label><div><input id="cd-duration" type="number" value="60" min="1"><div class="field-hint">seconds</div></div></div>
+        <div class="field-row"><label>On complete</label><div><input id="cd-on-complete" type="text" placeholder="shell command (optional)"><div class="field-hint">Runs when countdown reaches zero</div></div></div>
+      </div>
+      <div class="field-hint" style="padding:4px 0">Tap to start/stop. Hold to reset.</div>
+    </div>
+
+    <div id="comp-trackpad" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row"><label>Sensitivity</label><div><input id="tp-sensitivity" type="number" value="1.0" min="0.1" max="5" step="0.1"><div class="field-hint">Mouse speed multiplier (default 1.0)</div></div></div>
+        <div class="field-row"><label>Natural scroll</label><div><label class="toggle-switch"><input id="tp-natural-scroll" type="checkbox"><span class="toggle-knob"></span></label><div class="field-hint">Reverses scroll direction</div></div></div>
+      </div>
+      <div class="field-hint" style="padding:4px 0">1-finger drag: move · Tap: click · 2-finger drag: scroll · 2-finger tap: right-click</div>
+    </div>
+
     </div><!-- /editor-right -->
   </div><!-- /drawer-body -->
 </div><!-- /drawer -->
@@ -518,6 +754,15 @@
     </div>
     <div class="modal-body">
       <div class="field-row"><label>Name</label><input id="f-rename-name" type="text" placeholder="Page name"></div>
+      <div class="field-hint" style="margin-top:8px;margin-bottom:4px;font-size:11px">Auto-profile (match active window)</div>
+      <div class="field-row">
+        <label style="font-size:11px">Window class</label>
+        <input id="f-auto-class" type="text" placeholder="e.g. spotify" style="font-size:11px">
+      </div>
+      <div class="field-row">
+        <label style="font-size:11px">Window title</label>
+        <input id="f-auto-title" type="text" placeholder="e.g. Spotify" style="font-size:11px">
+      </div>
     </div>
     <div class="modal-footer">
       <button id="rename-modal-save" class="btn-primary">Rename</button>
@@ -525,6 +770,19 @@
   </div>
 </div>
 
-<script src="renderer.js"></script>
+<!-- ── Template Store Modal ── -->
+<div class="modal-overlay" id="template-store" style="display:none">
+  <div class="modal" style="max-width:600px;max-height:80vh;overflow-y:auto">
+    <div class="modal-header">
+      <h2>Layout Templates</h2>
+      <button class="modal-close" id="template-store-close">✕</button>
+    </div>
+    <div class="modal-body" id="template-store-body">
+      <!-- Populated by renderTemplateStore() -->
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./src/main.ts"></script>
 </body>
 </html>

@@ -6,9 +6,10 @@ export default defineWorkspace([
     test: {
       name:        'server-unit',
       environment: 'node',
-      include:     ['tests/unit/**/*.test.{js,ts}'],
+      include:     ['electron/tests/server/**/*.test.ts'],
       globals:     true,
-      setupFiles:  ['tests/unit/setup.js'],
+      setupFiles:  ['electron/tests/setup.ts'],
+      coverage:    { provider: 'v8', reporter: ['text', 'html', 'lcov'] },
     },
   },
 
@@ -17,9 +18,10 @@ export default defineWorkspace([
     test: {
       name:        'renderer-browser',
       environment: 'jsdom',
-      include:     ['tests/browser/renderer/**/*.test.{js,ts}'],
+      include:     ['electron/tests/renderer/**/*.test.{js,ts}'],
       globals:     true,
-      setupFiles:  ['tests/browser/renderer/setup.ts'],
+      setupFiles:  ['electron/tests/renderer/setup.ts'],
+      coverage:    { provider: 'v8', reporter: ['text', 'html', 'lcov'] },
     },
   },
 
@@ -28,9 +30,10 @@ export default defineWorkspace([
     test: {
       name:        'pwa-browser',
       environment: 'jsdom',
-      include:     ['tests/browser/pwa/**/*.test.{js,ts}'],
+      include:     ['pwa/tests/**/*.test.{js,ts}'],
       globals:     true,
-      setupFiles:  ['tests/browser/pwa/setup.ts'],
+      setupFiles:  ['pwa/tests/setup.ts'],
+      coverage:    { provider: 'v8', reporter: ['text', 'html', 'lcov'] },
     },
   },
 ])

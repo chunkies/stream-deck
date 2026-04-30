@@ -10,7 +10,47 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    runs-on: ubuntu-22.04
+    name: Test (gate)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Unit + browser tests
+        run: npm test
+
+      - name: Build app
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Install Xvfb
+        run: sudo apt-get install -y xvfb
+
+      - name: PWA E2E tests
+        run: npx playwright test --project=pwa
+
+      - name: Renderer E2E tests (Electron + Xvfb)
+        run: xvfb-run --auto-servernum npx playwright test --project=renderer
+
   build:
+    needs: test
     strategy:
       fail-fast: false
       matrix:
@@ -36,50 +76,62 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
-        run: npm test
+      - name: Build app
+        run: npm run build
 
-      - name: Build & package (Linux)
+      # --publish never: we handle publishing in the release job below.
+      # GH_TOKEN is still needed so electron-builder can read release metadata.
+      - name: Package (Linux)
         if: matrix.platform == 'linux'
-        run: npm run package:linux
+        run: electron-builder --linux --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & package (macOS)
+      - name: Package (macOS)
         if: matrix.platform == 'mac'
-        run: npm run package:mac
+        run: electron-builder --mac --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Build & package (Windows)
+      - name: Package (Windows)
         if: matrix.platform == 'win'
-        run: npm run package:win
+        run: electron-builder --win --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # latest*.yml and *.blockmap are required by electron-updater.
+      # They must travel alongside the installers into the GitHub Release.
       - name: Upload Linux artifacts
         if: matrix.platform == 'linux'
         uses: actions/upload-artifact@v4
         with:
           name: linux-builds
           path: |
-            dist/*.AppImage
-            dist/*.deb
+            releases/*.AppImage
+            releases/*.deb
+            releases/latest*.yml
+            releases/*.blockmap
 
       - name: Upload macOS artifacts
         if: matrix.platform == 'mac'
         uses: actions/upload-artifact@v4
         with:
           name: mac-builds
-          path: dist/*.dmg
+          path: |
+            releases/*.dmg
+            releases/latest*.yml
+            releases/*.blockmap
 
       - name: Upload Windows artifacts
         if: matrix.platform == 'win'
         uses: actions/upload-artifact@v4
         with:
           name: win-builds
-          path: dist/*.exe
+          path: |
+            releases/*.exe
+            releases/latest*.yml
+            releases/*.blockmap
 
   release:
     needs: build
@@ -95,6 +147,15 @@ jobs:
 
       - name: List artifacts
         run: find artifacts -type f | sort
+
+      # NOTE: If you add a license-generation step here, it MUST include:
+      #   env:
+      #     LICENSE_SECRET: ${{ secrets.LICENSE_SECRET }}
+      # Example (uncomment and adjust path as needed):
+      # - name: Generate license keys
+      #   run: node scripts/gen-license.js
+      #   env:
+      #     LICENSE_SECRET: ${{ secrets.LICENSE_SECRET }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -116,12 +177,14 @@ jobs:
             3. Scan the QR code on your phone
             4. Start adding buttons
 
-            See the [full documentation](https://github.com/chunkies/macropad/tree/master/docs) and [plugin SDK](https://github.com/chunkies/macropad/tree/master/docs).
+            See the [full documentation](https://chunkies.github.io/macropad/) and [plugin SDK](https://chunkies.github.io/macropad/plugins).
           files: |
             artifacts/**/*.AppImage
             artifacts/**/*.deb
             artifacts/**/*.dmg
             artifacts/**/*.exe
+            artifacts/**/latest*.yml
+            artifacts/**/*.blockmap
           draft: false
           prerelease: false
         env:

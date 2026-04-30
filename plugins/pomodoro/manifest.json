@@ -1,0 +1,50 @@
+{
+  "id": "pomodoro",
+  "name": "Pomodoro Timer",
+  "version": "1.0.0",
+  "description": "Pomodoro timer that cycles work/break intervals with count tracking.",
+  "author": "MacroPad Team",
+  "homepage": "https://github.com/chunkies/macropad",
+  "price": 0,
+  "license": "MIT",
+  "tags": ["productivity", "timer"],
+  "icon": "🍅",
+  "actions": [
+    {
+      "key": "pomodoro.start",
+      "label": "Start/Pause Timer",
+      "componentType": "button",
+      "description": "Toggles the Pomodoro timer between running and paused. If idle, starts the work phase."
+    },
+    {
+      "key": "pomodoro.reset",
+      "label": "Reset Timer",
+      "componentType": "button",
+      "description": "Resets the timer to idle state and clears the cycle count."
+    },
+    {
+      "key": "pomodoro.setWork",
+      "label": "Set Work Duration",
+      "componentType": "button",
+      "description": "Set how many minutes the work phase lasts.",
+      "params": [
+        { "key": "minutes", "label": "Minutes", "type": "number", "default": 25 }
+      ]
+    },
+    {
+      "key": "pomodoro.setBreak",
+      "label": "Set Break Duration",
+      "componentType": "button",
+      "description": "Set how many minutes the break phase lasts.",
+      "params": [
+        { "key": "minutes", "label": "Minutes", "type": "number", "default": 5 }
+      ]
+    },
+    {
+      "key": "pomodoro.getStatus",
+      "label": "Get Status",
+      "componentType": "button",
+      "description": "Broadcasts the current timer state to connected PWA clients."
+    }
+  ]
+}

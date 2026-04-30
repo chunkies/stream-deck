@@ -1,3 +1,0 @@
-import { vi } from 'vitest'
-// Provide jest as an alias for vi so Jest-style tests run without modification
-globalThis.jest = vi

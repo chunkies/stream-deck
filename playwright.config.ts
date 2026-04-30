@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 import path from 'path'
 
 export default defineConfig({
-  testDir: 'tests/e2e',
+  testDir: '.',
   timeout: 30_000,
   retries: process.env.CI ? 2 : 0,
   reporter: 'list',
@@ -11,14 +11,14 @@ export default defineConfig({
     // PWA tests — serve pwa/ statically, mock WebSocket via addInitScript
     {
       name: 'pwa',
-      testMatch: '**/e2e/pwa/**/*.spec.ts',
+      testMatch: 'pwa/tests/e2e/**/*.spec.ts',
       use: { ...devices['Desktop Chrome'] },
     },
 
     // Renderer tests — launch Electron with the built app
     {
       name: 'renderer',
-      testMatch: '**/e2e/renderer/**/*.spec.ts',
+      testMatch: 'electron/tests/e2e/**/*.spec.ts',
     },
   ],
 

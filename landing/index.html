@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MacroPad — Phone Macro Pad</title>
+  <!-- Plausible Analytics -->
+  <script defer data-domain="macropad.app" src="https://plausible.io/js/script.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
@@ -236,6 +238,74 @@
     .plugin-card-name { font-size: 15px; font-weight: 600 }
     .plugin-card-desc { font-size: 13px; color: var(--muted); line-height: 1.5 }
 
+    /* ── Pricing ── */
+    .pricing-section {
+      padding: 80px 24px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .pricing-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+    }
+    .pricing-card.featured {
+      border-color: rgba(124,58,237,0.6);
+      position: relative;
+    }
+    .pricing-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 3px 12px;
+      border-radius: 99px;
+      white-space: nowrap;
+    }
+    .pricing-name { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px }
+    .pricing-price {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .pricing-price span { font-size: 18px; font-weight: 400; color: var(--muted); letter-spacing: 0 }
+    .pricing-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px }
+    .pricing-features { list-style: none; flex: 1; margin-bottom: 28px }
+    .pricing-features li { font-size: 14px; color: var(--muted); padding: 7px 0; border-bottom: 1px solid var(--border); display: flex; gap: 8px }
+    .pricing-features li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0 }
+    .pricing-features li.muted::before { content: '–'; color: var(--muted) }
+    .pricing-cta {
+      display: block;
+      text-align: center;
+      padding: 11px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none !important;
+      transition: opacity 0.15s;
+    }
+    .pricing-cta:hover { opacity: 0.85 }
+    .pricing-cta.primary { background: var(--accent); color: #fff }
+    .pricing-cta.outline { border: 1px solid var(--border); color: var(--text) }
+
     /* ── CTA ── */
     .cta-section {
       text-align: center;
@@ -288,11 +358,13 @@
 
 <!-- Nav -->
 <nav>
-  <div class="nav-logo">Stream<span>Deck</span></div>
+  <div class="nav-logo">Macro<span>Pad</span></div>
   <div class="nav-links">
     <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
     <a href="#download">Download</a>
     <a href="docs/">Docs</a>
+    <a href="https://discord.gg/macropad" target="_blank">Discord</a>
     <a href="https://github.com/chunkies/macropad" target="_blank">GitHub</a>
     <a href="#download" class="nav-cta">Download free →</a>
   </div>
@@ -300,9 +372,9 @@
 
 <!-- Hero -->
 <section class="hero">
-  <div class="hero-badge">Open source · Free forever</div>
+  <div class="hero-badge">Open source · Free forever · MCP server built-in</div>
   <h1>Your phone.<br><em>Your macro pad.</em></h1>
-  <p>Turn any phone into a programmable control surface. Launch commands, control media, trigger hotkeys, and run community plugins — all over WiFi.</p>
+  <p>Turn any phone into a programmable control surface. Launch commands, control media, trigger hotkeys, and run community plugins — all over WiFi. Now with a built-in MCP server so Claude Desktop can control your PC too.</p>
   <div class="hero-actions">
     <a href="#download" class="btn btn-primary">⬇ Download for free</a>
     <a href="https://github.com/chunkies/macropad" target="_blank" class="btn btn-outline">★ GitHub</a>
@@ -337,6 +409,20 @@
   </div>
 </section>
 
+<!-- MCP Highlight -->
+<section class="section" style="padding-bottom:0">
+  <div style="background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(99,102,241,0.08));border:1px solid rgba(124,58,237,0.3);border-radius:16px;padding:32px 40px;max-width:860px;margin:0 auto">
+    <div style="display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap">
+      <div style="font-size:48px;flex-shrink:0">🤖</div>
+      <div>
+        <h2 style="font-size:22px;font-weight:700;margin-bottom:8px;color:#e2e8f0">Claude Desktop can control your PC through MacroPad</h2>
+        <p style="color:#94a3b8;font-size:15px;line-height:1.7;margin-bottom:12px">MacroPad runs a built-in <strong style="color:#a78bfa">MCP server</strong> over stdio. Add it to Claude Desktop's config — then Claude can list your buttons, press them, switch pages, run commands (Pro), and read live tile data. Local. Airgapped. No cloud.</p>
+        <code style="display:block;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px 16px;font-size:13px;color:#7dd3fc;overflow-x:auto">{"mcpServers":{"macropad":{"command":"macropad","args":["--mcp"]}}}</code>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- Features -->
 <section class="section">
   <div class="section-label">Features</div>
@@ -344,13 +430,18 @@
   <div class="features">
     <div class="feature">
       <div class="feature-icon">🎛️</div>
-      <h3>Multiple component types</h3>
-      <p>Buttons, toggles, sliders, Spotify live tiles, and live data tiles. Each fully configurable.</p>
+      <h3>15 component types</h3>
+      <p>Buttons, switches, sliders, knobs, folders, timers, clocks, countdowns, counters, trackpad, live tiles, Spotify, voice, and plugins.</p>
     </div>
     <div class="feature">
       <div class="feature-icon">⌨️</div>
       <h3>Hotkeys + shell commands</h3>
-      <p>xdotool-style hotkeys converted automatically for macOS and Windows. Run any shell command.</p>
+      <p>xdotool-style hotkeys, shell commands, sequences with delays, webhooks, and conditional actions based on toggle or tile state.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">⏰</div>
+      <h3>Cron triggers + auto-profiles</h3>
+      <p>Schedule buttons to fire on a cron expression. Auto-switch pages based on the active window — OBS page when OBS is focused.</p>
     </div>
     <div class="feature">
       <div class="feature-icon">🎵</div>
@@ -365,22 +456,27 @@
     <div class="feature">
       <div class="feature-icon">🔌</div>
       <h3>Plugin marketplace</h3>
-      <p>Install community plugins with one click. Developers keep 100% of plugin revenue.</p>
+      <p>Install community plugins with one click. System info, Pomodoro, audio switching, and more. Developers keep 100% of plugin revenue.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🖱️</div>
+      <h3>Trackpad component</h3>
+      <p>Use your phone as a wireless trackpad. 1-finger drag, 2-finger scroll, tap to click, 2-finger tap for right-click.</p>
     </div>
     <div class="feature">
       <div class="feature-icon">📱</div>
       <h3>PWA — no app store</h3>
-      <p>The phone UI is a PWA served over HTTPS. Works on iOS, Android, and any browser. Add to home screen.</p>
+      <p>The phone UI is a PWA served over HTTPS. Works on iOS, Android, and any browser. 8 themes. Add to home screen.</p>
     </div>
     <div class="feature">
       <div class="feature-icon">🔒</div>
       <h3>Local-first, private</h3>
-      <p>Everything stays on your network. No cloud, no account, no telemetry. Self-signed HTTPS.</p>
+      <p>Everything stays on your network. No cloud, no account, no telemetry. Self-signed HTTPS with automatic cert.</p>
     </div>
     <div class="feature">
       <div class="feature-icon">🐧</div>
       <h3>Linux-native</h3>
-      <p>First-class Linux support. AppImage, .deb. System tray, autostart, all built-ins work on Linux.</p>
+      <p>First-class Linux support. AppImage, .deb. System tray, autostart, all built-ins work out of the box.</p>
     </div>
   </div>
 </section>
@@ -481,11 +577,74 @@
   </div>
 </section>
 
+<!-- Pricing -->
+<div class="pricing-section" id="pricing">
+  <div class="section-label" style="text-align:center">Pricing</div>
+  <h2 style="text-align:center;font-size:clamp(26px,4vw,40px);font-weight:700;letter-spacing:-1px;margin-bottom:8px">Simple, honest pricing</h2>
+  <p style="text-align:center;color:var(--muted);font-size:15px;margin-bottom:48px">Start free. Upgrade when you need more.</p>
+  <div class="pricing-grid">
+
+    <div class="pricing-card">
+      <div class="pricing-name">Free</div>
+      <div class="pricing-price">$0</div>
+      <div class="pricing-sub">Always free, forever</div>
+      <ul class="pricing-features">
+        <li>Unlimited buttons &amp; pages</li>
+        <li>All 15 component types</li>
+        <li>Hotkeys &amp; shell commands</li>
+        <li>OBS, Spotify, plugins</li>
+        <li>Cron triggers &amp; auto-profiles</li>
+        <li>8 themes</li>
+        <li>MCP server (read-only tools)</li>
+        <li class="muted">AI voice control</li>
+        <li class="muted">MCP run_command (Pro)</li>
+        <li class="muted">Custom CSS injection</li>
+      </ul>
+      <a href="#download" class="pricing-cta outline">Download free</a>
+    </div>
+
+    <div class="pricing-card featured">
+      <div class="pricing-badge">Founder pricing — limited</div>
+      <div class="pricing-name">Pro</div>
+      <div class="pricing-price">$9 <span>one-time</span></div>
+      <div class="pricing-sub">Lifetime license · no subscription</div>
+      <ul class="pricing-features">
+        <li>Everything in Free</li>
+        <li>AI voice control (Claude Haiku)</li>
+        <li>MCP <code>run_command</code> tool</li>
+        <li>Custom CSS injection</li>
+        <li>All current &amp; future themes</li>
+        <li>All layout templates</li>
+        <li>Priority support</li>
+      </ul>
+      <a href="https://macropad.gumroad.com/l/pro" target="_blank" class="pricing-cta primary">Get Pro — $9</a>
+    </div>
+
+    <div class="pricing-card">
+      <div class="pricing-name">Team</div>
+      <div class="pricing-price">$6 <span>/ mo</span></div>
+      <div class="pricing-sub">Per seat · billed monthly · coming soon</div>
+      <ul class="pricing-features">
+        <li>Everything in Pro</li>
+        <li>Shared layout library</li>
+        <li>Config sync across PCs</li>
+        <li>Team dashboard</li>
+        <li>Invoice &amp; receipt</li>
+      </ul>
+      <a href="https://discord.gg/macropad" target="_blank" class="pricing-cta outline">Join Discord for updates</a>
+    </div>
+
+  </div>
+</div>
+
 <!-- CTA -->
 <section class="cta-section">
   <h2>Ready to get started?</h2>
   <p>Download free. No account. Works on Linux, Mac, and Windows.</p>
-  <a href="#download" class="btn btn-primary">⬇ Download now</a>
+  <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+    <a href="#download" class="btn btn-primary">⬇ Download now</a>
+    <a href="https://discord.gg/macropad" target="_blank" class="btn btn-outline">Join Discord</a>
+  </div>
 </section>
 
 <!-- Footer -->
@@ -494,7 +653,9 @@
   <div class="footer-links">
     <a href="https://github.com/chunkies/macropad" target="_blank">GitHub</a>
     <a href="docs/">Docs</a>
+    <a href="https://discord.gg/macropad" target="_blank">Discord</a>
     <a href="https://github.com/chunkies/macropad/issues" target="_blank">Issues</a>
+    <a href="privacy.html">Privacy</a>
   </div>
 </footer>
 

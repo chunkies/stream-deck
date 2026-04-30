@@ -6,8 +6,10 @@
     "types": []
   },
   "include": [
-    "src/renderer/src/**/*",
+    "electron/shared/**/*",
+    "electron/renderer/src/**/*",
     "pwa/src/**/*",
-    "tests/browser/**/*"
+    "electron/tests/renderer/**/*",
+    "pwa/tests/**/*"
   ]
 }

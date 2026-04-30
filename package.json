@@ -2,10 +2,12 @@
   "name": "macropad",
   "version": "1.0.0",
   "description": "Configurable phone-to-PC macro pad",
-  "main": "out/main/index.js",
+  "main": "dist/electron/main/index.js",
   "scripts": {
-    "dev": "tsc -p tsconfig.server.json && electron-vite dev",
-    "build": "tsc -p tsconfig.server.json && electron-vite build",
+    "build:pwa": "vite build --config vite.config.pwa.ts",
+    "build:landing": "node -e \"const fs=require('fs');fs.mkdirSync('dist/landing',{recursive:true});fs.copyFileSync('landing/index.html','dist/landing/index.html');\"",
+    "dev": "tsc -p tsconfig.server.json && npm run build:pwa && electron-vite dev",
+    "build": "tsc -p tsconfig.server.json && npm run build:pwa && npm run build:landing && electron-vite build",
     "package": "npm run build && electron-builder",
     "package:linux": "npm run build && electron-builder --linux",
     "package:mac": "npm run build && electron-builder --mac",
@@ -17,20 +19,29 @@
     "test:e2e": "npm run build && playwright test",
     "test:e2e:pwa": "playwright test --project=pwa",
     "test:e2e:renderer": "npm run build && playwright test --project=renderer",
-    "test:all": "npm test && npm run test:e2e"
+    "test:all": "npm test && npm run test:e2e",
+    "test:coverage": "tsc -p tsconfig.server.json && vitest run --workspace vitest.workspace.ts --coverage",
+    "lint": "eslint electron/ pwa/src/"
   },
   "build": {
     "appId": "com.chunkies.macropad",
     "productName": "MacroPad",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "chunkies",
+        "repo": "macropad"
+      }
+    ],
     "directories": {
-      "output": "dist"
+      "output": "releases"
     },
     "files": [
-      "out/**/*"
+      "dist/electron/**/*"
     ],
     "extraResources": [
       {
-        "from": "pwa",
+        "from": "dist/pwa",
         "to": "pwa"
       }
     ],
@@ -75,22 +86,31 @@
     }
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "adm-zip": "^0.5.17",
+    "electron-updater": "^6.8.3",
     "express": "^4.19.2",
     "multer": "^2.1.1",
     "qrcode": "^1.5.4",
     "selfsigned": "^2.4.1",
-    "ws": "^8.17.0"
+    "ws": "^8.17.0",
+    "zod": "^4.4.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
+    "@types/adm-zip": "^0.5.8",
     "@types/express": "^4.17.21",
     "@types/multer": "^1.4.11",
     "@types/node": "^20.0.0",
+    "@types/qrcode": "^1.5.6",
     "@types/ws": "^8.5.10",
+    "@typescript-eslint/eslint-plugin": "^8.59.1",
+    "@typescript-eslint/parser": "^8.59.1",
+    "@vitest/coverage-v8": "^2.1.9",
     "electron": "^30.0.0",
     "electron-builder": "^24.13.3",
     "electron-vite": "^2.3.0",
+    "eslint": "^10.2.1",
     "jsdom": "^29.1.0",
     "typescript": "^5.4.0",
     "vite": "^5.2.0",
