@@ -3,6 +3,7 @@ node_modules/
 config.json
 *.log
 dist/
+out/
 # Electron-builder installer outputs (uploaded as GitHub Release assets, not committed)
 releases/*.AppImage
 releases/*.deb
