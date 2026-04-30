@@ -288,6 +288,7 @@ body {
 }
 .cert-tab:hover { color: var(--text); background: rgba(255,255,255,0.05) }
 .cert-tab.active { background: var(--accent); color: #fff; border-color: var(--accent) }
+.cert-warn { font-size: 11px; color: #fbbf24; background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2); border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; line-height: 1.5 }
 .cert-steps { margin: 0; padding-left: 18px; line-height: 1.9; font-size: 11px; color: var(--text-muted) }
 .cert-steps strong { color: var(--text) }
 .cert-steps em { color: #60a5fa }

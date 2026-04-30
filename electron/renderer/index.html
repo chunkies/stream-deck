@@ -60,13 +60,15 @@
             <button class="cert-tab active" data-os="ios">iOS</button>
             <button class="cert-tab" data-os="android">Android</button>
           </div>
+          <div class="cert-warn">⚠️ Safari requires the cert to be installed — tapping "Visit Website" alone won't work for the connection.</div>
           <ol class="cert-steps" id="cert-steps-ios">
-            <li>Scan the QR code or open the URL on your iPhone</li>
-            <li>Tap <strong>Cert → Download →</strong> to download the certificate</li>
+            <li>Open the URL on your iPhone in Safari and tap <strong>Visit Website</strong></li>
+            <li>In the app header tap <strong>Cert</strong> link to download the certificate file</li>
             <li>Go to <strong>Settings → General → VPN &amp; Device Management</strong></li>
             <li>Tap the <em>MacroPad</em> profile → <strong>Install</strong></li>
             <li>Go to <strong>Settings → General → About → Certificate Trust Settings</strong></li>
             <li>Enable full trust for <em>MacroPad</em> → <strong>Continue</strong></li>
+            <li>Reload the page — it should connect automatically</li>
           </ol>
           <ol class="cert-steps" id="cert-steps-android" style="display:none">
             <li><strong>Easiest:</strong> install <em>Firefox</em> on Android — it accepts the cert automatically</li>
