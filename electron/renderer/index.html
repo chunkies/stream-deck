@@ -10,16 +10,51 @@
 <div class="layout">
 
   <aside class="sidebar">
-    <h1 class="logo">MacroPad</h1>
 
-    <div class="server-block">
+    <div class="sidebar-header">
+      <h1 class="logo">MacroPad</h1>
+    </div>
+
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab active" data-tab="connect">Connect</button>
+      <button class="sidebar-tab" data-tab="layout">Layout</button>
+      <button class="sidebar-tab" data-tab="settings">Settings</button>
+    </div>
+
+    <!-- ── Connect pane ── -->
+    <div class="sidebar-pane active" id="pane-connect">
+
       <img id="qr-img" class="qr" style="display:none">
-      <div class="url-row"><span class="label">URL</span><a id="server-url" class="url" href="#" target="_blank">—</a></div>
-      <div class="url-row" id="cert-row"><span class="label">Cert</span><a id="cert-url" class="url" href="#" target="_blank">Download →</a></div>
+
+      <div class="info-block">
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span id="phone-status" class="badge disconnected">Disconnected</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">URL</span>
+          <a id="server-url" class="url" href="#" target="_blank">—</a>
+        </div>
+        <div class="info-row" id="cert-row">
+          <span class="info-label">Cert</span>
+          <a id="cert-url" class="url" href="#" target="_blank">Download →</a>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Last</span>
+          <span id="last-press" class="muted">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Autostart</span>
+          <label class="sw">
+            <input type="checkbox" id="autostart-toggle">
+            <span class="sw-track"><span class="sw-thumb"></span></span>
+          </label>
+        </div>
+      </div>
 
       <div class="cert-setup" id="cert-setup">
-        <button class="cert-setup-toggle" id="cert-setup-toggle">📱 First time? Phone setup ▾</button>
-        <div class="cert-setup-body" id="cert-setup-body">
+        <button class="cert-setup-toggle" id="cert-setup-toggle">📱 Phone setup ▾</button>
+        <div class="cert-setup-body" id="cert-setup-body" style="display:none">
           <p class="cert-intro">Your phone will show "Not Secure" until you install the local certificate once. Takes 30 seconds.</p>
           <div class="cert-tabs">
             <button class="cert-tab active" data-os="ios">iOS</button>
@@ -42,132 +77,125 @@
           </ol>
         </div>
       </div>
+
     </div>
 
-    <div class="status-block">
-      <div class="status-row"><span class="label">Phone</span><span id="phone-status" class="badge disconnected">Disconnected</span></div>
-      <div class="status-row"><span class="label">Last</span><span id="last-press" class="muted">—</span></div>
+    <!-- ── Layout pane ── -->
+    <div class="sidebar-pane" id="pane-layout">
+
+      <div class="pane-section">
+        <div class="pane-section-label">Grid</div>
+        <div class="grid-inputs">
+          <div class="s-field">
+            <label>Cols</label>
+            <input id="grid-cols" type="number" value="3" min="1" max="8">
+          </div>
+          <div class="s-field">
+            <label>Rows</label>
+            <input id="grid-rows" type="number" value="4" min="1" max="8">
+          </div>
+          <button id="grid-save-btn" class="btn-secondary apply-btn">Apply</button>
+        </div>
+        <div class="field-hint">Per-page columns override this</div>
+      </div>
+
+      <div class="pane-section">
+        <div class="pane-section-label">Config</div>
+        <div class="row-pair">
+          <button id="export-btn" class="btn-secondary">Export</button>
+          <button id="import-btn" class="btn-secondary">Import</button>
+        </div>
+      </div>
+
+      <div class="pane-actions">
+        <button id="add-page-btn" class="btn-secondary">+ Add Page</button>
+        <button id="marketplace-btn" class="btn-secondary">🔌 Plugins</button>
+        <button id="templates-btn" class="btn-secondary">📋 Templates</button>
+      </div>
+
     </div>
 
-    <div class="status-block">
-      <div class="status-row">
-        <span class="label">Startup</span>
-        <label class="sw">
-          <input type="checkbox" id="autostart-toggle">
-          <span class="sw-track"><span class="sw-thumb"></span></span>
-        </label>
-      </div>
-    </div>
+    <!-- ── Settings pane ── -->
+    <div class="sidebar-pane" id="pane-settings">
 
-    <div class="s-card">
-      <div class="section-label">Grid</div>
-      <div style="display:flex;gap:8px">
-        <div class="s-field" style="flex:1">
-          <label>Columns</label>
-          <input id="grid-cols" type="number" value="3" min="1" max="8">
-        </div>
-        <div class="s-field" style="flex:1">
-          <label>Rows</label>
-          <input id="grid-rows" type="number" value="4" min="1" max="8">
-        </div>
-      </div>
-      <div class="s-row" style="margin-top:2px">
-        <button id="grid-save-btn" class="btn-secondary">Apply</button>
-        <span class="field-hint" style="font-size:11px">Per-page cols override this</span>
-      </div>
-    </div>
-
-    <div class="s-card">
-      <div class="section-label">Layout</div>
-      <div class="s-row" style="gap:6px">
-        <button id="export-btn" class="btn-secondary" style="flex:1">Export</button>
-        <button id="import-btn" class="btn-secondary" style="flex:1">Import</button>
-      </div>
-    </div>
-
-    <div class="s-card" id="webhook-card">
-      <div class="section-label">Inbound Webhook</div>
-      <div class="status-row" style="margin-bottom:6px">
-        <span class="label">Enabled</span>
-        <label class="sw">
-          <input type="checkbox" id="webhook-toggle">
-          <span class="sw-track"><span class="sw-thumb"></span></span>
-        </label>
-      </div>
-      <div id="webhook-url-row" style="display:none">
-        <div class="field-hint" style="font-size:10px;margin-bottom:4px">POST this URL to trigger a button</div>
-        <div style="display:flex;gap:4px;align-items:center">
-          <input id="webhook-url-input" type="text" readonly style="flex:1;font-size:10px;font-family:monospace" value="">
-          <button id="webhook-copy-btn" class="btn-secondary" style="padding:3px 7px;font-size:11px">Copy</button>
-        </div>
-        <div class="field-hint" style="margin-top:4px;font-size:10px">Replace :pageId and :buttonId with IDs</div>
-      </div>
-    </div>
-
-    <div class="s-card" id="cron-card">
-      <div class="section-label">Cron Triggers</div>
-      <div id="cron-list" style="margin-bottom:6px"></div>
-      <button id="cron-add-btn" class="btn-secondary" style="width:100%;font-size:11px">+ Add Cron</button>
-      <div id="cron-form" style="display:none;margin-top:8px">
-        <div class="field-row" style="margin-bottom:4px">
-          <label style="font-size:11px">Label</label>
-          <input id="cron-label" type="text" placeholder="e.g. Morning" style="font-size:11px">
-        </div>
-        <div class="field-row" style="margin-bottom:4px">
-          <label style="font-size:11px">Cron</label>
-          <input id="cron-expr" type="text" placeholder="*/5 * * * *" style="font-size:11px;font-family:monospace">
-        </div>
-        <div class="field-row" style="margin-bottom:4px">
-          <label style="font-size:11px">Page</label>
-          <select id="cron-page" style="font-size:11px"></select>
-        </div>
-        <div class="field-row" style="margin-bottom:4px">
-          <label style="font-size:11px">Button</label>
-          <select id="cron-comp" style="font-size:11px"></select>
-        </div>
-        <div class="field-row" style="margin-bottom:6px">
-          <label style="font-size:11px">Enabled</label>
-          <label class="sw sw-sm">
-            <input type="checkbox" id="cron-enabled" checked>
+      <div class="pane-section" id="webhook-card">
+        <div class="pane-section-label">Inbound Webhook</div>
+        <div class="info-row">
+          <span class="info-label">Enabled</span>
+          <label class="sw">
+            <input type="checkbox" id="webhook-toggle">
             <span class="sw-track"><span class="sw-thumb"></span></span>
           </label>
         </div>
-        <div style="display:flex;gap:4px">
-          <button id="cron-save-btn" class="btn-primary" style="flex:1;font-size:11px">Save</button>
-          <button id="cron-cancel-btn" class="btn-secondary" style="flex:1;font-size:11px">Cancel</button>
+        <div id="webhook-url-row" style="display:none">
+          <div class="field-hint" style="margin-bottom:6px">POST this URL to trigger a button:</div>
+          <div class="copy-row">
+            <input id="webhook-url-input" type="text" readonly style="font-family:monospace">
+            <button id="webhook-copy-btn" class="btn-sm">Copy</button>
+          </div>
+          <div class="field-hint" style="margin-top:4px">Replace :pageId and :buttonId with IDs</div>
         </div>
       </div>
-    </div>
 
-    <div class="s-card" id="license-card">
-      <div class="section-label">License</div>
-      <div id="license-status-row" class="status-row" style="margin-bottom:6px">
-        <span class="label">Plan</span>
-        <span id="license-badge" class="badge disconnected">Free</span>
-      </div>
-      <div id="license-activate-row">
-        <div style="display:flex;gap:4px;align-items:center">
-          <input id="license-key-input" type="text" placeholder="XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX" style="flex:1;font-size:11px;font-family:monospace">
-          <button id="license-activate-btn" class="btn-secondary" style="padding:3px 7px;font-size:11px">Activate</button>
+      <div class="pane-section" id="cron-card">
+        <div class="pane-section-label">Cron Triggers</div>
+        <div id="cron-list"></div>
+        <button id="cron-add-btn" class="btn-secondary">+ Add Cron</button>
+        <div id="cron-form" style="display:none;margin-top:4px">
+          <div class="field-row" style="margin-bottom:4px">
+            <label>Label</label>
+            <input id="cron-label" type="text" placeholder="e.g. Morning">
+          </div>
+          <div class="field-row" style="margin-bottom:4px">
+            <label>Cron</label>
+            <input id="cron-expr" type="text" placeholder="*/5 * * * *" style="font-family:monospace">
+          </div>
+          <div class="field-row" style="margin-bottom:4px">
+            <label>Page</label>
+            <select id="cron-page"></select>
+          </div>
+          <div class="field-row" style="margin-bottom:4px">
+            <label>Button</label>
+            <select id="cron-comp"></select>
+          </div>
+          <div class="field-row" style="margin-bottom:6px">
+            <label>Enabled</label>
+            <label class="sw sw-sm">
+              <input type="checkbox" id="cron-enabled" checked>
+              <span class="sw-track"><span class="sw-thumb"></span></span>
+            </label>
+          </div>
+          <div class="row-pair">
+            <button id="cron-save-btn" class="btn-primary">Save</button>
+            <button id="cron-cancel-btn" class="btn-secondary">Cancel</button>
+          </div>
         </div>
-        <div id="license-error" class="field-hint" style="color:#ef4444;margin-top:3px;display:none">Invalid license key.</div>
       </div>
+
+      <div class="pane-section" id="license-card">
+        <div class="pane-section-label">License</div>
+        <div id="license-status-row" class="info-row" style="margin-bottom:4px">
+          <span class="info-label">Plan</span>
+          <span id="license-badge" class="badge disconnected">Free</span>
+        </div>
+        <div id="license-activate-row">
+          <div class="copy-row">
+            <input id="license-key-input" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" style="font-family:monospace">
+            <button id="license-activate-btn" class="btn-sm">Activate</button>
+          </div>
+          <div id="license-error" class="field-hint" style="color:#ef4444;margin-top:3px;display:none">Invalid license key.</div>
+        </div>
+      </div>
+
+      <div class="pane-section">
+        <div class="pane-section-label">Custom CSS</div>
+        <div class="field-hint" style="margin-bottom:4px">Injected into connected PWA clients</div>
+        <textarea id="custom-css-input" rows="5" style="width:100%;font-family:monospace;resize:vertical" placeholder="/* e.g. .btn { border-radius: 0 } */"></textarea>
+        <button id="custom-css-apply-btn" class="btn-secondary" style="margin-top:4px">Apply</button>
+      </div>
+
     </div>
 
-    <div class="s-card">
-      <div class="section-label">Custom CSS</div>
-      <div class="field-hint" style="font-size:10px;margin-bottom:6px">Injected into connected PWA clients</div>
-      <textarea id="custom-css-input" rows="5" style="width:100%;font-size:11px;font-family:monospace;resize:vertical" placeholder="/* e.g. .btn { border-radius: 0 } */"></textarea>
-      <div class="s-row" style="margin-top:6px">
-        <button id="custom-css-apply-btn" class="btn-secondary">Apply</button>
-      </div>
-    </div>
-
-    <div class="sidebar-actions">
-      <button id="add-page-btn" class="btn-secondary">+ Add Page</button>
-      <button id="marketplace-btn" class="btn-secondary">🔌 Plugins</button>
-      <button id="templates-btn" class="btn-secondary">📋 Templates</button>
-    </div>
   </aside>
 
   <main class="main">

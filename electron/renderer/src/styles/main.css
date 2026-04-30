@@ -37,17 +37,19 @@ body {
 
 /* ──────────────── Sidebar ──────────────── */
 .sidebar {
-  width: 240px;
-  min-width: 240px;
+  width: 260px;
+  min-width: 260px;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border);
-  padding: 16px 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #1e293b transparent;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .logo {
@@ -55,12 +57,53 @@ body {
   font-weight: 700;
   color: var(--accent);
   letter-spacing: 0.04em;
-  padding: 4px 2px 8px;
-  border-bottom: 1px solid var(--border);
 }
 
-/* Sidebar cards (was obs-block) */
-.s-card {
+/* ── Tab bar ── */
+.sidebar-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sidebar-tab {
+  flex: 1;
+  padding: 6px 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  text-align: center;
+}
+.sidebar-tab:hover { color: var(--text); background: rgba(255,255,255,0.05) }
+.sidebar-tab.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(124,58,237,0.3);
+}
+
+/* ── Panes ── */
+.sidebar-pane {
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: #1e293b transparent;
+}
+.sidebar-pane.active { display: flex }
+
+/* ── Info block (Connect tab) ── */
+.info-block {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--radius);
@@ -70,17 +113,58 @@ body {
   gap: 8px;
 }
 
-.section-label {
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.info-label {
+  color: var(--text-muted);
+  min-width: 62px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+/* ── Pane sections ── */
+.pane-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pane-section-label {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
+/* ── Grid inputs row ── */
+.grid-inputs {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.grid-inputs .s-field { flex: 1 }
+.apply-btn { flex-shrink: 0; width: auto !important; padding: 6px 14px !important }
+
+/* ── Row pair (equal-width button pairs) ── */
+.row-pair { display: flex; gap: 6px }
+.row-pair > * { flex: 1 }
+
+/* ── Copy row (input + small button) ── */
+.copy-row { display: flex; gap: 4px; align-items: center }
+.copy-row input { flex: 1; font-size: 11px }
+
+/* ── Actions at bottom of Layout pane ── */
+.pane-actions { margin-top: auto; display: flex; flex-direction: column; gap: 6px }
+
+/* ── s-field (grid inputs) ── */
 .s-field { display: flex; flex-direction: column; gap: 3px }
 .s-field label {
   font-size: 10px;
@@ -102,44 +186,50 @@ body {
 }
 .s-field input:focus { border-color: var(--accent) }
 
-.s-row { display: flex; align-items: center; gap: 8px }
-
-/* Inline status blocks */
-.server-block, .status-block { display: flex; flex-direction: column; gap: 6px }
+/* ── QR & URL ── */
 .qr { width: 100%; border-radius: var(--radius); border: 1px solid var(--border); display: block }
-.url-row, .status-row { display: flex; align-items: center; gap: 8px; font-size: 12px }
-.label { color: var(--text-muted); min-width: 36px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em }
 .url { color: #60a5fa; text-decoration: none; word-break: break-all; font-size: 11px }
 .url:hover { text-decoration: underline }
-.cert-hint { font-size: 10px; color: var(--text-muted); line-height: 1.4 }
 
-/* Cert install walkthrough */
-.cert-setup { margin-top: 6px }
+/* ── Cert setup accordion ── */
+.cert-setup { margin-top: 2px }
 .cert-setup-toggle {
-  background: none; border: 1px solid var(--border); border-radius: 6px;
-  color: var(--text-muted); font-size: 10px; padding: 4px 8px; cursor: pointer;
-  width: 100%; text-align: left;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 6px 10px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
 }
 .cert-setup-toggle:hover { background: rgba(255,255,255,0.04); color: var(--text) }
-.cert-setup-body { margin-top: 6px; font-size: 11px; color: var(--text-muted) }
-.cert-intro { margin: 0 0 8px; line-height: 1.4; font-size: 10px }
-.cert-tabs { display: flex; gap: 4px; margin-bottom: 8px }
+.cert-setup-body { margin-top: 8px; font-size: 12px; color: var(--text-muted) }
+.cert-intro { margin: 0 0 10px; line-height: 1.5; font-size: 11px }
+.cert-tabs { display: flex; gap: 4px; margin-bottom: 10px }
 .cert-tab {
-  flex: 1; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 5px; color: var(--text-muted); font-size: 10px;
-  padding: 3px 0; cursor: pointer;
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 4px 0;
+  cursor: pointer;
+  font-family: inherit;
 }
 .cert-tab.active { background: var(--accent); color: #fff; border-color: var(--accent) }
-.cert-steps { margin: 0; padding-left: 16px; line-height: 1.8; font-size: 10px; color: var(--text-muted) }
+.cert-steps { margin: 0; padding-left: 18px; line-height: 1.9; font-size: 11px; color: var(--text-muted) }
 .cert-steps strong { color: var(--text) }
 .cert-steps em { color: #60a5fa }
-.muted { color: var(--text-muted); font-size: 12px }
 
+/* ── Badges & muted ── */
 .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 600 }
 .badge.connected    { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.2) }
 .badge.disconnected { background: rgba(248,113,113,0.10); color: var(--red); border: 1px solid rgba(248,113,113,0.2) }
-
-.sidebar-actions { margin-top: auto; display: flex; flex-direction: column; gap: 6px }
+.muted { color: var(--text-muted); font-size: 12px }
 
 /* Buttons */
 .btn-secondary {
@@ -622,7 +712,7 @@ body {
 .drawer {
   position: fixed;
   bottom: 0;
-  left: 240px;
+  left: 260px;
   right: 250px;
   background: #0c1220;
   border-top: 1px solid rgba(255,255,255,0.12);

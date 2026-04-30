@@ -29,7 +29,7 @@ function applyServerInfo(info: ServerInfo): void {
     toggle.addEventListener('click', () => {
       const open = body.style.display !== 'none'
       body.style.display = open ? 'none' : ''
-      toggle.textContent = open ? '📱 First time? Phone setup ▾' : '📱 First time? Phone setup ▴'
+      toggle.textContent = open ? '📱 Phone setup ▾' : '📱 Phone setup ▴'
     })
     document.querySelectorAll<HTMLElement>('.cert-tab').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -305,6 +305,17 @@ el('folder-edit-btn').addEventListener('click', () => {
   const { pageIdx, compId } = state.editingComp
   const comp = adminPages()[pageIdx].components.find(c => c.id === compId)
   if (comp) enterFolderAdmin(comp)
+})
+
+// ── Sidebar tabs ──────────────────────────────────────
+document.querySelectorAll<HTMLElement>('.sidebar-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset['tab']
+    document.querySelectorAll<HTMLElement>('.sidebar-tab').forEach(t => t.classList.remove('active'))
+    document.querySelectorAll<HTMLElement>('.sidebar-pane').forEach(p => p.classList.remove('active'))
+    tab.classList.add('active')
+    el(`pane-${target}`).classList.add('active')
+  })
 })
 
 init().catch(console.error)
