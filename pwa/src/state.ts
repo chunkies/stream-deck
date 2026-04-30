@@ -36,23 +36,21 @@ export const state: PwaState = {
 }
 
 export interface DomRefs {
-  grid:          HTMLElement
-  pageDots:      HTMLElement
-  pageNameEl:    HTMLElement
-  wsStatusEl:    HTMLElement
-  wsDotEl:       HTMLElement
-  offlineEl:     HTMLElement
+  grid:           HTMLElement
+  pageDots:       HTMLElement
+  pageNameEl:     HTMLElement
+  wsStatusEl:     HTMLElement
+  wsDotEl:        HTMLElement
+  offlineEl:      HTMLElement
   offlineTitleEl: HTMLElement
-  retryBtnEl:    HTMLElement
 }
 
 export const dom: DomRefs = {
-  grid:          document.getElementById('grid')!,
-  pageDots:      document.getElementById('page-dots')!,
-  pageNameEl:    document.getElementById('page-name')!,
-  wsStatusEl:    document.getElementById('ws-status')!,
-  wsDotEl:       document.getElementById('ws-dot')!,
-  offlineEl:     document.getElementById('offline-overlay')!,
+  grid:           document.getElementById('grid')!,
+  pageDots:       document.getElementById('page-dots')!,
+  pageNameEl:     document.getElementById('page-name')!,
+  wsStatusEl:     document.getElementById('ws-status')!,
+  wsDotEl:        document.getElementById('ws-dot')!,
+  offlineEl:      document.getElementById('offline-overlay')!,
   offlineTitleEl: document.getElementById('offline-title')!,
-  retryBtnEl:    document.getElementById('retry-btn')!,
 }

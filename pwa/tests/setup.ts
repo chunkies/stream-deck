@@ -17,7 +17,6 @@ document.body.innerHTML = `
   <div class="offline-overlay" id="offline-overlay">
     <div class="offline-content">
       <div class="offline-title" id="offline-title">Connecting…</div>
-      <button id="retry-btn">Retry now</button>
     </div>
   </div>
 `

@@ -74,8 +74,6 @@ export function connect(): void {
   }
 }
 
-dom.retryBtnEl.addEventListener('click', reconnectNow)
-
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && state.ws?.readyState !== WebSocket.OPEN) {
     reconnectNow()
