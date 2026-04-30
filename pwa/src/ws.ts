@@ -15,6 +15,13 @@ export function send(data: ClientMessage): void {
 
 const RETRY_DELAY = 1000
 
+// Incremented on every connect() call. Handlers check their own generation
+// before doing anything — stale handlers from a previous WebSocket instance
+// that fires after a new one is already created are silently discarded.
+// Without this, a slow-closing old socket schedules a spurious retry timer
+// that then interrupts the in-flight new connection and causes a feedback loop.
+let wsGen = 0
+
 function reconnectNow(): void {
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null }
   connect()
@@ -22,15 +29,19 @@ function reconnectNow(): void {
 
 export function connect(): void {
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null }
+
+  const gen = ++wsGen
   state.ws = new WebSocket(`wss://${location.hostname}:${location.port}`)
 
   state.ws.onopen = () => {
+    if (wsGen !== gen) return
     dom.wsStatusEl.textContent     = 'Connected'
     dom.wsDotEl.className          = 'dot connected'
     dom.offlineEl.classList.remove('visible')
   }
 
   const showConnecting = (): void => {
+    if (wsGen !== gen) return
     dom.wsStatusEl.textContent     = 'Connecting…'
     dom.wsDotEl.className          = 'dot disconnected'
     dom.offlineTitleEl.textContent = 'Connecting…'
@@ -41,10 +52,11 @@ export function connect(): void {
   state.ws.onclose = showConnecting
 
   // onerror fires before onclose — schedule reconnect here too so the loop
-  // survives if onclose is skipped (observed on Firefox Android).
-  state.ws.onerror = () => { state.ws!.close(); showConnecting() }
+  // survives if onclose is skipped (observed on Firefox Android and iOS Safari).
+  state.ws.onerror = () => { state.ws?.close(); showConnecting() }
 
   state.ws.onmessage = (e: MessageEvent<string>) => {
+    if (wsGen !== gen) return
     let msg: ServerMessage
     try { msg = JSON.parse(e.data) as ServerMessage } catch { console.warn('WS: malformed message', e.data); return }
 
@@ -54,7 +66,6 @@ export function connect(): void {
       state.currentPageIdx = 0
       state.navStack       = []
       state.toggleStates   = {}
-      // Apply custom CSS injected from admin panel
       let customStyleEl = document.getElementById('custom-css') as HTMLStyleElement | null
       if (!customStyleEl) {
         customStyleEl = document.createElement('style')

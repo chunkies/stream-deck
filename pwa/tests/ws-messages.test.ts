@@ -177,6 +177,24 @@ describe('ws connection status', () => {
     expect(MockWebSocket.mock.calls.length).toBe(callsBefore)
     vi.useRealTimers()
   })
+
+  test('stale onclose from previous socket does not schedule an extra retry', async () => {
+    // Capture onclose from ws1, then call connect() to create ws2.
+    // ws1.onclose firing after ws2 is created must NOT schedule a new timer
+    // (generation guard should discard it).
+    vi.useFakeTimers()
+    const { MockWebSocket } = await import('./setup')
+    const { connect } = await import('../src/ws.js')
+
+    const staleOnclose = mockWs.onclose  // handler from ws1
+    connect()                             // creates ws2, increments generation
+    const callsAfterWs2 = MockWebSocket.mock.calls.length
+
+    staleOnclose?.()                      // stale ws1 handler fires — must be ignored
+    vi.advanceTimersByTime(2000)
+    expect(MockWebSocket.mock.calls.length).toBe(callsAfterWs2) // no extra reconnect
+    vi.useRealTimers()
+  })
 })
 
 // ── Visibility reconnect ───────────────────────────────────────────────────
