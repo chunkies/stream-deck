@@ -14,8 +14,11 @@ interface ActiveWindow {
 function getActiveWindow(): ActiveWindow {
   try {
     if (OS === 'linux') {
-      const title  = execSync('xdotool getactivewindow getwindowname',      { timeout: 1000 }).toString().trim()
-      const wclass = execSync('xdotool getactivewindow getwindowclassname', { timeout: 1000 }).toString().trim()
+      const id     = execSync('xdotool getactivewindow', { timeout: 1000 }).toString().trim()
+      const title  = execSync(`xdotool getwindowname ${id}`, { timeout: 1000 }).toString().trim()
+      const raw    = execSync(`xprop -id ${id} WM_CLASS`, { timeout: 1000 }).toString()
+      const match  = raw.match(/"([^"]+)"/)
+      const wclass = match ? match[1] : ''
       return { title, wclass }
     }
     if (OS === 'darwin') {

@@ -3,7 +3,6 @@ import { createRequire } from 'module'
 
 const _require = createRequire(__filename)
 
-// ── Module-level state shared across tests ─────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let startAutoProfile: any, stopAutoProfile: any, recordManualNavigation: any
 let mockExecSync: ReturnType<typeof vi.fn>
@@ -21,13 +20,10 @@ function reloadModule() {
 
 beforeEach(() => {
   vi.useFakeTimers()
-
-  // Patch child_process.execSync before the module loads
   const cp = _require('child_process')
   originalExecSync = cp.execSync
   mockExecSync     = vi.fn().mockReturnValue(Buffer.from(''))
   cp.execSync      = mockExecSync
-
   reloadModule()
 })
 
@@ -38,7 +34,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-// ── Helper ─────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 function makeConfig(pages: Array<{ id: string; autoProfile?: { windowClass?: string; windowTitle?: string } }>) {
   return {
@@ -47,12 +43,21 @@ function makeConfig(pages: Array<{ id: string; autoProfile?: { windowClass?: str
   }
 }
 
-// ── Tests ──────────────────────────────────────────────
+/** Set up execSync to report a specific active window title + WM_CLASS. */
+function mockWindow(title: string, wclass: string) {
+  mockExecSync.mockImplementation((cmd: string) => {
+    if (cmd === 'xdotool getactivewindow') return Buffer.from('99999')
+    if (String(cmd).startsWith('xdotool getwindowname')) return Buffer.from(title)
+    if (String(cmd).startsWith('xprop -id')) return Buffer.from(`WM_CLASS(STRING) = "${wclass}", "${wclass}"`)
+    return Buffer.from('')
+  })
+}
+
+// ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('auto-profile: window class matching', () => {
   test('navigates when window class matches (case-insensitive substring)', () => {
-    // On Linux: first call = title, second call = class
-    mockExecSync.mockReturnValueOnce(Buffer.from('Some Title')).mockReturnValueOnce(Buffer.from('Spotify'))
+    mockWindow('Some Title', 'Spotify')
     const navigate = vi.fn()
     const cfg = makeConfig([{ id: 'p1', autoProfile: { windowClass: 'spotify' } }])
     startAutoProfile(() => cfg, navigate)
@@ -61,7 +66,7 @@ describe('auto-profile: window class matching', () => {
   })
 
   test('does not navigate when window class does not match', () => {
-    mockExecSync.mockReturnValueOnce(Buffer.from('Firefox')).mockReturnValueOnce(Buffer.from('Firefox'))
+    mockWindow('Firefox', 'Firefox')
     const navigate = vi.fn()
     const cfg = makeConfig([{ id: 'p2', autoProfile: { windowClass: 'spotify' } }])
     startAutoProfile(() => cfg, navigate)
@@ -72,9 +77,7 @@ describe('auto-profile: window class matching', () => {
 
 describe('auto-profile: window title matching', () => {
   test('navigates when window title matches (case-insensitive substring)', () => {
-    mockExecSync
-      .mockReturnValueOnce(Buffer.from('Now Playing - Spotify'))   // title
-      .mockReturnValueOnce(Buffer.from('SomeOtherClass'))           // class
+    mockWindow('Now Playing - Spotify', 'SomeOtherClass')
     const navigate = vi.fn()
     const cfg = makeConfig([{ id: 'p3', autoProfile: { windowTitle: 'spotify' } }])
     startAutoProfile(() => cfg, navigate)
@@ -85,9 +88,7 @@ describe('auto-profile: window title matching', () => {
 
 describe('auto-profile: AND logic', () => {
   test('does NOT navigate when only class matches but title does not', () => {
-    mockExecSync
-      .mockReturnValueOnce(Buffer.from('WrongTitle'))   // title
-      .mockReturnValueOnce(Buffer.from('Spotify'))       // class
+    mockWindow('WrongTitle', 'Spotify')
     const navigate = vi.fn()
     const cfg = makeConfig([{ id: 'p4', autoProfile: { windowClass: 'spotify', windowTitle: 'correct' } }])
     startAutoProfile(() => cfg, navigate)
@@ -96,9 +97,7 @@ describe('auto-profile: AND logic', () => {
   })
 
   test('navigates when both class and title match', () => {
-    mockExecSync
-      .mockReturnValueOnce(Buffer.from('Spotify Premium'))   // title
-      .mockReturnValueOnce(Buffer.from('Spotify'))            // class
+    mockWindow('Spotify Premium', 'Spotify')
     const navigate = vi.fn()
     const cfg = makeConfig([{ id: 'p5', autoProfile: { windowClass: 'spotify', windowTitle: 'premium' } }])
     startAutoProfile(() => cfg, navigate)
@@ -109,7 +108,7 @@ describe('auto-profile: AND logic', () => {
 
 describe('auto-profile: no match', () => {
   test('no navigation when no page matches', () => {
-    mockExecSync.mockReturnValue(Buffer.from('Firefox'))
+    mockWindow('Firefox', 'Firefox')
     const navigate = vi.fn()
     const cfg = makeConfig([{ id: 'p6', autoProfile: { windowClass: 'chrome' } }])
     startAutoProfile(() => cfg, navigate)
@@ -118,16 +117,16 @@ describe('auto-profile: no match', () => {
   })
 
   test('page without autoProfile is skipped', () => {
-    mockExecSync.mockReturnValue(Buffer.from('anything'))
+    mockWindow('anything', 'anything')
     const navigate = vi.fn()
-    const cfg = makeConfig([{ id: 'p7' }])   // no autoProfile
+    const cfg = makeConfig([{ id: 'p7' }])
     startAutoProfile(() => cfg, navigate)
     vi.advanceTimersByTime(2000)
     expect(navigate).not.toHaveBeenCalled()
   })
 
   test('does not navigate again for same page on second tick', () => {
-    mockExecSync.mockReturnValue(Buffer.from('Spotify'))
+    mockWindow('Spotify', 'Spotify')
     const navigate = vi.fn()
     const cfg = makeConfig([{ id: 'p8', autoProfile: { windowClass: 'spotify' } }])
     startAutoProfile(() => cfg, navigate)
@@ -139,29 +138,23 @@ describe('auto-profile: no match', () => {
 
 describe('auto-profile: 30s lock', () => {
   test('manual navigation suppresses auto-profile within 30s', () => {
-    mockExecSync.mockReturnValue(Buffer.from('Spotify'))
+    mockWindow('Spotify', 'Spotify')
     const navigate = vi.fn()
     const cfg = makeConfig([{ id: 'p9', autoProfile: { windowClass: 'spotify' } }])
-
-    recordManualNavigation()   // set lock
+    recordManualNavigation()
     startAutoProfile(() => cfg, navigate)
     vi.advanceTimersByTime(2000)
     expect(navigate).not.toHaveBeenCalled()
   })
 
   test('lock expires after 30 seconds and auto-profile resumes', () => {
-    mockExecSync.mockReturnValue(Buffer.from('Spotify'))
+    mockWindow('Spotify', 'Spotify')
     const navigate = vi.fn()
     const cfg = makeConfig([{ id: 'p10', autoProfile: { windowClass: 'spotify' } }])
-
     recordManualNavigation()
     startAutoProfile(() => cfg, navigate)
-
-    // Advance to just before 30s expiry — still locked
     vi.advanceTimersByTime(29_000)
     expect(navigate).not.toHaveBeenCalled()
-
-    // Advance past 30s — lock expired, auto-profile fires
     vi.advanceTimersByTime(2000)
     expect(navigate).toHaveBeenCalledWith('p10')
   })
@@ -169,7 +162,7 @@ describe('auto-profile: 30s lock', () => {
 
 describe('auto-profile: stop and error handling', () => {
   test('stopAutoProfile prevents further polls', () => {
-    mockExecSync.mockReturnValue(Buffer.from('Spotify'))
+    mockWindow('Spotify', 'Spotify')
     const navigate = vi.fn()
     const cfg = makeConfig([{ id: 'p11', autoProfile: { windowClass: 'spotify' } }])
     startAutoProfile(() => cfg, navigate)
