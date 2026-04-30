@@ -13,6 +13,27 @@ import { openTemplateStore, closeTemplateStore } from './templates'
 
 function el(id: string): HTMLElement { return document.getElementById(id) as HTMLElement }
 
+// ── Cert setup accordion (wired at startup, independent of server info) ──
+function wireCertSetup(): void {
+  const toggle = el('cert-setup-toggle')
+  const body   = el('cert-setup-body')
+  toggle.addEventListener('click', () => {
+    const open = body.classList.contains('open')
+    body.classList.toggle('open', !open)
+    toggle.classList.toggle('open', !open)
+    toggle.textContent = open ? '📱 Phone setup ▾' : '📱 Phone setup ▴'
+  })
+  document.querySelectorAll<HTMLElement>('.cert-tab').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const os = (e.currentTarget as HTMLElement).dataset['os']
+      document.querySelectorAll<HTMLElement>('.cert-tab').forEach(b => b.classList.remove('active'))
+      ;(e.currentTarget as HTMLElement).classList.add('active')
+      el('cert-steps-ios').style.display     = os === 'ios'     ? '' : 'none'
+      el('cert-steps-android').style.display = os === 'android' ? '' : 'none'
+    })
+  })
+}
+
 // ── Server info display ───────────────────────────────
 function applyServerInfo(info: ServerInfo): void {
   const urlEl = el('server-url') as HTMLAnchorElement
@@ -22,25 +43,6 @@ function applyServerInfo(info: ServerInfo): void {
 
   const qr = el('qr-img') as HTMLImageElement
   if (info.qr) { qr.src = info.qr; qr.style.display = 'block' }
-
-  const toggle = document.getElementById('cert-setup-toggle')
-  const body   = document.getElementById('cert-setup-body')
-  if (toggle && body) {
-    toggle.addEventListener('click', () => {
-      const open = body.style.display !== 'none'
-      body.style.display = open ? 'none' : ''
-      toggle.textContent = open ? '📱 Phone setup ▾' : '📱 Phone setup ▴'
-    })
-    document.querySelectorAll<HTMLElement>('.cert-tab').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const os = (e.currentTarget as HTMLElement).dataset['os']
-        document.querySelectorAll<HTMLElement>('.cert-tab').forEach(b => b.classList.remove('active'))
-        ;(e.currentTarget as HTMLElement).classList.add('active')
-        el('cert-steps-ios').style.display     = os === 'ios'     ? '' : 'none'
-        el('cert-steps-android').style.display = os === 'android' ? '' : 'none'
-      })
-    })
-  }
 }
 
 // ── Builtin action selects ────────────────────────────
@@ -306,6 +308,9 @@ el('folder-edit-btn').addEventListener('click', () => {
   const comp = adminPages()[pageIdx].components.find(c => c.id === compId)
   if (comp) enterFolderAdmin(comp)
 })
+
+// ── Cert setup accordion ──────────────────────────────
+wireCertSetup()
 
 // ── Sidebar tabs ──────────────────────────────────────
 document.querySelectorAll<HTMLElement>('.sidebar-tab').forEach(tab => {

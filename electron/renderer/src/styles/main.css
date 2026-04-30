@@ -99,8 +99,14 @@ body {
   flex: 1;
   scrollbar-width: thin;
   scrollbar-color: #1e293b transparent;
+  animation: pane-in 0.18s ease both;
 }
 .sidebar-pane.active { display: flex }
+
+@keyframes pane-in {
+  from { opacity: 0; transform: translateY(4px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
 
 /* ── Info block (Connect tab) ── */
 .info-block {
@@ -193,20 +199,60 @@ body {
 
 /* ── Cert setup accordion ── */
 .cert-setup { margin-top: 2px }
+
 .cert-setup-toggle {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-muted);
-  font-size: 11px;
-  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 9px 12px;
   cursor: pointer;
   width: 100%;
   text-align: left;
   font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.cert-setup-toggle:hover { background: rgba(255,255,255,0.04); color: var(--text) }
-.cert-setup-body { margin-top: 8px; font-size: 12px; color: var(--text-muted) }
+.cert-setup-toggle:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
+  color: var(--text);
+}
+.cert-setup-toggle.open {
+  border-color: rgba(124,58,237,0.4);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background: rgba(124,58,237,0.08);
+  color: var(--text);
+}
+
+/* Slide-down animation via max-height */
+.cert-setup-body {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity    0.22s ease,
+              padding    0.22s ease;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--card-bg);
+  border: 1px solid rgba(124,58,237,0.3);
+  border-top: none;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  padding: 0 12px;
+}
+.cert-setup-body.open {
+  max-height: 480px;
+  opacity: 1;
+  padding: 12px 12px;
+}
+
 .cert-intro { margin: 0 0 10px; line-height: 1.5; font-size: 11px }
 .cert-tabs { display: flex; gap: 4px; margin-bottom: 10px }
 .cert-tab {
@@ -216,10 +262,12 @@ body {
   border-radius: 5px;
   color: var(--text-muted);
   font-size: 11px;
-  padding: 4px 0;
+  padding: 5px 0;
   cursor: pointer;
   font-family: inherit;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
+.cert-tab:hover { color: var(--text); background: rgba(255,255,255,0.05) }
 .cert-tab.active { background: var(--accent); color: #fff; border-color: var(--accent) }
 .cert-steps { margin: 0; padding-left: 18px; line-height: 1.9; font-size: 11px; color: var(--text-muted) }
 .cert-steps strong { color: var(--text) }
