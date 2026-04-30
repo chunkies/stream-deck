@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from 'vitest'
+import { describe, test, expect, beforeEach, vi } from 'vitest'
 import { mockWs } from './setup'
 import { state } from '../src/state.js'
 
@@ -156,5 +156,58 @@ describe('ws connection status', () => {
     overlay.classList.remove('visible')
     mockWs.onclose?.()
     expect(overlay.classList.contains('visible')).toBe(true)
+  })
+
+  test('onclose schedules reconnect after 1000ms', async () => {
+    vi.useFakeTimers()
+    const { MockWebSocket } = await import('./setup')
+    const callsBefore = MockWebSocket.mock.calls.length
+    mockWs.onclose?.()
+    vi.advanceTimersByTime(1000)
+    expect(MockWebSocket.mock.calls.length).toBeGreaterThan(callsBefore)
+    vi.useRealTimers()
+  })
+
+  test('onclose does NOT reconnect before 1000ms', async () => {
+    vi.useFakeTimers()
+    const { MockWebSocket } = await import('./setup')
+    const callsBefore = MockWebSocket.mock.calls.length
+    mockWs.onclose?.()
+    vi.advanceTimersByTime(500)
+    expect(MockWebSocket.mock.calls.length).toBe(callsBefore)
+    vi.useRealTimers()
+  })
+})
+
+// ── Visibility reconnect ───────────────────────────────────────────────────
+
+describe('visibilitychange reconnect', () => {
+  function setVisibility(state: 'visible' | 'hidden'): void {
+    Object.defineProperty(document, 'visibilityState', { value: state, configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+
+  test('reconnects immediately when page becomes visible and ws is not open', async () => {
+    const { MockWebSocket } = await import('./setup')
+    mockWs.readyState = WebSocket.CLOSED
+    const callsBefore = MockWebSocket.mock.calls.length
+    setVisibility('visible')
+    expect(MockWebSocket.mock.calls.length).toBeGreaterThan(callsBefore)
+  })
+
+  test('does not reconnect when page becomes visible and ws is already open', async () => {
+    const { MockWebSocket } = await import('./setup')
+    mockWs.readyState = WebSocket.OPEN
+    const callsBefore = MockWebSocket.mock.calls.length
+    setVisibility('visible')
+    expect(MockWebSocket.mock.calls.length).toBe(callsBefore)
+  })
+
+  test('does nothing when page becomes hidden', async () => {
+    const { MockWebSocket } = await import('./setup')
+    mockWs.readyState = WebSocket.CLOSED
+    const callsBefore = MockWebSocket.mock.calls.length
+    setVisibility('hidden')
+    expect(MockWebSocket.mock.calls.length).toBe(callsBefore)
   })
 })

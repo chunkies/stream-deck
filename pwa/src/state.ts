@@ -11,7 +11,6 @@ export interface PwaState {
   currentPageIdx: number
   toggleStates:   Record<string, boolean>
   reconnectTimer: ReturnType<typeof setTimeout> | null
-  reconnectDelay: number
   currentPages:   Page[] | null
   navStack:       NavStackEntry[]
   swipeStartX:    number
@@ -27,7 +26,6 @@ export const state: PwaState = {
   currentPageIdx: 0,
   toggleStates:   {},
   reconnectTimer: null,
-  reconnectDelay: 1000,
   currentPages:   null,
   navStack:       [],
   swipeStartX:    0,
