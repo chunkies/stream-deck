@@ -690,10 +690,23 @@ html, body {
   opacity: 1;
   pointer-events: all;
 }
-.offline-content { text-align: center }
-.offline-icon  { font-size: 44px; margin-bottom: 16px; animation: pulse 2s ease-in-out infinite }
-.offline-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px }
-.offline-sub   { font-size: 13px; color: var(--text-muted); max-width: 220px; line-height: 1.6 }
+.offline-content { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px }
+.offline-icon  { font-size: 44px; margin-bottom: 8px; animation: pulse 2s ease-in-out infinite }
+.offline-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px }
+.offline-sub   { font-size: 13px; color: var(--text-muted); max-width: 220px; line-height: 1.6; margin-bottom: 16px }
+.retry-btn {
+  padding: 9px 22px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.retry-btn:hover  { background: rgba(255,255,255,0.14); color: var(--text) }
+.retry-btn:active { background: rgba(255,255,255,0.06); transform: scale(0.97) }
 
 @keyframes pulse {
   0%, 100% { opacity: 1 }

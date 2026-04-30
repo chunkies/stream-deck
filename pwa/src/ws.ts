@@ -13,21 +13,32 @@ export function send(data: ClientMessage): void {
   if (state.ws?.readyState === WebSocket.OPEN) state.ws.send(JSON.stringify(data))
 }
 
+const MIN_DELAY = 1000
+const MAX_DELAY = 10000
+
+function scheduleReconnect(): void {
+  const delay = state.reconnectDelay
+  state.reconnectDelay = Math.min(delay * 2, MAX_DELAY)
+  state.reconnectTimer = setTimeout(connect, delay)
+}
+
 export function connect(): void {
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null }
   state.ws = new WebSocket(`wss://${location.hostname}:${location.port}`)
 
   state.ws.onopen = () => {
-    dom.wsStatusEl.textContent = 'Connected'
-    dom.wsDotEl.className      = 'dot connected'
+    state.reconnectDelay        = MIN_DELAY
+    dom.wsStatusEl.textContent  = 'Connected'
+    dom.wsDotEl.className       = 'dot connected'
     dom.offlineEl.classList.remove('visible')
   }
 
   state.ws.onclose = () => {
-    dom.wsStatusEl.textContent = 'Reconnecting…'
-    dom.wsDotEl.className      = 'dot disconnected'
+    dom.wsStatusEl.textContent  = 'Connecting…'
+    dom.wsDotEl.className       = 'dot disconnected'
+    dom.offlineTitleEl.textContent = 'Connecting…'
     dom.offlineEl.classList.add('visible')
-    state.reconnectTimer = setTimeout(connect, 2500)
+    scheduleReconnect()
   }
 
   state.ws.onerror = () => state.ws!.close()
@@ -65,3 +76,9 @@ export function connect(): void {
     }
   }
 }
+
+dom.retryBtnEl.addEventListener('click', () => {
+  if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null }
+  state.reconnectDelay = MIN_DELAY
+  connect()
+})

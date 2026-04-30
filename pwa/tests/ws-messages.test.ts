@@ -146,9 +146,9 @@ describe('ws connection status', () => {
     expect(overlay.classList.contains('visible')).toBe(false)
   })
 
-  test('onclose sets status to Reconnecting', async () => {
+  test('onclose sets status to Connecting', async () => {
     mockWs.onclose?.()
-    expect(document.getElementById('ws-status')!.textContent).toBe('Reconnecting…')
+    expect(document.getElementById('ws-status')!.textContent).toBe('Connecting…')
   })
 
   test('onclose adds visible to offline overlay', async () => {

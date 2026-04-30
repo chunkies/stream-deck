@@ -98,7 +98,7 @@ describe('getCert', () => {
     // Mobile browsers (Chrome, Firefox on Android/iOS) reject SHA-1 signed certs.
     // This test ensures we always generate SHA-256 certs.
     const { execSync } = require('child_process') as typeof import('child_process')
-    const result   = await getCert(tmpDir)
+    await getCert(tmpDir)
     const certFile = path.join(tmpDir, 'cert.pem')
     const text     = execSync(`openssl x509 -noout -text -in "${certFile}"`).toString()
     expect(text).toMatch(/sha256WithRSAEncryption/)
