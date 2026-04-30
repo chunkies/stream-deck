@@ -30,15 +30,19 @@ export function connect(): void {
     dom.offlineEl.classList.remove('visible')
   }
 
-  state.ws.onclose = () => {
+  const showConnecting = (): void => {
     dom.wsStatusEl.textContent     = 'Connecting…'
     dom.wsDotEl.className          = 'dot disconnected'
     dom.offlineTitleEl.textContent = 'Connecting…'
     dom.offlineEl.classList.add('visible')
-    state.reconnectTimer = setTimeout(connect, RETRY_DELAY)
+    if (!state.reconnectTimer) state.reconnectTimer = setTimeout(connect, RETRY_DELAY)
   }
 
-  state.ws.onerror = () => state.ws!.close()
+  state.ws.onclose = showConnecting
+
+  // onerror fires before onclose — schedule reconnect here too so the loop
+  // survives if onclose is skipped (observed on Firefox Android).
+  state.ws.onerror = () => { state.ws!.close(); showConnecting() }
 
   state.ws.onmessage = (e: MessageEvent<string>) => {
     let msg: ServerMessage
