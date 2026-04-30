@@ -71,6 +71,7 @@ export function renderTabs(): void {
 
   if (!state.adminFolderStack.length && _onAddPage) {
     const addBtn = document.createElement('button')
+    addBtn.id        = 'add-page-btn'
     addBtn.className = 'tab-add'
     addBtn.textContent = '+'
     addBtn.addEventListener('click', () => _onAddPage!())
