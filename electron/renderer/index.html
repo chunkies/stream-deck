@@ -40,7 +40,7 @@
           <a id="cert-url" class="url" href="#" target="_blank">Download →</a>
         </div>
         <div class="info-row">
-          <span class="info-label">Last</span>
+          <span class="info-label">Last tap</span>
           <span id="last-press" class="muted">—</span>
         </div>
         <div class="info-row">
@@ -99,7 +99,7 @@
       </div>
 
       <div class="pane-section">
-        <div class="pane-section-label">Config</div>
+        <div class="pane-section-label">Backup</div>
         <div class="row-pair">
           <button id="export-btn" class="btn-secondary">Export</button>
           <button id="import-btn" class="btn-secondary">Import</button>
@@ -117,8 +117,8 @@
     <!-- ── Settings pane ── -->
     <div class="sidebar-pane" id="pane-settings">
 
-      <div class="pane-section" id="webhook-card">
-        <div class="pane-section-label">Inbound Webhook</div>
+      <div class="pane-section pane-card" id="webhook-card">
+        <div class="pane-section-label">Webhook</div>
         <div class="info-row">
           <span class="info-label">Enabled</span>
           <label class="sw">
@@ -136,8 +136,8 @@
         </div>
       </div>
 
-      <div class="pane-section" id="cron-card">
-        <div class="pane-section-label">Cron Triggers</div>
+      <div class="pane-section pane-card" id="cron-card">
+        <div class="pane-section-label">Scheduled Actions</div>
         <div id="cron-list"></div>
         <button id="cron-add-btn" class="btn-secondary">+ Add Cron</button>
         <div id="cron-form" style="display:none;margin-top:4px">
@@ -171,7 +171,7 @@
         </div>
       </div>
 
-      <div class="pane-section" id="license-card">
+      <div class="pane-section pane-card" id="license-card">
         <div class="pane-section-label">License</div>
         <div id="license-status-row" class="info-row" style="margin-bottom:4px">
           <span class="info-label">Plan</span>
@@ -186,7 +186,7 @@
         </div>
       </div>
 
-      <div class="pane-section">
+      <div class="pane-section pane-card">
         <div class="pane-section-label">Custom CSS</div>
         <div class="field-hint" style="margin-bottom:4px">Injected into connected PWA clients</div>
         <textarea id="custom-css-input" rows="5" style="width:100%;font-family:monospace;resize:vertical" placeholder="/* e.g. .btn { border-radius: 0 } */"></textarea>
@@ -201,6 +201,12 @@
     <div class="page-tabs" id="page-tabs"></div>
     <div class="grid-wrap">
       <div class="grid" id="grid"></div>
+      <div class="empty-state" id="empty-state" style="display:none">
+        <div class="empty-icon">⊞</div>
+        <div class="empty-title">No pages yet</div>
+        <div class="empty-hint">Create a page, then drag components from the right panel onto the grid</div>
+        <button class="btn-primary" id="empty-add-page-btn">+ Add Page</button>
+      </div>
     </div>
   </main>
 

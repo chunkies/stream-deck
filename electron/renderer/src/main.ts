@@ -241,6 +241,7 @@ el('modal-save').addEventListener('click', saveModal)
 el('modal-delete').addEventListener('click', deleteComp)
 
 el('add-page-btn').addEventListener('click', openPageModal)
+el('empty-add-page-btn').addEventListener('click', openPageModal)
 el('marketplace-btn').addEventListener('click', () => window.api.openMarketplace())
 el('templates-btn').addEventListener('click', openTemplateStore)
 el('template-store-close').addEventListener('click', closeTemplateStore)

@@ -8,7 +8,15 @@ import { createComponentAtCell } from './components'
 
 function el(id: string): HTMLElement { return document.getElementById(id) as HTMLElement }
 
-export function renderAll(): void { renderTabs(); renderGrid() }
+export function renderAll(): void {
+  const pages = adminPages()
+  const emptyState = document.getElementById('empty-state')
+  const gridEl     = document.getElementById('grid')
+  if (emptyState) emptyState.style.display = pages.length === 0 ? 'flex' : 'none'
+  if (gridEl)     gridEl.style.display     = pages.length === 0 ? 'none' : ''
+  renderTabs()
+  if (pages.length > 0) renderGrid()
+}
 
 // ── Tabs / page navigation ─────────────────────────────
 export function renderTabs(): void {

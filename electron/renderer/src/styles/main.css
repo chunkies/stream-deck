@@ -170,6 +170,25 @@ body {
 /* ── Actions at bottom of Layout pane ── */
 .pane-actions { margin-top: auto; display: flex; flex-direction: column; gap: 6px }
 
+/* ── Settings card (grouped section in pane-settings) ── */
+.pane-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pane-card-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
 /* ── s-field (grid inputs) ── */
 .s-field { display: flex; flex-direction: column; gap: 3px }
 .s-field label {
@@ -320,11 +339,27 @@ body {
 
 .tab-name { cursor: default }
 .tab-name:hover { text-decoration: underline; text-underline-offset: 2px }
-.tab-del { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 10px; padding: 0 2px; opacity: 0.6 }
-.tab-del:hover { color: var(--red); opacity: 1 }
+.tab-del { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 10px; padding: 0 2px; opacity: 0; transition: opacity 0.15s }
+.tab:hover .tab-del { opacity: 0.5 }
+.tab-del:hover { color: var(--red); opacity: 1 !important }
 
 /* ──────────────── Grid ──────────────── */
-.grid-wrap { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden }
+.grid-wrap { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative }
+
+/* Empty state — shown when no pages exist */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px;
+  text-align: center;
+  animation: pane-in 0.25s ease;
+}
+.empty-icon { font-size: 48px; opacity: 0.25; line-height: 1 }
+.empty-title { font-size: 16px; font-weight: 600; color: var(--text-soft) }
+.empty-hint { font-size: 12px; color: var(--text-muted); max-width: 240px; line-height: 1.6 }
 
 .grid {
   display: grid;
@@ -706,6 +741,15 @@ body {
   padding: 2px 2px 8px;
   border-bottom: 1px solid var(--border);
   letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cp-drag-hint {
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0;
 }
 .cp-plugins-hdr {
   font-size: 12px;

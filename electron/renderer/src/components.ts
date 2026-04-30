@@ -128,7 +128,7 @@ function makeCpSection(title: string, items: CpItem[]): HTMLElement {
 export function renderComponentPanel(): void {
   const panel = document.getElementById('component-panel')
   if (!panel) return
-  panel.innerHTML = '<div class="cp-panel-title">Components</div>'
+  panel.innerHTML = '<div class="cp-panel-title">Components<span class="cp-drag-hint">drag onto grid</span></div>'
 
   const coreItems: CpItem[] = [
     { compType: 'button',    pluginKey: null, label: 'Button',    icon: '🔲', options: {} },
