@@ -36,14 +36,9 @@ function wireCertSetup(): void {
 
 // ── Server info display ───────────────────────────────
 function applyServerInfo(info: ServerInfo): void {
-  const httpsEl = el('server-url') as HTMLAnchorElement
-  httpsEl.textContent = info.url ?? ''
-  httpsEl.href        = info.url ?? ''
-
-  const httpEl = el('server-http-url') as HTMLAnchorElement
-  httpEl.textContent = info.httpUrl ?? ''
-  httpEl.href        = info.httpUrl ?? ''
-
+  const urlEl = el('server-url') as HTMLAnchorElement
+  urlEl.textContent = info.url ?? ''
+  urlEl.href        = info.url ?? ''
   ;(el('cert-url') as HTMLAnchorElement).href = `${info.url}/cert.crt`
 
   const qr = el('qr-img') as HTMLImageElement

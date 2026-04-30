@@ -32,11 +32,7 @@
           <span id="phone-status" class="badge disconnected">Disconnected</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Android</span>
-          <a id="server-http-url" class="url" href="#" target="_blank">—</a>
-        </div>
-        <div class="info-row">
-          <span class="info-label">iOS / PC</span>
+          <span class="info-label">URL</span>
           <a id="server-url" class="url" href="#" target="_blank">—</a>
         </div>
         <div class="info-row" id="cert-row">
@@ -59,13 +55,13 @@
       <div class="cert-setup" id="cert-setup">
         <button class="cert-setup-toggle" id="cert-setup-toggle">📱 Phone setup ▾</button>
         <div class="cert-setup-body" id="cert-setup-body">
-          <p class="cert-intro">iOS / PC only. Android users should use the HTTP URL above — no cert needed.</p>
+          <p class="cert-intro">One-time setup so your phone trusts the local certificate. Takes 30 seconds.</p>
           <div class="cert-tabs">
             <button class="cert-tab active" data-os="ios">iOS</button>
             <button class="cert-tab" data-os="android">Android</button>
           </div>
           <ol class="cert-steps" id="cert-steps-ios">
-            <li>On your phone, open the URL above or scan the QR code</li>
+            <li>Scan the QR code or open the URL on your iPhone</li>
             <li>Tap <strong>Cert → Download →</strong> to download the certificate</li>
             <li>Go to <strong>Settings → General → VPN &amp; Device Management</strong></li>
             <li>Tap the <em>MacroPad</em> profile → <strong>Install</strong></li>
@@ -73,11 +69,10 @@
             <li>Enable full trust for <em>MacroPad</em> → <strong>Continue</strong></li>
           </ol>
           <ol class="cert-steps" id="cert-steps-android" style="display:none">
-            <li>On your phone, open the URL above or scan the QR code</li>
-            <li>Tap <strong>Cert → Download →</strong> to download the certificate</li>
-            <li>Go to <strong>Settings → Security → Install certificates</strong></li>
-            <li>Choose <strong>CA Certificate</strong> and select the downloaded file</li>
-            <li>Confirm install — the warning will be gone next visit</li>
+            <li><strong>Easiest:</strong> install <em>Firefox</em> on Android — it accepts the cert automatically</li>
+            <li>Open the URL in Firefox and tap <strong>Accept Risk</strong> on the first visit</li>
+            <li><strong>Chrome alternative:</strong> download the cert, go to <strong>Settings → Security → Install a certificate → CA Certificate</strong></li>
+            <li>Select the downloaded file and confirm — Chrome will trust it going forward</li>
           </ol>
         </div>
       </div>

@@ -179,10 +179,9 @@ function createWindow(): void {
 }
 
 async function buildServerPayload(info: ServerInfo): Promise<ServerInfo> {
-  const url     = `https://${info.host}:${info.port}`
-  const httpUrl = `http://${info.host}:${info.httpPort}`
-  const qr      = await QRCode.toDataURL(httpUrl, { width: 180, margin: 2, color: { dark: '#e0e0e0', light: '#1a1a1a' } })
-  return { ...info, url, httpUrl, qr }
+  const url = `https://${info.host}:${info.port}`
+  const qr  = await QRCode.toDataURL(url, { width: 180, margin: 2, color: { dark: '#e0e0e0', light: '#1a1a1a' } })
+  return { ...info, url, qr }
 }
 
 async function sendServerReady(info: ServerInfo): Promise<void> {

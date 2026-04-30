@@ -499,20 +499,8 @@ export async function start(onEvent: EventFn, port = 3000, paths: StartPaths = {
     res.json({ ok: true })
   })
 
-  const server     = https.createServer({ key, cert }, app)
-  const httpServer = http.createServer(app)
-  const wsServer   = new WebSocketServer({ noServer: true })
-  wss = wsServer
-
-  function upgradeToWs(srv: typeof server | typeof httpServer): void {
-    srv.on('upgrade', (req, socket, head) => {
-      wsServer.handleUpgrade(req, socket as import('net').Socket, head, (ws) => {
-        wsServer.emit('connection', ws, req)
-      })
-    })
-  }
-  upgradeToWs(server)
-  upgradeToWs(httpServer)
+  const server = https.createServer({ key, cert }, app)
+  wss = new WebSocketServer({ server })
 
   // Simple per-client rate limit: max 60 messages per second
   const RATE_LIMIT    = 60
@@ -566,13 +554,9 @@ export async function start(onEvent: EventFn, port = 3000, paths: StartPaths = {
     })
   })
 
-  const httpPort = port + 1
-  await Promise.all([
-    new Promise<void>(resolve => server.listen(port, resolve)),
-    new Promise<void>(resolve => httpServer.listen(httpPort, resolve)),
-  ])
-  serverInfo = { ip, host, port, httpPort, mode }
-  console.log(`MacroPad HTTPS https://${host}:${port} | HTTP http://${host}:${httpPort}`)
+  await new Promise<void>(resolve => server.listen(port, resolve))
+  serverInfo = { ip, host, port, mode }
+  console.log(`MacroPad running at https://${host}:${port} (${mode})`)
 
   startTilePollers(config, broadcast)
   startSpotifyPoller(config, broadcast)
@@ -588,7 +572,7 @@ export async function start(onEvent: EventFn, port = 3000, paths: StartPaths = {
   startCrons(() => config!, handlePress)
   startAutoProfile(() => config!, (pageId) => broadcast({ type: MESSAGE_TYPES.NAVIGATE, pageId }))
 
-  process.once('exit', () => { stopCrons(); stopAutoProfile(); httpServer.close() })
+  process.once('exit', () => { stopCrons(); stopAutoProfile() })
 
   return serverInfo
 }

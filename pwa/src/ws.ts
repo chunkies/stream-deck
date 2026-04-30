@@ -15,8 +15,7 @@ export function send(data: ClientMessage): void {
 
 export function connect(): void {
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null }
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  state.ws = new WebSocket(`${proto}//${location.hostname}:${location.port}`)
+  state.ws = new WebSocket(`wss://${location.hostname}:${location.port}`)
 
   state.ws.onopen = () => {
     dom.wsStatusEl.textContent = 'Connected'
