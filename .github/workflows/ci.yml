@@ -30,6 +30,9 @@ jobs:
       - name: Unit + browser tests (with coverage)
         run: npm run test:coverage
 
+      - name: Build app
+        run: npm run build
+
       - name: Install Playwright Chromium
         run: npx playwright install chromium --with-deps
 
@@ -38,9 +41,6 @@ jobs:
 
       - name: Install Xvfb for Electron tests
         run: sudo apt-get install -y xvfb
-
-      - name: Build app for Electron E2E
-        run: npm run build
 
       - name: Renderer E2E tests (Electron + Xvfb)
         run: xvfb-run --auto-servernum npx playwright test --project=renderer
