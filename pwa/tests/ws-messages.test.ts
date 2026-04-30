@@ -211,3 +211,26 @@ describe('visibilitychange reconnect', () => {
     expect(MockWebSocket.mock.calls.length).toBe(callsBefore)
   })
 })
+
+// ── Overlay tap reconnect ──────────────────────────────────────────────────
+
+describe('overlay tap reconnect', () => {
+  test('tapping overlay immediately reconnects when disconnected', async () => {
+    const { MockWebSocket } = await import('./setup')
+    mockWs.readyState = WebSocket.CLOSED
+    const callsBefore = MockWebSocket.mock.calls.length
+    document.getElementById('offline-overlay')!.dispatchEvent(new Event('pointerdown'))
+    expect(MockWebSocket.mock.calls.length).toBeGreaterThan(callsBefore)
+  })
+
+  test('tapping overlay clears any pending reconnect timer', async () => {
+    vi.useFakeTimers()
+    mockWs.onclose?.()
+    document.getElementById('offline-overlay')!.dispatchEvent(new Event('pointerdown'))
+    const { MockWebSocket } = await import('./setup')
+    const callsAfterTap = MockWebSocket.mock.calls.length
+    vi.advanceTimersByTime(2000)
+    expect(MockWebSocket.mock.calls.length).toBe(callsAfterTap)
+    vi.useRealTimers()
+  })
+})

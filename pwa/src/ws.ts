@@ -74,6 +74,8 @@ export function connect(): void {
   }
 }
 
+dom.offlineEl.addEventListener('pointerdown', reconnectNow)
+
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && state.ws?.readyState !== WebSocket.OPEN) {
     reconnectNow()

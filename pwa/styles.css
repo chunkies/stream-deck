@@ -689,11 +689,13 @@ html, body {
 .offline-overlay.visible {
   opacity: 1;
   pointer-events: all;
+  cursor: pointer;
 }
 .offline-content { text-align: center }
 .offline-icon  { font-size: 44px; margin-bottom: 16px; animation: pulse 2s ease-in-out infinite }
 .offline-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px }
-.offline-sub   { font-size: 13px; color: var(--text-muted); max-width: 220px; line-height: 1.6 }
+.offline-sub   { font-size: 13px; color: var(--text-muted); max-width: 220px; line-height: 1.6; margin-bottom: 20px }
+.offline-tap   { font-size: 11px; color: var(--text-muted); opacity: 0.5; letter-spacing: 0.04em }
 
 @keyframes pulse {
   0%, 100% { opacity: 1 }
