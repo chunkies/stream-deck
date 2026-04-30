@@ -4,6 +4,13 @@
   "version": "1.0.0",
   "description": "Control Spotify playback — play/pause, skip tracks, adjust volume, and show now-playing info.",
   "author": "MacroPad Team",
+  "authorUrl": "https://github.com/chunkies/macropad",
+  "homepage": "https://github.com/chunkies/macropad/tree/master/plugins/spotify",
+  "icon": "🎵",
+  "price": 0,
+  "license": "MIT",
+  "tags": ["spotify", "music", "media"],
+  "minAppVersion": "1.0.0",
   "actions": [
     {
       "key": "spotify.playPause",

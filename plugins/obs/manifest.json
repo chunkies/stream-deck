@@ -2,40 +2,56 @@
   "id": "obs",
   "name": "OBS Studio",
   "version": "1.0.0",
-  "description": "Control OBS Studio via WebSocket v5 — toggle recording/streaming, switch scenes, mute sources, and poll live status.",
-  "author": "MacroPad",
+  "description": "Control OBS Studio via WebSocket v5 — switch scenes, toggle recording/streaming, mute sources, and poll live status. Auto-reconnects on disconnect.",
+  "author": "MacroPad Team",
+  "authorUrl": "https://github.com/chunkies/macropad",
+  "homepage": "https://github.com/chunkies/macropad/tree/master/plugins/obs",
   "icon": "🎬",
+  "price": 0,
+  "license": "MIT",
+  "tags": ["obs", "streaming", "recording", "scene"],
+  "minAppVersion": "1.0.0",
   "actions": [
     {
-      "key": "obs.toggleRecording",
-      "label": "Toggle Recording",
-      "componentType": "button"
-    },
-    {
-      "key": "obs.toggleStream",
-      "label": "Toggle Stream",
-      "componentType": "button"
+      "key": "obs.connect",
+      "label": "Connect to OBS",
+      "componentType": "button",
+      "description": "Save OBS connection settings and connect. Run this once to configure.",
+      "params": [
+        { "key": "host",     "label": "Host",     "type": "text",   "default": "localhost", "placeholder": "localhost" },
+        { "key": "port",     "label": "Port",     "type": "number", "default": 4455 },
+        { "key": "password", "label": "Password", "type": "text",   "placeholder": "leave blank if none" }
+      ]
     },
     {
       "key": "obs.switchScene",
       "label": "Switch Scene",
       "componentType": "button",
+      "description": "Switch OBS to a specific scene.",
       "params": [
-        { "key": "scene", "label": "Scene Name", "type": "text" }
+        { "key": "scene", "label": "Scene name", "type": "text", "placeholder": "Gaming" }
       ]
+    },
+    {
+      "key": "obs.toggleRecording",
+      "label": "Toggle Recording",
+      "componentType": "switch",
+      "description": "Start or stop recording."
+    },
+    {
+      "key": "obs.toggleStream",
+      "label": "Toggle Streaming",
+      "componentType": "switch",
+      "description": "Start or stop the stream."
     },
     {
       "key": "obs.toggleMute",
-      "label": "Toggle Mute Source",
-      "componentType": "button",
+      "label": "Mute / Unmute Source",
+      "componentType": "switch",
+      "description": "Toggle mute on an audio input.",
       "params": [
-        { "key": "source", "label": "Source Name", "type": "text" }
+        { "key": "source", "label": "Source name", "type": "text", "placeholder": "Mic/AUX" }
       ]
-    },
-    {
-      "key": "obs.getStatus",
-      "label": "Get Status",
-      "componentType": "button"
     }
   ]
 }

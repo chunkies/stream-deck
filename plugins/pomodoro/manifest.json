@@ -4,10 +4,12 @@
   "version": "1.0.0",
   "description": "Pomodoro timer that cycles work/break intervals with count tracking.",
   "author": "MacroPad Team",
-  "homepage": "https://github.com/chunkies/macropad",
+  "authorUrl": "https://github.com/chunkies/macropad",
+  "homepage": "https://github.com/chunkies/macropad/tree/master/plugins/pomodoro",
   "price": 0,
   "license": "MIT",
   "tags": ["productivity", "timer"],
+  "minAppVersion": "1.0.0",
   "icon": "🍅",
   "actions": [
     {

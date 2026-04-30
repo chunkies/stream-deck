@@ -5,10 +5,11 @@
   "description": "Type a block of text, pause, then fire a hotkey — all from one button press. Great for snippets, form fills, and keyboard shortcuts.",
   "author": "MacroPad Team",
   "authorUrl": "https://github.com/chunkies/macropad",
-  "homepage": "https://github.com/chunkies/macropad/tree/master/plugins-example/text-macro",
+  "homepage": "https://github.com/chunkies/macropad/tree/master/plugins/text-macro",
   "price": 0,
   "license": "MIT",
   "tags": ["productivity", "keyboard", "macro"],
+  "minAppVersion": "1.0.0",
   "actions": [
     {
       "key": "text-macro.run",

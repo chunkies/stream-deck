@@ -4,10 +4,12 @@
   "version": "1.0.0",
   "description": "Switch audio output/input devices on Linux (pactl) and macOS (SwitchAudioSource).",
   "author": "MacroPad Team",
-  "homepage": "https://github.com/chunkies/macropad",
+  "authorUrl": "https://github.com/chunkies/macropad",
+  "homepage": "https://github.com/chunkies/macropad/tree/master/plugins/audio-switcher",
   "price": 0,
   "license": "MIT",
   "tags": ["audio", "system"],
+  "minAppVersion": "1.0.0",
   "icon": "🔊",
   "actions": [
     {

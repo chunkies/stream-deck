@@ -3,8 +3,14 @@
   "name": "System Info",
   "version": "1.0.0",
   "description": "Real-time CPU, memory, disk, and network stats — polled every 5 seconds and broadcast to PWA clients.",
-  "author": "MacroPad",
+  "author": "MacroPad Team",
+  "authorUrl": "https://github.com/chunkies/macropad",
+  "homepage": "https://github.com/chunkies/macropad/tree/master/plugins/system-info",
   "icon": "📊",
+  "price": 0,
+  "license": "MIT",
+  "tags": ["system", "monitoring", "cpu", "memory"],
+  "minAppVersion": "1.0.0",
   "actions": [
     {
       "key": "system-info.getCpu",
