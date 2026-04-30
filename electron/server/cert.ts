@@ -32,7 +32,7 @@ function selfSignedCert(certDir: string, ip: string): CertPair {
   } catch {}
 
   const pems = selfsigned.generate([{ name: 'commonName', value: ip }], {
-    days: 3650, keySize: 2048,
+    days: 3650, keySize: 2048, algorithm: 'sha256',
     extensions: [{ name: 'subjectAltName', altNames: [{ type: 7, ip }, { type: 2, value: 'localhost' }] }]
   })
 

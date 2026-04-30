@@ -93,4 +93,24 @@ describe('getCert', () => {
     const stored = fs.readFileSync(path.join(tmpDir, 'ip.txt'), 'utf8').trim()
     expect(stored).toBe(result.ip)
   })
+
+  test('cert uses SHA-256 signature algorithm (not SHA-1)', async () => {
+    // Mobile browsers (Chrome, Firefox on Android/iOS) reject SHA-1 signed certs.
+    // This test ensures we always generate SHA-256 certs.
+    const { execSync } = require('child_process') as typeof import('child_process')
+    const result   = await getCert(tmpDir)
+    const certFile = path.join(tmpDir, 'cert.pem')
+    const text     = execSync(`openssl x509 -noout -text -in "${certFile}"`).toString()
+    expect(text).toMatch(/sha256WithRSAEncryption/)
+    expect(text).not.toMatch(/sha1WithRSAEncryption/)
+  })
+
+  test('cert SAN includes the local IP address', async () => {
+    // Browsers require a Subject Alternative Name matching the IP — CN alone is not enough.
+    const { execSync } = require('child_process') as typeof import('child_process')
+    const result   = await getCert(tmpDir)
+    const certFile = path.join(tmpDir, 'cert.pem')
+    const text     = execSync(`openssl x509 -noout -text -in "${certFile}"`).toString()
+    expect(text).toContain(`IP Address:${result.ip}`)
+  })
 })
