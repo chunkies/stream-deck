@@ -136,13 +136,15 @@ export interface Config {
 // ── Server info ────────────────────────────────────────────────────────────────
 
 export interface ServerInfo {
-  ip:   string
-  host: string
-  port: number
-  mode: string
+  ip:       string
+  host:     string
+  port:     number
+  httpPort: number
+  mode:     string
   // Added by buildServerPayload in main process before sending to renderer
-  url?: string
-  qr?:  string
+  url?:     string
+  httpUrl?: string
+  qr?:      string
 }
 
 // ── Plugins ────────────────────────────────────────────────────────────────────

@@ -248,7 +248,7 @@ describe('renderGrid — component cards', () => {
   })
 
   test('card gets backgroundImage when comp.image and serverInfo are set', () => {
-    state.serverInfo = { ip: '10.0.0.1', host: 'host', port: 3000, mode: 'self-signed' }
+    state.serverInfo = { ip: '10.0.0.1', host: 'host', port: 3000, httpPort: 3001, mode: 'self-signed' }
     state.config!.pages[0].components = [makeComp({ image: '/media/photo.jpg' })]
     renderGrid()
     const card = document.querySelector<HTMLElement>('.comp-card')!

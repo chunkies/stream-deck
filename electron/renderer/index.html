@@ -32,7 +32,11 @@
           <span id="phone-status" class="badge disconnected">Disconnected</span>
         </div>
         <div class="info-row">
-          <span class="info-label">URL</span>
+          <span class="info-label">Android</span>
+          <a id="server-http-url" class="url" href="#" target="_blank">—</a>
+        </div>
+        <div class="info-row">
+          <span class="info-label">iOS / PC</span>
           <a id="server-url" class="url" href="#" target="_blank">—</a>
         </div>
         <div class="info-row" id="cert-row">
@@ -55,7 +59,7 @@
       <div class="cert-setup" id="cert-setup">
         <button class="cert-setup-toggle" id="cert-setup-toggle">📱 Phone setup ▾</button>
         <div class="cert-setup-body" id="cert-setup-body">
-          <p class="cert-intro">Your phone will show "Not Secure" until you install the local certificate once. Takes 30 seconds.</p>
+          <p class="cert-intro">iOS / PC only. Android users should use the HTTP URL above — no cert needed.</p>
           <div class="cert-tabs">
             <button class="cert-tab active" data-os="ios">iOS</button>
             <button class="cert-tab" data-os="android">Android</button>
