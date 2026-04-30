@@ -111,7 +111,16 @@ test.describe('Renderer — add component flow', () => {
   })
 
   test('clicking a component card opens the edit modal', async () => {
-    await win.locator('#grid .comp-card').first().click()
+    // The comp-card uses pointerdown+setPointerCapture for click vs drag detection.
+    // Playwright's click() hits a CDP hit-test that conflicts with pointer capture.
+    // Dispatch events via evaluate to bypass CDP entirely.
+    await win.evaluate(() => {
+      const card = document.querySelector('#grid .comp-card') as HTMLElement
+      const r = card.getBoundingClientRect()
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2
+      card.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, clientX: cx, clientY: cy, isPrimary: true }))
+      card.dispatchEvent(new PointerEvent('pointerup',   { bubbles: true, pointerId: 1, clientX: cx, clientY: cy, isPrimary: true }))
+    })
     await expect(win.locator('#drawer')).toHaveClass(/open/, { timeout: 3000 })
     await expect(win.locator('#modal-delete')).toBeVisible()
   })
