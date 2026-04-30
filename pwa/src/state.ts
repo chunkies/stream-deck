@@ -10,7 +10,6 @@ export interface PwaState {
   config:         Config | null
   currentPageIdx: number
   toggleStates:   Record<string, boolean>
-  reconnectTimer: ReturnType<typeof setTimeout> | null
   currentPages:   Page[] | null
   navStack:       NavStackEntry[]
   swipeStartX:    number
@@ -25,7 +24,6 @@ export const state: PwaState = {
   config:         null,
   currentPageIdx: 0,
   toggleStates:   {},
-  reconnectTimer: null,
   currentPages:   null,
   navStack:       [],
   swipeStartX:    0,
@@ -36,21 +34,19 @@ export const state: PwaState = {
 }
 
 export interface DomRefs {
-  grid:           HTMLElement
-  pageDots:       HTMLElement
-  pageNameEl:     HTMLElement
-  wsStatusEl:     HTMLElement
-  wsDotEl:        HTMLElement
-  offlineEl:      HTMLElement
-  offlineTitleEl: HTMLElement
+  grid:      HTMLElement
+  pageDots:  HTMLElement
+  pageNameEl: HTMLElement
+  wsStatusEl: HTMLElement
+  wsDotEl:   HTMLElement
+  offlineEl: HTMLElement
 }
 
 export const dom: DomRefs = {
-  grid:           document.getElementById('grid')!,
-  pageDots:       document.getElementById('page-dots')!,
-  pageNameEl:     document.getElementById('page-name')!,
-  wsStatusEl:     document.getElementById('ws-status')!,
-  wsDotEl:        document.getElementById('ws-dot')!,
-  offlineEl:      document.getElementById('offline-overlay')!,
-  offlineTitleEl: document.getElementById('offline-title')!,
+  grid:       document.getElementById('grid')!,
+  pageDots:   document.getElementById('page-dots')!,
+  pageNameEl: document.getElementById('page-name')!,
+  wsStatusEl: document.getElementById('ws-status')!,
+  wsDotEl:    document.getElementById('ws-dot')!,
+  offlineEl:  document.getElementById('offline-overlay')!,
 }

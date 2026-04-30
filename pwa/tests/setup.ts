@@ -14,9 +14,10 @@ document.body.innerHTML = `
     <div class="grid-wrap"><div class="grid" id="grid"></div></div>
     <div class="bottom-bar"><div class="page-dots" id="page-dots"></div></div>
   </div>
-  <div class="offline-overlay" id="offline-overlay">
+  <div class="offline-overlay" id="offline-overlay" data-state="idle">
     <div class="offline-content">
-      <div class="offline-title" id="offline-title">Connecting…</div>
+      <button id="offline-connect-btn">Connect</button>
+      <div id="offline-connecting"></div>
     </div>
   </div>
 `

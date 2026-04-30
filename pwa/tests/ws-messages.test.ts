@@ -146,9 +146,9 @@ describe('ws connection status', () => {
     expect(overlay.classList.contains('visible')).toBe(false)
   })
 
-  test('onclose sets status to Connecting', async () => {
+  test('onclose sets status to Disconnected', async () => {
     mockWs.onclose?.()
-    expect(document.getElementById('ws-status')!.textContent).toBe('Connecting…')
+    expect(document.getElementById('ws-status')!.textContent).toBe('Disconnected')
   })
 
   test('onclose adds visible to offline overlay', async () => {
@@ -158,31 +158,17 @@ describe('ws connection status', () => {
     expect(overlay.classList.contains('visible')).toBe(true)
   })
 
-  test('onclose schedules reconnect after 1000ms', async () => {
-    vi.useFakeTimers()
-    const { MockWebSocket } = await import('./setup')
-    const callsBefore = MockWebSocket.mock.calls.length
+  test('onclose shows idle state (Connect button)', async () => {
+    const overlay = document.getElementById('offline-overlay')!
+    overlay.dataset.state = 'connecting'
     mockWs.onclose?.()
-    vi.advanceTimersByTime(1000)
-    expect(MockWebSocket.mock.calls.length).toBeGreaterThan(callsBefore)
-    vi.useRealTimers()
+    expect(overlay.dataset.state).toBe('idle')
   })
 
-  test('onclose does NOT reconnect before 1000ms', async () => {
-    vi.useFakeTimers()
-    const { MockWebSocket } = await import('./setup')
-    const callsBefore = MockWebSocket.mock.calls.length
-    mockWs.onclose?.()
-    vi.advanceTimersByTime(500)
-    expect(MockWebSocket.mock.calls.length).toBe(callsBefore)
-    vi.useRealTimers()
-  })
-
-  test('stale onclose from previous socket does not schedule an extra retry', async () => {
+  test('stale onclose from previous socket does not affect current connection', async () => {
     // Capture onclose from ws1, then call connect() to create ws2.
-    // ws1.onclose firing after ws2 is created must NOT schedule a new timer
+    // ws1.onclose firing after ws2 is created must NOT call showIdle
     // (generation guard should discard it).
-    vi.useFakeTimers()
     const { MockWebSocket } = await import('./setup')
     const { connect } = await import('../src/ws.js')
 
@@ -190,10 +176,12 @@ describe('ws connection status', () => {
     connect()                             // creates ws2, increments generation
     const callsAfterWs2 = MockWebSocket.mock.calls.length
 
+    // Put overlay in a non-idle state to detect if stale handler touches it
+    document.getElementById('offline-overlay')!.classList.remove('visible')
+
     staleOnclose?.()                      // stale ws1 handler fires — must be ignored
-    vi.advanceTimersByTime(2000)
-    expect(MockWebSocket.mock.calls.length).toBe(callsAfterWs2) // no extra reconnect
-    vi.useRealTimers()
+    expect(MockWebSocket.mock.calls.length).toBe(callsAfterWs2) // no extra socket
+    expect(document.getElementById('offline-overlay')!.classList.contains('visible')).toBe(false)
   })
 })
 
@@ -205,28 +193,20 @@ describe('visibilitychange reconnect', () => {
     document.dispatchEvent(new Event('visibilitychange'))
   }
 
-  test('reconnects after 1000ms delay when page becomes visible and ws is not open', async () => {
-    // iOS network process needs ~1s to wake — we intentionally delay reconnect
-    vi.useFakeTimers()
-    const { MockWebSocket } = await import('./setup')
+  test('shows idle state when page becomes visible and ws is not open', async () => {
+    const overlay = document.getElementById('offline-overlay')!
+    overlay.dataset.state = 'connecting'
     mockWs.readyState = WebSocket.CLOSED
-    const callsBefore = MockWebSocket.mock.calls.length
     setVisibility('visible')
-    expect(MockWebSocket.mock.calls.length).toBe(callsBefore)   // not immediate
-    vi.advanceTimersByTime(1000)
-    expect(MockWebSocket.mock.calls.length).toBeGreaterThan(callsBefore) // fires after 1s
-    vi.useRealTimers()
+    expect(overlay.dataset.state).toBe('idle')
   })
 
-  test('does not reconnect when page becomes visible and ws is already open', async () => {
-    vi.useFakeTimers()
+  test('does not change overlay when page becomes visible and ws is already open', async () => {
     const { MockWebSocket } = await import('./setup')
     mockWs.readyState = WebSocket.OPEN
     const callsBefore = MockWebSocket.mock.calls.length
     setVisibility('visible')
-    vi.advanceTimersByTime(2000)
-    expect(MockWebSocket.mock.calls.length).toBe(callsBefore)
-    vi.useRealTimers()
+    expect(MockWebSocket.mock.calls.length).toBe(callsBefore) // no new socket
   })
 
   test('calls ws.close() when page becomes hidden', async () => {
@@ -246,25 +226,12 @@ describe('visibilitychange reconnect', () => {
     expect(MockWebSocket.mock.calls.length).toBe(callsBefore)
     vi.useRealTimers()
   })
-
-  test('showConnecting does not schedule retry when hidden', async () => {
-    // If the explicit close on hidden triggers onclose, we must not retry
-    // while hidden — visibilitychange→visible handles the resume.
-    vi.useFakeTimers()
-    const { MockWebSocket } = await import('./setup')
-    setVisibility('hidden')
-    const callsBefore = MockWebSocket.mock.calls.length
-    mockWs.onclose?.()                    // onclose fires (from explicit ws.close())
-    vi.advanceTimersByTime(2000)
-    expect(MockWebSocket.mock.calls.length).toBe(callsBefore) // no reconnect while hidden
-    vi.useRealTimers()
-  })
 })
 
 // ── Zombie socket guard ────────────────────────────────────────────────────
 
 describe('zombie socket guard', () => {
-  test('closes and retries after ZOMBIE_TIMEOUT if still in CONNECTING state', async () => {
+  test('shows idle state after ZOMBIE_TIMEOUT if still in CONNECTING — does not auto-retry', async () => {
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
     vi.useFakeTimers()
     const { MockWebSocket, mockWs: currentMock } = await import('./setup')
@@ -272,9 +239,9 @@ describe('zombie socket guard', () => {
     connect()
     currentMock.readyState = WebSocket.CONNECTING  // simulate stuck socket
     const callsBefore = MockWebSocket.mock.calls.length
-    vi.advanceTimersByTime(ZOMBIE_TIMEOUT)         // zombie guard fires
-    vi.advanceTimersByTime(1000)                   // retry timer fires
-    expect(MockWebSocket.mock.calls.length).toBeGreaterThan(callsBefore)
+    vi.advanceTimersByTime(ZOMBIE_TIMEOUT + 500)
+    expect(MockWebSocket.mock.calls.length).toBe(callsBefore) // no auto-retry
+    expect(document.getElementById('offline-overlay')!.dataset.state).toBe('idle')
     vi.useRealTimers()
   })
 
@@ -285,31 +252,26 @@ describe('zombie socket guard', () => {
     connect()
     mockWs.onopen?.()                              // successful open
     const callsBefore = MockWebSocket.mock.calls.length
-    vi.advanceTimersByTime(ZOMBIE_TIMEOUT + 1000)  // guard + retry delay
+    vi.advanceTimersByTime(ZOMBIE_TIMEOUT + 1000)
     expect(MockWebSocket.mock.calls.length).toBe(callsBefore) // no spurious reconnect
     vi.useRealTimers()
   })
 })
 
-// ── Overlay tap reconnect ──────────────────────────────────────────────────
+// ── Connect button ─────────────────────────────────────────────────────────
 
-describe('overlay tap reconnect', () => {
-  test('tapping overlay immediately reconnects when disconnected', async () => {
+describe('connect button', () => {
+  test('click creates new WebSocket', async () => {
     const { MockWebSocket } = await import('./setup')
-    mockWs.readyState = WebSocket.CLOSED
     const callsBefore = MockWebSocket.mock.calls.length
-    document.getElementById('offline-overlay')!.dispatchEvent(new Event('pointerdown'))
+    document.getElementById('offline-connect-btn')!.dispatchEvent(new Event('click'))
     expect(MockWebSocket.mock.calls.length).toBeGreaterThan(callsBefore)
   })
 
-  test('tapping overlay clears any pending reconnect timer', async () => {
-    vi.useFakeTimers()
-    mockWs.onclose?.()
-    document.getElementById('offline-overlay')!.dispatchEvent(new Event('pointerdown'))
-    const { MockWebSocket } = await import('./setup')
-    const callsAfterTap = MockWebSocket.mock.calls.length
-    vi.advanceTimersByTime(2000)
-    expect(MockWebSocket.mock.calls.length).toBe(callsAfterTap)
-    vi.useRealTimers()
+  test('click shows connecting UI state', async () => {
+    const overlay = document.getElementById('offline-overlay')!
+    overlay.dataset.state = 'idle'
+    document.getElementById('offline-connect-btn')!.dispatchEvent(new Event('click'))
+    expect(overlay.dataset.state).toBe('connecting')
   })
 })

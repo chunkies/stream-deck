@@ -686,16 +686,51 @@ html, body {
   pointer-events: none;
   transition: opacity 0.35s ease;
 }
-.offline-overlay.visible {
-  opacity: 1;
-  pointer-events: all;
-  cursor: pointer;
-}
-.offline-content { text-align: center }
+.offline-overlay.visible { opacity: 1; pointer-events: all }
+.offline-content { text-align: center; padding: 0 24px }
 .offline-icon  { font-size: 44px; margin-bottom: 16px; animation: pulse 2s ease-in-out infinite }
-.offline-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px }
-.offline-sub   { font-size: 13px; color: var(--text-muted); max-width: 220px; line-height: 1.6; margin-bottom: 20px }
-.offline-tap   { font-size: 11px; color: var(--text-muted); opacity: 0.5; letter-spacing: 0.04em }
+.offline-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px }
+.offline-sub   { font-size: 13px; color: var(--text-muted); max-width: 220px; line-height: 1.6; margin-bottom: 0 }
+
+.offline-connect-btn {
+  display: block;
+  margin: 28px auto 0;
+  padding: 14px 48px;
+  background: var(--accent, #5865f2);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.offline-connect-btn:active { opacity: 0.75; transform: scale(0.97) }
+
+/* state-driven visibility — idle shows button, connecting shows spinner */
+.offline-overlay[data-state="connecting"] .offline-connect-btn { display: none }
+.offline-overlay[data-state="idle"] .offline-connecting        { display: none }
+
+.offline-connecting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 28px;
+  gap: 10px;
+}
+.offline-spinner {
+  width: 26px;
+  height: 26px;
+  border: 3px solid rgba(255,255,255,0.15);
+  border-top-color: rgba(255,255,255,0.75);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+.offline-connecting-text { font-size: 13px; color: var(--text-muted); opacity: 0.65 }
+
+@keyframes spin { to { transform: rotate(360deg) } }
 
 @keyframes pulse {
   0%, 100% { opacity: 1 }

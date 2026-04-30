@@ -53,13 +53,17 @@
       </div>
     </div>
   </div>
-  <!-- Connecting / reconnect overlay (visible from page load until first successful connect) -->
-  <div class="offline-overlay visible" id="offline-overlay">
+  <!-- Offline overlay — idle state shows Connect button, connecting state shows spinner -->
+  <div class="offline-overlay visible" id="offline-overlay" data-state="idle">
     <div class="offline-content">
       <div class="offline-icon">📡</div>
-      <div class="offline-title" id="offline-title">Connecting…</div>
+      <div class="offline-title">MacroPad</div>
       <div class="offline-sub">Make sure the MacroPad app is running on your PC</div>
-      <div class="offline-tap">Tap to retry</div>
+      <button class="offline-connect-btn" id="offline-connect-btn">Connect</button>
+      <div class="offline-connecting" id="offline-connecting">
+        <div class="offline-spinner"></div>
+        <div class="offline-connecting-text">Connecting…</div>
+      </div>
     </div>
   </div>
 
