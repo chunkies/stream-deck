@@ -57,8 +57,6 @@ jobs:
         include:
           - os: ubuntu-22.04
             platform: linux
-          - os: macos-13
-            platform: mac
           - os: windows-2022
             platform: win
 
@@ -191,7 +189,6 @@ jobs:
             |----------|------|
             | Linux (portable) | `macropad-*.AppImage` |
             | Linux (Debian/Ubuntu) | `macropad-*.deb` |
-            | macOS | `macropad-*.dmg` |
             | Windows | `macropad-*.exe` |
 
             ### Quick start
@@ -204,7 +201,6 @@ jobs:
           files: |
             artifacts/**/*.AppImage
             artifacts/**/*.deb
-            artifacts/**/*.dmg
             artifacts/**/*.exe
             artifacts/**/latest*.yml
             artifacts/**/*.blockmap
