@@ -83,7 +83,7 @@ jobs:
       # GH_TOKEN is still needed so electron-builder can read release metadata.
       - name: Package (Linux)
         if: matrix.platform == 'linux'
-        run: electron-builder --linux --publish never
+        run: npx electron-builder --linux --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -100,7 +100,7 @@ jobs:
       # CSC_IDENTITY_AUTO_DISCOVERY stays false — we always provide the cert explicitly.
       - name: Package (macOS)
         if: matrix.platform == 'mac'
-        run: electron-builder --mac --publish never
+        run: npx electron-builder --mac --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -119,7 +119,7 @@ jobs:
       # Once those 2 secrets are set, this step signs automatically.
       - name: Package (Windows)
         if: matrix.platform == 'win'
-        run: electron-builder --win --publish never
+        run: npx electron-builder --win --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
