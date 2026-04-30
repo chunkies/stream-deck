@@ -13,13 +13,16 @@ export function send(data: ClientMessage): void {
   if (state.ws?.readyState === WebSocket.OPEN) state.ws.send(JSON.stringify(data))
 }
 
-const RETRY_DELAY = 1000
+const RETRY_DELAY   = 1000
+// iOS Safari leaves sockets stuck in CONNECTING with no onerror/onclose when
+// the network process isn't ready yet (WebKit bug #228296, #247943).
+// After this timeout, if still CONNECTING, we close and retry.
+export const ZOMBIE_TIMEOUT = 5000
 
-// Incremented on every connect() call. Handlers check their own generation
-// before doing anything — stale handlers from a previous WebSocket instance
-// that fires after a new one is already created are silently discarded.
-// Without this, a slow-closing old socket schedules a spurious retry timer
-// that then interrupts the in-flight new connection and causes a feedback loop.
+// Monotonic generation counter. Every connect() call increments this.
+// All handlers check their captured generation matches the current one —
+// stale handlers from a previous socket are silently discarded, preventing
+// them from scheduling spurious timers that break the in-flight connection.
 let wsGen = 0
 
 function reconnectNow(): void {
@@ -33,26 +36,43 @@ export function connect(): void {
   const gen = ++wsGen
   state.ws = new WebSocket(`wss://${location.hostname}:${location.port}`)
 
+  let zombieGuard: ReturnType<typeof setTimeout> | null = null
+
+  const showConnecting = (): void => {
+    if (wsGen !== gen) return
+    if (zombieGuard) { clearTimeout(zombieGuard); zombieGuard = null }
+    dom.wsStatusEl.textContent     = 'Connecting…'
+    dom.wsDotEl.className          = 'dot disconnected'
+    dom.offlineTitleEl.textContent = 'Connecting…'
+    dom.offlineEl.classList.add('visible')
+    // Don't retry while hidden — visibilitychange will trigger reconnect on resume
+    // with a delay that lets the iOS network process fully wake up first.
+    if (!state.reconnectTimer && document.visibilityState !== 'hidden') {
+      state.reconnectTimer = setTimeout(connect, RETRY_DELAY)
+    }
+  }
+
+  // Zombie-socket guard: iOS Safari can leave a WebSocket stuck in CONNECTING
+  // forever with no events. Detect and recover.
+  zombieGuard = setTimeout(() => {
+    if (wsGen === gen && state.ws?.readyState === WebSocket.CONNECTING) {
+      state.ws.close()
+      showConnecting()
+    }
+  }, ZOMBIE_TIMEOUT)
+
   state.ws.onopen = () => {
     if (wsGen !== gen) return
+    if (zombieGuard) { clearTimeout(zombieGuard); zombieGuard = null }
     dom.wsStatusEl.textContent     = 'Connected'
     dom.wsDotEl.className          = 'dot connected'
     dom.offlineEl.classList.remove('visible')
   }
 
-  const showConnecting = (): void => {
-    if (wsGen !== gen) return
-    dom.wsStatusEl.textContent     = 'Connecting…'
-    dom.wsDotEl.className          = 'dot disconnected'
-    dom.offlineTitleEl.textContent = 'Connecting…'
-    dom.offlineEl.classList.add('visible')
-    if (!state.reconnectTimer) state.reconnectTimer = setTimeout(connect, RETRY_DELAY)
-  }
-
   state.ws.onclose = showConnecting
 
-  // onerror fires before onclose — schedule reconnect here too so the loop
-  // survives if onclose is skipped (observed on Firefox Android and iOS Safari).
+  // onerror fires before onclose — also call showConnecting() here so the retry
+  // loop survives if onclose is skipped (WebKit bug #247943, Firefox Android).
   state.ws.onerror = () => { state.ws?.close(); showConnecting() }
 
   state.ws.onmessage = (e: MessageEvent<string>) => {
@@ -92,7 +112,15 @@ export function connect(): void {
 dom.offlineEl.addEventListener('pointerdown', reconnectNow)
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && state.ws?.readyState !== WebSocket.OPEN) {
-    reconnectNow()
+  if (document.visibilityState === 'hidden') {
+    // Explicitly close before iOS suspends the process.
+    // Prevents the zombie OPEN socket on resume that silently drops all data.
+    state.ws?.close()
+  } else if (state.ws?.readyState !== WebSocket.OPEN) {
+    // iOS network process needs ~1s to fully wake after resume.
+    // Attempting new WebSocket() immediately races against it and silently
+    // hangs in CONNECTING with no error events (WebKit bug #228296).
+    if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null }
+    state.reconnectTimer = setTimeout(connect, 1000)
   }
 })

@@ -200,33 +200,94 @@ describe('ws connection status', () => {
 // ── Visibility reconnect ───────────────────────────────────────────────────
 
 describe('visibilitychange reconnect', () => {
-  function setVisibility(state: 'visible' | 'hidden'): void {
-    Object.defineProperty(document, 'visibilityState', { value: state, configurable: true })
+  function setVisibility(v: 'visible' | 'hidden'): void {
+    Object.defineProperty(document, 'visibilityState', { value: v, configurable: true })
     document.dispatchEvent(new Event('visibilitychange'))
   }
 
-  test('reconnects immediately when page becomes visible and ws is not open', async () => {
+  test('reconnects after 1000ms delay when page becomes visible and ws is not open', async () => {
+    // iOS network process needs ~1s to wake — we intentionally delay reconnect
+    vi.useFakeTimers()
     const { MockWebSocket } = await import('./setup')
     mockWs.readyState = WebSocket.CLOSED
     const callsBefore = MockWebSocket.mock.calls.length
     setVisibility('visible')
-    expect(MockWebSocket.mock.calls.length).toBeGreaterThan(callsBefore)
+    expect(MockWebSocket.mock.calls.length).toBe(callsBefore)   // not immediate
+    vi.advanceTimersByTime(1000)
+    expect(MockWebSocket.mock.calls.length).toBeGreaterThan(callsBefore) // fires after 1s
+    vi.useRealTimers()
   })
 
   test('does not reconnect when page becomes visible and ws is already open', async () => {
+    vi.useFakeTimers()
     const { MockWebSocket } = await import('./setup')
     mockWs.readyState = WebSocket.OPEN
     const callsBefore = MockWebSocket.mock.calls.length
     setVisibility('visible')
+    vi.advanceTimersByTime(2000)
     expect(MockWebSocket.mock.calls.length).toBe(callsBefore)
+    vi.useRealTimers()
   })
 
-  test('does nothing when page becomes hidden', async () => {
+  test('calls ws.close() when page becomes hidden', async () => {
+    // Explicit close before iOS suspends prevents zombie socket on resume
+    mockWs.readyState = WebSocket.OPEN
+    setVisibility('hidden')
+    expect(mockWs.close).toHaveBeenCalled()
+  })
+
+  test('does not create new WebSocket when page becomes hidden', async () => {
+    vi.useFakeTimers()
     const { MockWebSocket } = await import('./setup')
-    mockWs.readyState = WebSocket.CLOSED
+    mockWs.readyState = WebSocket.OPEN
     const callsBefore = MockWebSocket.mock.calls.length
     setVisibility('hidden')
+    vi.advanceTimersByTime(2000)
     expect(MockWebSocket.mock.calls.length).toBe(callsBefore)
+    vi.useRealTimers()
+  })
+
+  test('showConnecting does not schedule retry when hidden', async () => {
+    // If the explicit close on hidden triggers onclose, we must not retry
+    // while hidden — visibilitychange→visible handles the resume.
+    vi.useFakeTimers()
+    const { MockWebSocket } = await import('./setup')
+    setVisibility('hidden')
+    const callsBefore = MockWebSocket.mock.calls.length
+    mockWs.onclose?.()                    // onclose fires (from explicit ws.close())
+    vi.advanceTimersByTime(2000)
+    expect(MockWebSocket.mock.calls.length).toBe(callsBefore) // no reconnect while hidden
+    vi.useRealTimers()
+  })
+})
+
+// ── Zombie socket guard ────────────────────────────────────────────────────
+
+describe('zombie socket guard', () => {
+  test('closes and retries after ZOMBIE_TIMEOUT if still in CONNECTING state', async () => {
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
+    vi.useFakeTimers()
+    const { MockWebSocket, mockWs: currentMock } = await import('./setup')
+    const { connect, ZOMBIE_TIMEOUT } = await import('../src/ws.js')
+    connect()
+    currentMock.readyState = WebSocket.CONNECTING  // simulate stuck socket
+    const callsBefore = MockWebSocket.mock.calls.length
+    vi.advanceTimersByTime(ZOMBIE_TIMEOUT)         // zombie guard fires
+    vi.advanceTimersByTime(1000)                   // retry timer fires
+    expect(MockWebSocket.mock.calls.length).toBeGreaterThan(callsBefore)
+    vi.useRealTimers()
+  })
+
+  test('zombie guard does not fire if socket opened successfully', async () => {
+    vi.useFakeTimers()
+    const { MockWebSocket } = await import('./setup')
+    const { connect, ZOMBIE_TIMEOUT } = await import('../src/ws.js')
+    connect()
+    mockWs.onopen?.()                              // successful open
+    const callsBefore = MockWebSocket.mock.calls.length
+    vi.advanceTimersByTime(ZOMBIE_TIMEOUT + 1000)  // guard + retry delay
+    expect(MockWebSocket.mock.calls.length).toBe(callsBefore) // no spurious reconnect
+    vi.useRealTimers()
   })
 })
 
