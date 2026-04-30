@@ -1,7 +1,7 @@
 import type { ServerInfo, DeckEvent } from '../../shared/types'
 import { state, adminPages } from './state'
 import { pushConfig } from './config'
-import { renderAll, renderGrid, enterFolderAdmin, closeRenameModal, saveRename } from './grid'
+import { renderAll, renderGrid, enterFolderAdmin, closeRenameModal, saveRename, setAddPageHandler } from './grid'
 import { closeModal, saveModal, deleteComp, showButtonActionFields, renderFolderPagesList } from './modal'
 import { loadAndPopulatePlugins, wirePluginReload } from './plugins'
 import { initAppearanceEditor } from './appearance'
@@ -9,30 +9,9 @@ import { wireImageUploads } from './images'
 import { closePageModal, saveNewPage, openPageModal } from './pages'
 import { setupCronUI, renderCronList } from './crons'
 import { BUILTIN_ACTIONS } from './constants'
-import { openTemplateStore, closeTemplateStore } from './templates'
 
 function el(id: string): HTMLElement { return document.getElementById(id) as HTMLElement }
 
-// ── Cert setup accordion (wired at startup, independent of server info) ──
-function wireCertSetup(): void {
-  const toggle = el('cert-setup-toggle')
-  const body   = el('cert-setup-body')
-  toggle.addEventListener('click', () => {
-    const open = body.classList.contains('open')
-    body.classList.toggle('open', !open)
-    toggle.classList.toggle('open', !open)
-    toggle.textContent = open ? '📱 Phone setup ▾' : '📱 Phone setup ▴'
-  })
-  document.querySelectorAll<HTMLElement>('.cert-tab').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const os = (e.currentTarget as HTMLElement).dataset['os']
-      document.querySelectorAll<HTMLElement>('.cert-tab').forEach(b => b.classList.remove('active'))
-      ;(e.currentTarget as HTMLElement).classList.add('active')
-      el('cert-steps-ios').style.display     = os === 'ios'     ? '' : 'none'
-      el('cert-steps-android').style.display = os === 'android' ? '' : 'none'
-    })
-  })
-}
 
 // ── Server info display ───────────────────────────────
 function applyServerInfo(info: ServerInfo): void {
@@ -62,37 +41,40 @@ function populateBuiltinSelect(): void {
   }
 }
 
-// ── Update notifications ───────────────────────────────
-function setupUpdateNotifications(): void {
-  const banner = document.createElement('div')
-  banner.id = 'update-banner'
-  Object.assign(banner.style, {
-    display: 'none', position: 'fixed', bottom: '12px', right: '12px',
-    background: '#1e293b', border: '1px solid #334155', borderRadius: '8px',
-    padding: '10px 14px', fontSize: '13px', color: '#e2e8f0',
-    zIndex: '9999', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', maxWidth: '280px',
+// ── About section (version + update notifications) ────
+function setupAboutSection(): void {
+  const versionEl  = el('about-version')
+  const statusEl   = el('about-update-status')
+  const checkBtn   = el('about-check-btn')
+  const restartBtn = el('about-restart-btn')
+  const openBtn    = el('settings-open-btn')
+
+  window.api.getAppVersion().then(v => { versionEl.textContent = `v${v}` })
+
+  checkBtn.addEventListener('click', async () => {
+    checkBtn.textContent = 'Checking…'
+    checkBtn.setAttribute('disabled', '')
+    const info = await window.api.checkAppUpdate()
+    checkBtn.removeAttribute('disabled')
+    checkBtn.textContent = 'Check for updates'
+    if (info) {
+      statusEl.textContent = `v${info.version} available`
+    } else {
+      statusEl.textContent = 'Up to date'
+    }
   })
-  document.body.appendChild(banner)
+
+  restartBtn.addEventListener('click', () => window.api.installAppUpdate())
 
   window.api.onAppUpdateAvailable((info) => {
-    banner.textContent = `Update v${info.version} available — downloading…`
-    banner.style.display = 'block'
+    statusEl.textContent = `v${info.version} available — downloading…`
+    openBtn.classList.add('has-update')
   })
 
   window.api.onAppUpdateDownloaded((info) => {
-    banner.innerHTML = ''
-    const msg = document.createElement('span')
-    msg.textContent = `v${info.version} ready — `
-    const btn = document.createElement('button')
-    btn.textContent = 'Restart to install'
-    Object.assign(btn.style, {
-      background: '#6366f1', color: 'white', border: 'none',
-      borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontSize: '12px',
-    })
-    btn.addEventListener('click', () => window.api.installAppUpdate())
-    banner.appendChild(msg)
-    banner.appendChild(btn)
-    banner.style.display = 'block'
+    statusEl.textContent = `v${info.version} ready to install`
+    restartBtn.style.display = ''
+    openBtn.classList.add('has-update')
   })
 }
 
@@ -166,19 +148,6 @@ async function setupLicenseUI(): Promise<void> {
   })
 }
 
-// ── Custom CSS ────────────────────────────────────────
-function setupCustomCss(): void {
-  const textarea = el('custom-css-input') as HTMLTextAreaElement
-  const applyBtn = el('custom-css-apply-btn')
-  // Pre-populate from saved config
-  textarea.value = state.config?.customCSS ?? ''
-  applyBtn.addEventListener('click', () => {
-    if (!state.config) return
-    state.config.customCSS = textarea.value
-    pushConfig()
-  })
-}
-
 // ── Init ──────────────────────────────────────────────
 async function init(): Promise<void> {
   ;[state.config, state.serverInfo] = await Promise.all([
@@ -196,9 +165,6 @@ async function init(): Promise<void> {
   const autostart = await window.api.getAutostart()
   ;(el('autostart-toggle') as HTMLInputElement).checked = autostart
 
-  ;(el('grid-cols') as HTMLInputElement).value = String(state.config!.grid.cols)
-  ;(el('grid-rows') as HTMLInputElement).value = String(state.config!.grid.rows)
-
   if (state.serverInfo?.url) applyServerInfo(state.serverInfo)
 
   window.api.onServerReady((info: ServerInfo) => {
@@ -207,10 +173,9 @@ async function init(): Promise<void> {
     renderGrid()
   })
 
-  setupUpdateNotifications()
+  setupAboutSection()
   await setupWebhookSettings()
   await setupLicenseUI()
-  setupCustomCss()
   setupCronUI()
   renderCronList()
 
@@ -240,11 +205,10 @@ el('drawer-close').addEventListener('click', closeModal)
 el('modal-save').addEventListener('click', saveModal)
 el('modal-delete').addEventListener('click', deleteComp)
 
-el('add-page-btn').addEventListener('click', openPageModal)
+setAddPageHandler(openPageModal)
 el('empty-add-page-btn').addEventListener('click', openPageModal)
-el('marketplace-btn').addEventListener('click', () => window.api.openMarketplace())
-el('templates-btn').addEventListener('click', openTemplateStore)
-el('template-store-close').addEventListener('click', closeTemplateStore)
+
+
 el('page-modal-close').addEventListener('click', closePageModal)
 el('page-modal-save').addEventListener('click', saveNewPage)
 el('page-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closePageModal() })
@@ -254,14 +218,6 @@ el('autostart-toggle').addEventListener('change', e => {
   window.api.setAutostart((e.target as HTMLInputElement).checked)
 })
 
-el('grid-save-btn').addEventListener('click', () => {
-  const cols = parseInt((el('grid-cols') as HTMLInputElement).value)
-  const rows = parseInt((el('grid-rows') as HTMLInputElement).value)
-  if (!cols || !rows || cols < 1 || rows < 1) return
-  state.config!.grid.cols = cols
-  state.config!.grid.rows = rows
-  pushConfig(); renderAll()
-})
 
 el('export-btn').addEventListener('click', async () => {
   await window.api.exportConfig()
@@ -274,8 +230,6 @@ el('import-btn').addEventListener('click', async () => {
     return
   }
   state.config = result.config!
-  ;(el('grid-cols') as HTMLInputElement).value = String(state.config.grid.cols)
-  ;(el('grid-rows') as HTMLInputElement).value = String(state.config.grid.rows)
   state.currentPageIdx   = 0
   state.adminFolderStack = []
   closeModal()
@@ -310,17 +264,26 @@ el('folder-edit-btn').addEventListener('click', () => {
   if (comp) enterFolderAdmin(comp)
 })
 
-// ── Cert setup accordion ──────────────────────────────
-wireCertSetup()
 
-// ── Sidebar tabs ──────────────────────────────────────
-document.querySelectorAll<HTMLElement>('.sidebar-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    const target = tab.dataset['tab']
-    document.querySelectorAll<HTMLElement>('.sidebar-tab').forEach(t => t.classList.remove('active'))
-    document.querySelectorAll<HTMLElement>('.sidebar-pane').forEach(p => p.classList.remove('active'))
-    tab.classList.add('active')
-    el(`pane-${target}`).classList.add('active')
+// ── Settings overlay ──────────────────────────────────
+el('settings-open-btn').addEventListener('click', () => {
+  el('settings-overlay').style.display = 'flex'
+})
+el('settings-close-btn').addEventListener('click', () => {
+  el('settings-overlay').style.display = 'none'
+})
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && el('settings-overlay').style.display !== 'none') {
+    el('settings-overlay').style.display = 'none'
+  }
+})
+document.querySelectorAll<HTMLElement>('.settings-nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const section = item.dataset['section']
+    document.querySelectorAll<HTMLElement>('.settings-nav-item').forEach(i => i.classList.remove('active'))
+    document.querySelectorAll<HTMLElement>('.settings-section').forEach(s => s.classList.remove('active'))
+    item.classList.add('active')
+    el(`ssec-${section}`).classList.add('active')
   })
 })
 

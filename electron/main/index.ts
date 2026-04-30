@@ -286,6 +286,7 @@ function openMarketplace(): void {
 }
 
 // ── IPC ────────────────────────────────────────────────
+ipcMain.handle('get-app-version',   ()                    => app.getVersion())
 ipcMain.handle('get-config',        ()                    => server.getConfig())
 ipcMain.handle('get-server-info',   async ()              => { const i = server.getInfo(); return i ? buildServerPayload(i) : null })
 ipcMain.handle('set-config',        (_, cfg: Config)      => server.setConfig(cfg))

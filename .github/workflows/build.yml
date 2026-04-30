@@ -87,18 +87,43 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Code signing — degrades gracefully when secrets are absent (unsigned build).
+      # To enable signing, add these GitHub Secrets to the repo:
+      #   MAC_CERTS            — base64-encoded Developer ID Application .p12 certificate
+      #                          openssl base64 -in cert.p12 | tr -d '\n'
+      #   MAC_CERTS_PASSWORD   — password used when exporting the .p12
+      #   APPLE_ID             — your Apple ID email (for notarization)
+      #   APPLE_APP_SPECIFIC_PASSWORD — app-specific password from appleid.apple.com
+      #   APPLE_TEAM_ID        — 10-char team ID from developer.apple.com/account
+      #
+      # Once those 5 secrets are set, this step signs + notarizes automatically.
+      # CSC_IDENTITY_AUTO_DISCOVERY stays false — we always provide the cert explicitly.
       - name: Package (macOS)
         if: matrix.platform == 'mac'
         run: electron-builder --mac --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          CSC_LINK: ${{ secrets.MAC_CERTS }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
+      # Code signing — degrades gracefully when secrets are absent (unsigned build).
+      # To enable signing, add these GitHub Secrets to the repo:
+      #   WIN_CSC_LINK         — base64-encoded .pfx certificate
+      #                          certutil -encode cert.pfx cert.b64 && type cert.b64
+      #   WIN_CSC_KEY_PASSWORD — password used when exporting the .pfx
+      #
+      # Once those 2 secrets are set, this step signs automatically.
       - name: Package (Windows)
         if: matrix.platform == 'win'
         run: electron-builder --win --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
       # latest*.yml and *.blockmap are required by electron-updater.
       # They must travel alongside the installers into the GitHub Release.

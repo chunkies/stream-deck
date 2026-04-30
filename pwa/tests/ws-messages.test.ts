@@ -98,39 +98,6 @@ describe('config message', () => {
   })
 })
 
-// ── customCSS injection ────────────────────────────────────────────────────
-
-describe('config message — customCSS injection', () => {
-  test('creates a <style id="custom-css"> element when customCSS is present', () => {
-    document.getElementById('custom-css')?.remove()
-    sendMsg({ type: 'config', config: { ...baseConfig, customCSS: '.btn { color: red }' } })
-    const el = document.getElementById('custom-css')
-    expect(el).not.toBeNull()
-    expect(el?.tagName.toLowerCase()).toBe('style')
-  })
-
-  test('sets textContent of style element to customCSS value', () => {
-    document.getElementById('custom-css')?.remove()
-    sendMsg({ type: 'config', config: { ...baseConfig, customCSS: '.btn { color: red }' } })
-    expect(document.getElementById('custom-css')?.textContent).toBe('.btn { color: red }')
-  })
-
-  test('updates existing style element instead of creating a duplicate', () => {
-    document.getElementById('custom-css')?.remove()
-    sendMsg({ type: 'config', config: { ...baseConfig, customCSS: '.btn { color: red }' } })
-    sendMsg({ type: 'config', config: { ...baseConfig, customCSS: '.btn { color: blue }' } })
-    expect(document.querySelectorAll('#custom-css')).toHaveLength(1)
-    expect(document.getElementById('custom-css')?.textContent).toBe('.btn { color: blue }')
-  })
-
-  test('clears style element when customCSS is absent', () => {
-    document.getElementById('custom-css')?.remove()
-    sendMsg({ type: 'config', config: { ...baseConfig, customCSS: '.btn { color: red }' } })
-    sendMsg({ type: 'config', config: baseConfig })
-    expect(document.getElementById('custom-css')?.textContent).toBe('')
-  })
-})
-
 // ── WebSocket connection status updates DOM ────────────────────────────────
 
 describe('ws connection status', () => {

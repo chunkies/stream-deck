@@ -8,6 +8,10 @@ import { createComponentAtCell } from './components'
 
 function el(id: string): HTMLElement { return document.getElementById(id) as HTMLElement }
 
+let _onAddPage: (() => void) | null = null
+export function setAddPageHandler(fn: () => void): void { _onAddPage = fn }
+
+
 export function renderAll(): void {
   const pages = adminPages()
   const emptyState = document.getElementById('empty-state')
@@ -38,13 +42,20 @@ export function renderTabs(): void {
   pages.forEach((page, i) => {
     const tab = document.createElement('div')
     tab.className = 'tab' + (i === idx ? ' active' : '')
-    tab.innerHTML = `<span class="tab-name"></span>${pages.length > 1 ? `<button class="tab-del" data-i="${i}">✕</button>` : ''}`
+    tab.innerHTML = `<span class="tab-name"></span><button class="tab-cfg" data-i="${i}">⚙</button>${pages.length > 1 ? `<button class="tab-del" data-i="${i}">✕</button>` : ''}`
     tab.querySelector<HTMLElement>('.tab-name')!.textContent = page.name
     tab.addEventListener('click', (e) => {
       if (!(e.target as HTMLElement).classList.contains('tab-del')) { setAdminIdx(i); renderAll() }
     })
     tab.querySelector<HTMLElement>('.tab-name')!.addEventListener('dblclick', (e) => { e.stopPropagation(); openRenameModal(i) })
     tabs.appendChild(tab)
+  })
+
+  tabs.querySelectorAll<HTMLElement>('.tab-cfg').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      openRenameModal(parseInt(btn.dataset['i'] ?? '0'))
+    })
   })
 
   tabs.querySelectorAll<HTMLElement>('.tab-del').forEach(btn => {
@@ -57,15 +68,25 @@ export function renderTabs(): void {
       pushConfig(); renderAll()
     })
   })
+
+  if (!state.adminFolderStack.length && _onAddPage) {
+    const addBtn = document.createElement('button')
+    addBtn.className = 'tab-add'
+    addBtn.textContent = '+'
+    addBtn.addEventListener('click', () => _onAddPage!())
+    tabs.appendChild(addBtn)
+  }
 }
 
 // ── Rename modal ───────────────────────────────────────
 export function openRenameModal(pageIdx: number): void {
   state.renamingPageIdx = pageIdx
   const page = adminPages()[pageIdx]
-  ;(el('f-rename-name') as HTMLInputElement).value   = page.name
-  ;(el('f-auto-class') as HTMLInputElement).value    = page.autoProfile?.windowClass ?? ''
-  ;(el('f-auto-title') as HTMLInputElement).value    = page.autoProfile?.windowTitle ?? ''
+  ;(el('f-rename-name') as HTMLInputElement).value  = page.name
+  ;(el('f-rename-cols') as HTMLInputElement).value  = page.cols != null ? String(page.cols) : ''
+  ;(el('f-rename-rows') as HTMLInputElement).value  = page.rows != null ? String(page.rows) : ''
+  ;(el('f-auto-class') as HTMLInputElement).value   = page.autoProfile?.windowClass ?? ''
+  ;(el('f-auto-title') as HTMLInputElement).value   = page.autoProfile?.windowTitle ?? ''
   el('rename-modal').style.display = 'flex'
   setTimeout(() => (el('f-rename-name') as HTMLInputElement).select(), 50)
 }
@@ -77,12 +98,18 @@ export function closeRenameModal(): void {
 
 export function saveRename(): void {
   if (state.renamingPageIdx === null) return
-  const name      = (el('f-rename-name') as HTMLInputElement).value.trim()
+  const name   = (el('f-rename-name') as HTMLInputElement).value.trim()
   if (!name) return
-  const wclass    = (el('f-auto-class') as HTMLInputElement).value.trim()
-  const wtitle    = (el('f-auto-title') as HTMLInputElement).value.trim()
-  const page      = adminPages()[state.renamingPageIdx]
-  page.name       = name
+  const page   = adminPages()[state.renamingPageIdx]
+  page.name    = name
+  const colsStr = (el('f-rename-cols') as HTMLInputElement).value.trim()
+  const cols = parseInt(colsStr)
+  if (colsStr === '' || isNaN(cols)) { delete page.cols } else if (cols >= 1 && cols <= 8) { page.cols = cols }
+  const rowsStr = (el('f-rename-rows') as HTMLInputElement).value.trim()
+  const rows = parseInt(rowsStr)
+  if (rowsStr === '' || isNaN(rows)) { delete page.rows } else if (rows >= 1 && rows <= 8) { page.rows = rows }
+  const wclass = (el('f-auto-class') as HTMLInputElement).value.trim()
+  const wtitle = (el('f-auto-title') as HTMLInputElement).value.trim()
   if (wclass || wtitle) {
     page.autoProfile = {}
     if (wclass) page.autoProfile.windowClass = wclass
@@ -90,7 +117,7 @@ export function saveRename(): void {
   } else {
     delete page.autoProfile
   }
-  pushConfig(); renderTabs()
+  pushConfig(); renderAll()
   closeRenameModal()
 }
 
@@ -121,7 +148,7 @@ export function renderGrid(): void {
   const gridEl = el('grid')
   const page   = adminPages()[adminIdx()]
   const cols   = page.cols || state.config!.grid.cols
-  const rows   = state.config!.grid.rows
+  const rows   = page.rows || state.config!.grid.rows
   gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`
   gridEl.style.gridTemplateRows    = `repeat(${rows}, 1fr)`
   gridEl.innerHTML = ''

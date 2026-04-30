@@ -11,8 +11,6 @@ import { pushConfig } from '../../renderer/src/config'
 import { renderAll }  from '../../renderer/src/grid'
 import {
   TEMPLATES,
-  openTemplateStore,
-  closeTemplateStore,
   addTemplateToConfig,
 } from '../../renderer/src/templates'
 
@@ -29,10 +27,6 @@ function resetState(): void {
   state.config           = makeConfig()
   state.currentPageIdx   = 0
   state.adminFolderStack = []
-}
-
-function getOverlay(): HTMLElement {
-  return document.getElementById('template-store') as HTMLElement
 }
 
 // ── Template data ─────────────────────────────────────────────────────────────
@@ -136,20 +130,3 @@ describe('addTemplateToConfig', () => {
   })
 })
 
-// ── openTemplateStore / closeTemplateStore ─────────────────────────────────────
-
-describe('openTemplateStore / closeTemplateStore', () => {
-  test('openTemplateStore shows the overlay', () => {
-    const overlay = getOverlay()
-    overlay.style.display = 'none'
-    openTemplateStore()
-    expect(overlay.style.display).not.toBe('none')
-  })
-
-  test('closeTemplateStore hides the overlay', () => {
-    const overlay = getOverlay()
-    overlay.style.display = ''
-    closeTemplateStore()
-    expect(overlay.style.display).toBe('none')
-  })
-})

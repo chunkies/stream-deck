@@ -112,6 +112,7 @@ export interface Page {
   name:        string
   components:  Component[]
   cols?:       number
+  rows?:       number
   slots?:      unknown[]
   autoProfile?: { windowClass?: string; windowTitle?: string }
 }
@@ -257,6 +258,7 @@ export interface AppUpdateInfo {
 }
 
 export interface ElectronAPI {
+  getAppVersion:         () => Promise<string>
   getConfig:             () => Promise<Config>
   setConfig:             (cfg: Config) => Promise<void>
   getServerInfo:         () => Promise<ServerInfo | null>

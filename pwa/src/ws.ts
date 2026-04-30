@@ -86,13 +86,6 @@ export function connect(): void {
       state.currentPageIdx = 0
       state.navStack       = []
       state.toggleStates   = {}
-      let customStyleEl = document.getElementById('custom-css') as HTMLStyleElement | null
-      if (!customStyleEl) {
-        customStyleEl = document.createElement('style')
-        customStyleEl.id = 'custom-css'
-        document.head.appendChild(customStyleEl)
-      }
-      customStyleEl.textContent = state.config.customCSS ?? ''
       render()
     }
     if (msg.type === 'toggleState')   { state.toggleStates[msg.key] = msg.active; updateToggleBtn(msg.key, msg.active) }

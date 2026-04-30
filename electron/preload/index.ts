@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { ElectronAPI } from '../shared/types'
 
 const api: ElectronAPI = {
+  getAppVersion:   ()            => ipcRenderer.invoke('get-app-version'),
   getConfig:       ()            => ipcRenderer.invoke('get-config'),
   setConfig:       (cfg)         => ipcRenderer.invoke('set-config', cfg),
   getServerInfo:   ()            => ipcRenderer.invoke('get-server-info'),

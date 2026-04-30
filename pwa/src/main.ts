@@ -1,39 +1,6 @@
 import { connect } from './ws.js'
 import { goBack }  from './components/folder.js'
-import { loadTheme, setTheme } from './theme.js'
 import './swipe.js'  // registers touch event listeners as a side effect
-
-// ── Theme init ──────────────────────────────────────────
-loadTheme()
-
-// ── Settings sheet ──────────────────────────────────────
-const settingsBtn   = document.getElementById('settings-btn')
-const settingsSheet = document.getElementById('settings-sheet')
-const sheetClose    = document.getElementById('settings-sheet-close')
-
-function openSettings(): void {
-  settingsSheet?.classList.add('open')
-  settingsSheet?.removeAttribute('aria-hidden')
-}
-
-function closeSettings(): void {
-  settingsSheet?.classList.remove('open')
-  settingsSheet?.setAttribute('aria-hidden', 'true')
-}
-
-settingsBtn?.addEventListener('pointerdown', (e) => { e.stopPropagation(); openSettings() })
-sheetClose?.addEventListener('pointerdown', closeSettings)
-settingsSheet?.addEventListener('pointerdown', (e) => {
-  if (e.target === settingsSheet) closeSettings()
-})
-
-document.querySelectorAll<HTMLElement>('.theme-swatch').forEach(btn => {
-  btn.addEventListener('pointerdown', (e) => {
-    e.stopPropagation()
-    const name = btn.dataset['themeName']
-    if (name) setTheme(name)
-  })
-})
 
 document.getElementById('back-btn')?.addEventListener('pointerdown', () => { Haptic.tap(); goBack() })
 

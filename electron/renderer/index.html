@@ -15,189 +15,143 @@
       <h1 class="logo">MacroPad</h1>
     </div>
 
-    <div class="sidebar-tabs">
-      <button class="sidebar-tab active" data-tab="connect">Connect</button>
-      <button class="sidebar-tab" data-tab="layout">Layout</button>
-      <button class="sidebar-tab" data-tab="settings">Settings</button>
+    <img id="qr-img" class="qr" style="display:none">
+
+    <div class="info-block">
+      <div class="info-row">
+        <span class="info-label">Status</span>
+        <span id="phone-status" class="badge disconnected">Disconnected</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">URL</span>
+        <a id="server-url" class="url" href="#" target="_blank">—</a>
+      </div>
+      <div class="info-row" id="cert-row">
+        <span class="info-label">Cert</span>
+        <a id="cert-url" class="url" href="#" target="_blank">Download →</a>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Last tap</span>
+        <span id="last-press" class="muted">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Autostart</span>
+        <label class="sw">
+          <input type="checkbox" id="autostart-toggle">
+          <span class="sw-track"><span class="sw-thumb"></span></span>
+        </label>
+      </div>
     </div>
 
-    <!-- ── Connect pane ── -->
-    <div class="sidebar-pane active" id="pane-connect">
-
-      <img id="qr-img" class="qr" style="display:none">
-
-      <div class="info-block">
-        <div class="info-row">
-          <span class="info-label">Status</span>
-          <span id="phone-status" class="badge disconnected">Disconnected</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">URL</span>
-          <a id="server-url" class="url" href="#" target="_blank">—</a>
-        </div>
-        <div class="info-row" id="cert-row">
-          <span class="info-label">Cert</span>
-          <a id="cert-url" class="url" href="#" target="_blank">Download →</a>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Last tap</span>
-          <span id="last-press" class="muted">—</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Autostart</span>
-          <label class="sw">
-            <input type="checkbox" id="autostart-toggle">
-            <span class="sw-track"><span class="sw-thumb"></span></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="cert-setup" id="cert-setup">
-        <button class="cert-setup-toggle" id="cert-setup-toggle">📱 Phone setup ▾</button>
-        <div class="cert-setup-body" id="cert-setup-body">
-          <p class="cert-intro">One-time setup so your phone trusts the local certificate. Takes 30 seconds.</p>
-          <div class="cert-tabs">
-            <button class="cert-tab active" data-os="ios">iOS</button>
-            <button class="cert-tab" data-os="android">Android</button>
-          </div>
-          <div class="cert-warn">⚠️ Safari requires the cert to be installed — tapping "Visit Website" alone won't work for the connection.</div>
-          <ol class="cert-steps" id="cert-steps-ios">
-            <li>Open the URL on your iPhone in Safari and tap <strong>Visit Website</strong></li>
-            <li>In the app header tap <strong>Cert</strong> link to download the certificate file</li>
-            <li>Go to <strong>Settings → General → VPN &amp; Device Management</strong></li>
-            <li>Tap the <em>MacroPad</em> profile → <strong>Install</strong></li>
-            <li>Go to <strong>Settings → General → About → Certificate Trust Settings</strong></li>
-            <li>Enable full trust for <em>MacroPad</em> → <strong>Continue</strong></li>
-            <li>Reload the page — it should connect automatically</li>
-          </ol>
-          <ol class="cert-steps" id="cert-steps-android" style="display:none">
-            <li><strong>Easiest:</strong> install <em>Firefox</em> on Android — it accepts the cert automatically</li>
-            <li>Open the URL in Firefox and tap <strong>Accept Risk</strong> on the first visit</li>
-            <li><strong>Chrome alternative:</strong> download the cert, go to <strong>Settings → Security → Install a certificate → CA Certificate</strong></li>
-            <li>Select the downloaded file and confirm — Chrome will trust it going forward</li>
-          </ol>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- ── Layout pane ── -->
-    <div class="sidebar-pane" id="pane-layout">
-
-      <div class="pane-section">
-        <div class="pane-section-label">Grid</div>
-        <div class="grid-inputs">
-          <div class="s-field">
-            <label>Cols</label>
-            <input id="grid-cols" type="number" value="3" min="1" max="8">
-          </div>
-          <div class="s-field">
-            <label>Rows</label>
-            <input id="grid-rows" type="number" value="4" min="1" max="8">
-          </div>
-          <button id="grid-save-btn" class="btn-secondary apply-btn">Apply</button>
-        </div>
-        <div class="field-hint">Per-page columns override this</div>
-      </div>
-
-      <div class="pane-section">
-        <div class="pane-section-label">Backup</div>
-        <div class="row-pair">
-          <button id="export-btn" class="btn-secondary">Export</button>
-          <button id="import-btn" class="btn-secondary">Import</button>
-        </div>
-      </div>
-
-      <div class="pane-actions">
-        <button id="add-page-btn" class="btn-secondary">+ Add Page</button>
-        <button id="marketplace-btn" class="btn-secondary">🔌 Plugins</button>
-        <button id="templates-btn" class="btn-secondary">📋 Templates</button>
-      </div>
-
-    </div>
-
-    <!-- ── Settings pane ── -->
-    <div class="sidebar-pane" id="pane-settings">
-
-      <div class="pane-section pane-card" id="webhook-card">
-        <div class="pane-section-label">Webhook</div>
-        <div class="info-row">
-          <span class="info-label">Enabled</span>
-          <label class="sw">
-            <input type="checkbox" id="webhook-toggle">
-            <span class="sw-track"><span class="sw-thumb"></span></span>
-          </label>
-        </div>
-        <div id="webhook-url-row" style="display:none">
-          <div class="field-hint" style="margin-bottom:6px">POST this URL to trigger a button:</div>
-          <div class="copy-row">
-            <input id="webhook-url-input" type="text" readonly style="font-family:monospace">
-            <button id="webhook-copy-btn" class="btn-sm">Copy</button>
-          </div>
-          <div class="field-hint" style="margin-top:4px">Replace :pageId and :buttonId with IDs</div>
-        </div>
-      </div>
-
-      <div class="pane-section pane-card" id="cron-card">
-        <div class="pane-section-label">Scheduled Actions</div>
-        <div id="cron-list"></div>
-        <button id="cron-add-btn" class="btn-secondary">+ Add Cron</button>
-        <div id="cron-form" style="display:none;margin-top:4px">
-          <div class="field-row" style="margin-bottom:4px">
-            <label>Label</label>
-            <input id="cron-label" type="text" placeholder="e.g. Morning">
-          </div>
-          <div class="field-row" style="margin-bottom:4px">
-            <label>Cron</label>
-            <input id="cron-expr" type="text" placeholder="*/5 * * * *" style="font-family:monospace">
-          </div>
-          <div class="field-row" style="margin-bottom:4px">
-            <label>Page</label>
-            <select id="cron-page"></select>
-          </div>
-          <div class="field-row" style="margin-bottom:4px">
-            <label>Button</label>
-            <select id="cron-comp"></select>
-          </div>
-          <div class="field-row" style="margin-bottom:6px">
-            <label>Enabled</label>
-            <label class="sw sw-sm">
-              <input type="checkbox" id="cron-enabled" checked>
-              <span class="sw-track"><span class="sw-thumb"></span></span>
-            </label>
-          </div>
-          <div class="row-pair">
-            <button id="cron-save-btn" class="btn-primary">Save</button>
-            <button id="cron-cancel-btn" class="btn-secondary">Cancel</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="pane-section pane-card" id="license-card">
-        <div class="pane-section-label">License</div>
-        <div id="license-status-row" class="info-row" style="margin-bottom:4px">
-          <span class="info-label">Plan</span>
-          <span id="license-badge" class="badge disconnected">Free</span>
-        </div>
-        <div id="license-activate-row">
-          <div class="copy-row">
-            <input id="license-key-input" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" style="font-family:monospace">
-            <button id="license-activate-btn" class="btn-sm">Activate</button>
-          </div>
-          <div id="license-error" class="field-hint" style="color:#ef4444;margin-top:3px;display:none">Invalid license key.</div>
-        </div>
-      </div>
-
-      <div class="pane-section pane-card">
-        <div class="pane-section-label">Custom CSS</div>
-        <div class="field-hint" style="margin-bottom:4px">Injected into connected PWA clients</div>
-        <textarea id="custom-css-input" rows="5" style="width:100%;font-family:monospace;resize:vertical" placeholder="/* e.g. .btn { border-radius: 0 } */"></textarea>
-        <button id="custom-css-apply-btn" class="btn-secondary" style="margin-top:4px">Apply</button>
-      </div>
-
+    <div class="sidebar-footer">
+      <button class="sidebar-settings-btn" id="settings-open-btn">⚙ Settings</button>
     </div>
 
   </aside>
+
+  <!-- ── Settings overlay ── -->
+  <div class="settings-overlay" id="settings-overlay" style="display:none">
+    <nav class="settings-nav">
+      <div class="settings-nav-header">Settings</div>
+      <button class="settings-nav-item active" data-section="backup">Backup</button>
+      <button class="settings-nav-item" data-section="webhook">Webhook</button>
+      <button class="settings-nav-item" data-section="scheduled">Scheduled Actions</button>
+      <button class="settings-nav-item" data-section="license">License</button>
+      <button class="settings-nav-item" data-section="about">About</button>
+    </nav>
+    <div class="settings-body">
+      <button class="settings-close" id="settings-close-btn">✕</button>
+
+      <div class="settings-section active" id="ssec-backup">
+        <h2 class="settings-section-title">Backup</h2>
+        <p class="settings-section-desc">Export your layout to a file or import a previously saved config.</p>
+        <div class="settings-row-pair">
+          <button id="export-btn" class="btn-secondary">Export Config</button>
+          <button id="import-btn" class="btn-secondary">Import Config</button>
+        </div>
+      </div>
+
+      <div class="settings-section" id="ssec-webhook">
+        <h2 class="settings-section-title">Webhook</h2>
+        <p class="settings-section-desc">Trigger buttons remotely via HTTP POST.</p>
+        <div class="settings-card" id="webhook-card">
+          <div class="info-row">
+            <span class="info-label">Enabled</span>
+            <label class="sw">
+              <input type="checkbox" id="webhook-toggle">
+              <span class="sw-track"><span class="sw-thumb"></span></span>
+            </label>
+          </div>
+          <div id="webhook-url-row" style="display:none">
+            <div class="field-hint" style="margin-bottom:6px">POST this URL to trigger a button:</div>
+            <div class="copy-row">
+              <input id="webhook-url-input" type="text" readonly style="font-family:monospace">
+              <button id="webhook-copy-btn" class="btn-sm">Copy</button>
+            </div>
+            <div class="field-hint" style="margin-top:4px">Replace :pageId and :buttonId with IDs</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section" id="ssec-scheduled">
+        <h2 class="settings-section-title">Scheduled Actions</h2>
+        <p class="settings-section-desc">Automatically trigger buttons on a cron schedule.</p>
+        <div class="settings-card" id="cron-card">
+          <div id="cron-list"></div>
+          <button id="cron-add-btn" class="btn-secondary">+ Add</button>
+          <div id="cron-form" style="display:none;margin-top:4px">
+            <div class="field-row" style="margin-bottom:4px"><label>Label</label><input id="cron-label" type="text" placeholder="e.g. Morning"></div>
+            <div class="field-row" style="margin-bottom:4px"><label>Cron</label><input id="cron-expr" type="text" placeholder="*/5 * * * *" style="font-family:monospace"></div>
+            <div class="field-row" style="margin-bottom:4px"><label>Page</label><select id="cron-page"></select></div>
+            <div class="field-row" style="margin-bottom:4px"><label>Button</label><select id="cron-comp"></select></div>
+            <div class="field-row" style="margin-bottom:6px"><label>Enabled</label><label class="sw sw-sm"><input type="checkbox" id="cron-enabled" checked><span class="sw-track"><span class="sw-thumb"></span></span></label></div>
+            <div class="row-pair">
+              <button id="cron-save-btn" class="btn-primary">Save</button>
+              <button id="cron-cancel-btn" class="btn-secondary">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section" id="ssec-license">
+        <h2 class="settings-section-title">License</h2>
+        <p class="settings-section-desc">Activate MacroPad Pro to unlock all features.</p>
+        <div class="settings-card" id="license-card">
+          <div id="license-status-row" class="info-row" style="margin-bottom:4px">
+            <span class="info-label">Plan</span>
+            <span id="license-badge" class="badge disconnected">Free</span>
+          </div>
+          <div id="license-activate-row">
+            <div class="copy-row">
+              <input id="license-key-input" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" style="font-family:monospace">
+              <button id="license-activate-btn" class="btn-sm">Activate</button>
+            </div>
+            <div id="license-error" class="field-hint" style="color:#ef4444;margin-top:3px;display:none">Invalid license key.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section" id="ssec-about">
+        <h2 class="settings-section-title">About</h2>
+        <p class="settings-section-desc">MacroPad remote desktop controller.</p>
+        <div class="settings-card">
+          <div class="info-row">
+            <span class="info-label">Version</span>
+            <span id="about-version" class="muted">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Updates</span>
+            <span id="about-update-status" class="muted">Up to date</span>
+          </div>
+          <div class="settings-row-pair" style="margin-top:8px">
+            <button id="about-check-btn" class="btn-secondary">Check for updates</button>
+            <button id="about-restart-btn" class="btn-primary" style="display:none">Restart to install</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
   <main class="main">
     <div class="page-tabs" id="page-tabs"></div>
@@ -759,36 +713,41 @@
 
 <!-- ── Add Page Modal ── -->
 <div class="modal-overlay" id="page-modal" style="display:none">
-  <div class="modal" style="max-width:340px">
+  <div class="modal" style="max-width:480px">
     <div class="modal-header">
       <h2>New Page</h2>
       <button class="modal-close" id="page-modal-close">✕</button>
     </div>
     <div class="modal-body">
       <div class="field-row"><label>Name</label><input id="f-page-name" type="text" placeholder="e.g. Gaming"></div>
-      <div class="field-row">
-        <label>Columns</label>
-        <div>
-          <input id="f-page-cols" type="number" value="" min="1" max="8" placeholder="default">
-          <div class="field-hint">Leave blank to use the global column setting</div>
-        </div>
-      </div>
+      <div class="page-modal-tpl-label">Templates</div>
+      <div class="page-modal-tpl-grid" id="page-modal-templates"></div>
     </div>
     <div class="modal-footer">
-      <button id="page-modal-save" class="btn-primary">Create</button>
+      <button id="page-modal-save" class="btn-primary" disabled>Create</button>
     </div>
   </div>
 </div>
 
-<!-- ── Rename Page Modal ── -->
+<!-- ── Page Settings Modal ── -->
 <div class="modal-overlay" id="rename-modal" style="display:none">
   <div class="modal" style="max-width:340px">
     <div class="modal-header">
-      <h2>Rename Page</h2>
+      <h2>Page Settings</h2>
       <button class="modal-close" id="rename-modal-close">✕</button>
     </div>
     <div class="modal-body">
       <div class="field-row"><label>Name</label><input id="f-rename-name" type="text" placeholder="Page name"></div>
+      <div class="grid-inputs" style="margin-top:4px">
+        <div class="s-field">
+          <label>Cols</label>
+          <input id="f-rename-cols" type="number" min="1" max="8" placeholder="3">
+        </div>
+        <div class="s-field">
+          <label>Rows</label>
+          <input id="f-rename-rows" type="number" min="1" max="8" placeholder="4">
+        </div>
+      </div>
       <div class="field-hint" style="margin-top:8px;margin-bottom:4px;font-size:11px">Auto-profile (match active window)</div>
       <div class="field-row">
         <label style="font-size:11px">Window class</label>
@@ -800,23 +759,11 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button id="rename-modal-save" class="btn-primary">Rename</button>
+      <button id="rename-modal-save" class="btn-primary">Save</button>
     </div>
   </div>
 </div>
 
-<!-- ── Template Store Modal ── -->
-<div class="modal-overlay" id="template-store" style="display:none">
-  <div class="modal" style="max-width:600px;max-height:80vh;overflow-y:auto">
-    <div class="modal-header">
-      <h2>Layout Templates</h2>
-      <button class="modal-close" id="template-store-close">✕</button>
-    </div>
-    <div class="modal-body" id="template-store-body">
-      <!-- Populated by renderTemplateStore() -->
-    </div>
-  </div>
-</div>
 
 <script type="module" src="./src/main.ts"></script>
 </body>

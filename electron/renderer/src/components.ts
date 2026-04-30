@@ -128,7 +128,8 @@ function makeCpSection(title: string, items: CpItem[]): HTMLElement {
 export function renderComponentPanel(): void {
   const panel = document.getElementById('component-panel')
   if (!panel) return
-  panel.innerHTML = '<div class="cp-panel-title">Components<span class="cp-drag-hint">drag onto grid</span></div>'
+  panel.innerHTML = '<div class="cp-panel-title">Components<span class="cp-drag-hint">drag onto grid</span><button class="cp-plugins-btn" id="marketplace-btn">🔌 Plugins</button></div>'
+  panel.querySelector<HTMLElement>('#marketplace-btn')!.addEventListener('click', () => window.api.openMarketplace())
 
   const coreItems: CpItem[] = [
     { compType: 'button',    pluginKey: null, label: 'Button',    icon: '🔲', options: {} },

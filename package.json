@@ -2,6 +2,10 @@
   "name": "macropad",
   "version": "1.0.0",
   "description": "Configurable phone-to-PC macro pad",
+  "author": {
+    "name": "Chunkies",
+    "email": "slytristan1@gmail.com"
+  },
   "main": "dist/electron/main/index.js",
   "scripts": {
     "build:pwa": "vite build --config vite.config.pwa.ts",
@@ -22,7 +26,10 @@
     "test:all": "npm test && npm run test:e2e",
     "test:coverage": "tsc -p tsconfig.server.json && vitest run --workspace vitest.workspace.ts --coverage",
     "lint": "eslint electron/ pwa/src/",
-    "gen-license": "node --experimental-strip-types scripts/gen-license.ts"
+    "gen-license": "node --experimental-strip-types scripts/gen-license.ts",
+    "release:patch": "npm version patch && git push --follow-tags",
+    "release:minor": "npm version minor && git push --follow-tags",
+    "release:major": "npm version major && git push --follow-tags"
   },
   "build": {
     "appId": "com.chunkies.macropad",
@@ -73,7 +80,8 @@
           ]
         }
       ],
-      "category": "public.app-category.utilities"
+      "category": "public.app-category.utilities",
+      "notarize": true
     },
     "win": {
       "target": [
