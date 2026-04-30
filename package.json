@@ -21,7 +21,8 @@
     "test:e2e:renderer": "npm run build && playwright test --project=renderer",
     "test:all": "npm test && npm run test:e2e",
     "test:coverage": "tsc -p tsconfig.server.json && vitest run --workspace vitest.workspace.ts --coverage",
-    "lint": "eslint electron/ pwa/src/"
+    "lint": "eslint electron/ pwa/src/",
+    "gen-license": "node --experimental-strip-types scripts/gen-license.ts"
   },
   "build": {
     "appId": "com.chunkies.macropad",

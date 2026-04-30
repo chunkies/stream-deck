@@ -1,14 +1,10 @@
-#!/usr/bin/env node
-'use strict'
+import crypto from 'crypto'
 
 // Print the single valid MacroPad Pro license key for a given LICENSE_SECRET.
-// Usage: LICENSE_SECRET=your-secret node scripts/gen-license.js
+// Usage: npm run gen-license
 //
-// The key format matches license.ts: HMAC-SHA256(secret, 'macropad-pro')
-// truncated to 32 hex chars, split into 4 groups of 8 with dashes.
-// Every customer gets this same key — share it via Gumroad post-purchase email.
-
-const crypto = require('crypto')
+// Key format: HMAC-SHA256(secret, 'macropad-pro') truncated to 32 hex chars,
+// split into 4 groups of 8 with dashes — matches license.ts exactly.
 
 const SECRET = process.env.LICENSE_SECRET
 if (!SECRET) {
