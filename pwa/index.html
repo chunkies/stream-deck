@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' wss:; font-src 'self'">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Stream Deck</title>
+  <title>MacroPad</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="app">
     <div class="top-bar">
+      <button class="back-btn hidden" id="back-btn">‹</button>
       <div class="ws-indicator">
         <span class="dot disconnected" id="ws-dot"></span>
         <span id="ws-status">Connecting...</span>
@@ -27,6 +29,21 @@
       <div class="page-dots" id="page-dots"></div>
     </div>
   </div>
-  <script src="app.js"></script>
+  <!-- Offline overlay — idle state shows Connect button, connecting state shows spinner -->
+  <div class="offline-overlay visible" id="offline-overlay" data-state="idle">
+    <div class="offline-content">
+      <div class="offline-icon">📡</div>
+      <div class="offline-title">MacroPad</div>
+      <div class="offline-sub">Make sure the MacroPad app is running on your PC</div>
+      <button class="offline-connect-btn" id="offline-connect-btn">Connect</button>
+      <div class="offline-connecting" id="offline-connecting">
+        <div class="offline-spinner"></div>
+        <div class="offline-connecting-text">Connecting…</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="haptic.js"></script>
+  <script type="module" src="src/main.ts"></script>
 </body>
 </html>

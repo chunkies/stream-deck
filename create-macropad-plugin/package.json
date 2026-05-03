@@ -1,0 +1,21 @@
+{
+  "name": "create-macropad-plugin",
+  "version": "1.0.0",
+  "description": "Scaffold a new MacroPad plugin — JavaScript or TypeScript, with tests included",
+  "bin": {
+    "create-macropad-plugin": "./cli.js"
+  },
+  "files": ["cli.js"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chunkies/macropad",
+    "directory": "create-macropad-plugin"
+  },
+  "keywords": ["macropad", "plugin", "scaffold", "create"],
+  "engines": { "node": ">=18" },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

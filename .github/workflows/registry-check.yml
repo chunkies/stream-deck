@@ -1,0 +1,26 @@
+name: Registry PR Check
+
+on:
+  pull_request:
+    paths:
+      - 'registry/registry.json'
+
+jobs:
+  validate:
+    name: Validate registry.json
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Step 1 — Schema validation (existing validator)
+      - name: Validate registry schema
+        run: node registry/validate.js
+
+      # Step 2+3 — URL reachability + manifest.json presence/id check
+      - name: Check download URLs and manifests
+        run: node registry/check-urls.js

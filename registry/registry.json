@@ -1,0 +1,288 @@
+{
+  "schemaVersion": 1,
+  "updated": "2026-05-01",
+  "plugins": [
+    {
+      "id": "audio-switcher",
+      "name": "Audio Switcher",
+      "version": "1.0.0",
+      "description": "Switch audio output/input devices on Linux (pactl) and macOS (SwitchAudioSource).",
+      "author": "MacroPad Team",
+      "authorUrl": "https://github.com/chunkies",
+      "homepage": "https://github.com/chunkies/macropad-plugin-audio-switcher",
+      "repo": "https://github.com/chunkies/macropad-plugin-audio-switcher",
+      "icon": "🔊",
+      "price": 0,
+      "purchaseUrl": "",
+      "downloadUrl": "https://github.com/chunkies/macropad-plugin-audio-switcher/archive/refs/tags/v1.0.0.zip",
+      "license": "MIT",
+      "tags": [
+        "audio",
+        "system"
+      ],
+      "downloads": 0,
+      "minAppVersion": "1.0.0",
+      "verified": true
+    },
+    {
+      "id": "demo",
+      "name": "SDK Demo",
+      "version": "1.0.0",
+      "description": "Full-featured reference plugin demonstrating every component type and every major SDK capability: button, switch, slider, knob, voice, trackpad, storage, HTTP, shell, notifications, cron, widget updates, and gesture control.",
+      "author": "MacroPad Team",
+      "authorUrl": "https://github.com/chunkies",
+      "homepage": "https://github.com/chunkies/macropad-plugin-demo",
+      "repo": "https://github.com/chunkies/macropad-plugin-demo",
+      "icon": "🎮",
+      "price": 0,
+      "purchaseUrl": "",
+      "downloadUrl": "https://github.com/chunkies/macropad-plugin-demo/archive/refs/tags/v1.0.0.zip",
+      "license": "MIT",
+      "tags": [
+        "demo",
+        "example",
+        "sdk"
+      ],
+      "downloads": 0,
+      "minAppVersion": "1.0.0",
+      "verified": true,
+      "widgets": [
+        {
+          "key": "status",
+          "label": "Demo Counter",
+          "icon": "🎮",
+          "field": "count",
+          "defaultColSpan": 2,
+          "defaultRowSpan": 1,
+          "description": "Live counter value from the demo plugin"
+        }
+      ]
+    },
+    {
+      "id": "hello-world",
+      "name": "Hello World",
+      "version": "1.1.0",
+      "description": "Example plugin — sends a desktop notification and opens a URL. Use this as a starting point for building your own plugin.",
+      "author": "MacroPad Team",
+      "authorUrl": "https://github.com/chunkies",
+      "homepage": "https://github.com/chunkies/macropad-plugin-hello-world",
+      "repo": "https://github.com/chunkies/macropad-plugin-hello-world",
+      "icon": "👋",
+      "price": 0,
+      "purchaseUrl": "",
+      "downloadUrl": "https://github.com/chunkies/macropad-plugin-hello-world/archive/refs/tags/v1.1.0.zip",
+      "license": "MIT",
+      "tags": [
+        "example"
+      ],
+      "downloads": 0,
+      "minAppVersion": "1.0.0",
+      "verified": true
+    },
+    {
+      "id": "obs",
+      "name": "OBS Studio",
+      "version": "1.0.0",
+      "description": "Control OBS Studio via WebSocket v5 — switch scenes, toggle recording/streaming, mute sources, and poll live status. Auto-reconnects on disconnect.",
+      "author": "MacroPad Team",
+      "authorUrl": "https://github.com/chunkies",
+      "homepage": "https://github.com/chunkies/macropad-plugin-obs",
+      "repo": "https://github.com/chunkies/macropad-plugin-obs",
+      "icon": "🎬",
+      "price": 0,
+      "purchaseUrl": "",
+      "downloadUrl": "https://github.com/chunkies/macropad-plugin-obs/archive/refs/tags/v1.0.0.zip",
+      "license": "MIT",
+      "tags": [
+        "obs",
+        "streaming",
+        "recording",
+        "scene"
+      ],
+      "downloads": 0,
+      "minAppVersion": "1.0.0",
+      "verified": true,
+      "widgets": [
+        {
+          "key": "obsStatus",
+          "label": "OBS Status",
+          "icon": "🎬",
+          "field": "text",
+          "defaultColSpan": 3,
+          "defaultRowSpan": 1,
+          "description": "Streaming/recording status"
+        },
+        {
+          "key": "obsStatus",
+          "label": "Current Scene",
+          "icon": "🎭",
+          "field": "scene",
+          "defaultColSpan": 2,
+          "defaultRowSpan": 1,
+          "description": "Current OBS scene name"
+        }
+      ]
+    },
+    {
+      "id": "pomodoro",
+      "name": "Pomodoro Timer",
+      "version": "1.0.0",
+      "description": "Pomodoro timer that cycles work/break intervals with count tracking.",
+      "author": "MacroPad Team",
+      "authorUrl": "https://github.com/chunkies",
+      "homepage": "https://github.com/chunkies/macropad-plugin-pomodoro",
+      "repo": "https://github.com/chunkies/macropad-plugin-pomodoro",
+      "icon": "🍅",
+      "price": 0,
+      "purchaseUrl": "",
+      "downloadUrl": "https://github.com/chunkies/macropad-plugin-pomodoro/archive/refs/tags/v1.0.0.zip",
+      "license": "MIT",
+      "tags": [
+        "productivity",
+        "timer"
+      ],
+      "downloads": 0,
+      "minAppVersion": "1.0.0",
+      "verified": true,
+      "widgets": [
+        {
+          "key": "status",
+          "label": "Pomodoro Timer",
+          "icon": "🍅",
+          "field": "remainingFormatted",
+          "defaultColSpan": 2,
+          "defaultRowSpan": 1,
+          "description": "Time remaining in current phase"
+        }
+      ]
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "version": "1.0.0",
+      "description": "Control Spotify playback — play/pause, skip tracks, adjust volume, and show now-playing info.",
+      "author": "MacroPad Team",
+      "authorUrl": "https://github.com/chunkies",
+      "homepage": "https://github.com/chunkies/macropad-plugin-spotify",
+      "repo": "https://github.com/chunkies/macropad-plugin-spotify",
+      "icon": "🎵",
+      "price": 0,
+      "purchaseUrl": "",
+      "downloadUrl": "https://github.com/chunkies/macropad-plugin-spotify/archive/refs/tags/v1.0.0.zip",
+      "license": "MIT",
+      "tags": [
+        "spotify",
+        "music",
+        "media"
+      ],
+      "downloads": 0,
+      "minAppVersion": "1.0.0",
+      "verified": true,
+      "widgets": [
+        {
+          "key": "spotify.nowPlaying",
+          "label": "Now Playing",
+          "icon": "🎵",
+          "field": "value",
+          "defaultColSpan": 3,
+          "defaultRowSpan": 1,
+          "description": "Current track name"
+        },
+        {
+          "key": "spotify.nowPlaying",
+          "label": "Artist",
+          "icon": "🎤",
+          "field": "artist",
+          "defaultColSpan": 2,
+          "defaultRowSpan": 1,
+          "description": "Current artist name"
+        }
+      ]
+    },
+    {
+      "id": "system-info",
+      "name": "System Info",
+      "version": "1.0.0",
+      "description": "Real-time CPU, memory, disk, and network stats — polled every 5 seconds and broadcast to PWA clients.",
+      "author": "MacroPad Team",
+      "authorUrl": "https://github.com/chunkies",
+      "homepage": "https://github.com/chunkies/macropad-plugin-system-info",
+      "repo": "https://github.com/chunkies/macropad-plugin-system-info",
+      "icon": "📊",
+      "price": 0,
+      "purchaseUrl": "",
+      "downloadUrl": "https://github.com/chunkies/macropad-plugin-system-info/archive/refs/tags/v1.0.0.zip",
+      "license": "MIT",
+      "tags": [
+        "system",
+        "monitoring",
+        "cpu",
+        "memory"
+      ],
+      "downloads": 0,
+      "minAppVersion": "1.0.0",
+      "verified": true,
+      "widgets": [
+        {
+          "key": "cpu",
+          "label": "CPU Usage",
+          "icon": "🖥️",
+          "field": "text",
+          "defaultColSpan": 2,
+          "defaultRowSpan": 1,
+          "description": "Live CPU percentage, updated every 5 s"
+        },
+        {
+          "key": "memory",
+          "label": "Memory",
+          "icon": "💾",
+          "field": "text",
+          "defaultColSpan": 2,
+          "defaultRowSpan": 1,
+          "description": "RAM used / total"
+        },
+        {
+          "key": "disk",
+          "label": "Disk",
+          "icon": "💿",
+          "field": "text",
+          "defaultColSpan": 2,
+          "defaultRowSpan": 1,
+          "description": "Disk free space"
+        },
+        {
+          "key": "network",
+          "label": "Network",
+          "icon": "🌐",
+          "field": "text",
+          "defaultColSpan": 2,
+          "defaultRowSpan": 1,
+          "description": "Current network speed"
+        }
+      ]
+    },
+    {
+      "id": "text-macro",
+      "name": "Text Macro",
+      "version": "1.0.0",
+      "description": "Type a block of text, pause, then fire a hotkey — all from one button press. Great for snippets, form fills, and keyboard shortcuts.",
+      "author": "MacroPad Team",
+      "authorUrl": "https://github.com/chunkies",
+      "homepage": "https://github.com/chunkies/macropad-plugin-text-macro",
+      "repo": "https://github.com/chunkies/macropad-plugin-text-macro",
+      "icon": "⌨️",
+      "price": 0,
+      "purchaseUrl": "",
+      "downloadUrl": "https://github.com/chunkies/macropad-plugin-text-macro/archive/refs/tags/v1.0.0.zip",
+      "license": "MIT",
+      "tags": [
+        "productivity",
+        "keyboard",
+        "macro"
+      ],
+      "downloads": 0,
+      "minAppVersion": "1.0.0",
+      "verified": true
+    }
+  ]
+}

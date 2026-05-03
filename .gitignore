@@ -2,3 +2,17 @@ node_modules/
 .cert/
 config.json
 *.log
+dist/
+out/
+# Electron-builder installer outputs (uploaded as GitHub Release assets, not committed)
+releases/*.AppImage
+releases/*.deb
+releases/*.dmg
+releases/*.exe
+releases/*.blockmap
+releases/builder-debug.yml
+releases/latest*.yml
+.DS_Store
+Thumbs.db
+squashfs-root/
+test-results/

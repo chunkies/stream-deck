@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — MacroPad</title>
+  <!-- Plausible Analytics -->
+  <script defer data-domain="macropad.app" src="https://plausible.io/js/script.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+    :root {
+      --bg: #0a0f1e; --surface: #111827; --card: #1e293b;
+      --border: rgba(255,255,255,0.08); --accent: #7c3aed; --accent2: #a78bfa;
+      --text: #e2e8f0; --muted: #94a3b8; --radius: 12px;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 16px; line-height: 1.7; min-height: 100vh }
+    a { color: var(--accent2); text-decoration: none }
+    a:hover { text-decoration: underline }
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 48px; border-bottom: 1px solid var(--border);
+      background: rgba(10,15,30,0.92); backdrop-filter: blur(12px);
+    }
+    .nav-logo { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--text) }
+    .nav-logo span { color: var(--accent2) }
+    .content { max-width: 720px; margin: 0 auto; padding: 64px 24px 100px }
+    h1 { font-size: 36px; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 8px }
+    .updated { font-size: 13px; color: var(--muted); margin-bottom: 48px }
+    h2 { font-size: 20px; font-weight: 700; margin: 40px 0 12px }
+    p { color: var(--muted); margin-bottom: 16px }
+    ul { color: var(--muted); padding-left: 24px; margin-bottom: 16px }
+    ul li { margin-bottom: 8px }
+    strong { color: var(--text) }
+    .highlight {
+      background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.25);
+      border-radius: var(--radius); padding: 20px 24px; margin: 32px 0;
+    }
+    .highlight p { color: var(--text); margin: 0; font-weight: 500 }
+    footer { border-top: 1px solid var(--border); padding: 24px 48px; text-align: center }
+    footer p { font-size: 13px; color: var(--muted) }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Macro<span>Pad</span></a>
+</nav>
+
+<div class="content">
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: April 30, 2026</p>
+
+  <div class="highlight">
+    <p>Short version: MacroPad collects nothing. It runs entirely on your local network. No accounts, no telemetry, no cloud.</p>
+  </div>
+
+  <h2>What we collect</h2>
+  <p><strong>Nothing.</strong> MacroPad does not collect, transmit, or store any personal data, usage data, or telemetry.</p>
+  <p>The app runs a local HTTPS server on your own machine. Your phone connects to it over your local WiFi network. No traffic leaves your network except for the following optional features you explicitly configure:</p>
+  <ul>
+    <li><strong>Spotify integration</strong> — uses the local MPRIS interface; no Spotify account needed, no data sent externally</li>
+    <li><strong>OBS plugin</strong> — connects to obs-websocket on your local machine only</li>
+    <li><strong>Webhook sender action</strong> — if you configure a button to call a URL, that request goes to the URL you specified</li>
+    <li><strong>Plugin marketplace</strong> — fetches a registry JSON from GitHub to list available plugins; no identity is sent</li>
+  </ul>
+
+  <h2>License validation (Pro)</h2>
+  <p>When you enter a Pro license key, MacroPad validates it using an HMAC signature <strong>locally on your machine</strong>. No network request is made. The key itself is stored only in your local app config.</p>
+
+  <h2>Local config storage</h2>
+  <p>Your button layout, page config, and settings are stored in a JSON file in your OS app data folder:</p>
+  <ul>
+    <li><strong>Linux:</strong> <code>~/.config/macropad/config.json</code></li>
+    <li><strong>macOS:</strong> <code>~/Library/Application Support/macropad/config.json</code></li>
+    <li><strong>Windows:</strong> <code>%APPDATA%\macropad\config.json</code></li>
+  </ul>
+  <p>This file never leaves your machine unless you manually copy it.</p>
+
+  <h2>Analytics on this website</h2>
+  <p>This landing page uses <a href="https://plausible.io" target="_blank">Plausible Analytics</a> — a privacy-friendly, cookieless analytics tool. Plausible does not use cookies, does not collect personal data, and is GDPR compliant. No IP addresses are stored. Page view counts help us understand how many people are interested in MacroPad.</p>
+
+  <h2>Third-party services</h2>
+  <p>MacroPad is hosted on GitHub Pages. Downloads are served from GitHub Releases. GitHub's own privacy policy applies to those interactions.</p>
+  <p>If you purchase Pro via Gumroad, Gumroad's privacy policy applies to that transaction. MacroPad itself never receives your payment details.</p>
+
+  <h2>Children's privacy</h2>
+  <p>MacroPad does not collect any information from anyone, including children.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If we add features that collect data, we will update this page and note the change date prominently.</p>
+
+  <h2>Contact</h2>
+  <p>Questions? Open an issue on <a href="https://github.com/chunkies/macropad/issues" target="_blank">GitHub</a> or join the <a href="https://discord.gg/macropad" target="_blank">Discord</a>.</p>
+</div>
+
+<footer>
+  <p>© 2026 MacroPad · <a href="index.html">Back to home</a></p>
+</footer>
+
+</body>
+</html>

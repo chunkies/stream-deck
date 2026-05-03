@@ -1,0 +1,10 @@
+{
+  "name": "publish-macropad-plugin",
+  "version": "1.0.0",
+  "description": "Prepare and submit a MacroPad plugin to the community registry",
+  "bin": { "publish-macropad-plugin": "./cli.js" },
+  "files": ["cli.js"],
+  "license": "MIT",
+  "engines": { "node": ">=18" },
+  "keywords": ["macropad", "plugin", "publish", "registry"]
+}

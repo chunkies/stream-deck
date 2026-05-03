@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/chunkies/macropad/master/registry/schema.json",
+  "title": "MacroPad Plugin Registry",
+  "type": "object",
+  "required": ["schemaVersion", "plugins", "updated"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "updated": {
+      "type": "string",
+      "description": "ISO 8601 date of the last registry update (YYYY-MM-DD)"
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/plugin"
+      }
+    }
+  },
+  "definitions": {
+    "plugin": {
+      "type": "object",
+      "required": ["id", "name", "version", "downloadUrl"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Unique slug identifier for the plugin"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable plugin name"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semver version string"
+        },
+        "downloadUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the plugin zip archive"
+        },
+        "description": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "authorUrl": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "homepage": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number",
+          "minimum": 0
+        },
+        "purchaseUrl": {
+          "type": "string"
+        },
+        "license": {
+          "type": "string"
+        },
+        "minAppVersion": {
+          "type": "string"
+        },
+        "downloads": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

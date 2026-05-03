@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plugin SDK Docs — MacroPad</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+
+    :root {
+      --bg:      #0a0f1e;
+      --surface: #111827;
+      --card:    #1e293b;
+      --border:  rgba(255,255,255,0.08);
+      --accent:  #7c3aed;
+      --accent2: #a78bfa;
+      --green:   #4ade80;
+      --blue:    #60a5fa;
+      --amber:   #fb923c;
+      --text:    #e2e8f0;
+      --muted:   #94a3b8;
+      --code-bg: #0d1117;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .sidebar-title {
+      padding: 0 20px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .sidebar-logo { font-size: 16px; font-weight: 700; color: var(--text); display: block; margin-bottom: 4px }
+    .sidebar-logo span { color: var(--accent2) }
+    .sidebar a {
+      display: block;
+      padding: 6px 20px;
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+    }
+    .sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.03) }
+    .sidebar a.active { color: var(--accent2); border-left-color: var(--accent2); background: rgba(124,58,237,0.08) }
+    .sidebar-group {
+      padding: 14px 20px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: rgba(148,163,184,0.5);
+    }
+
+    /* ── Mobile nav toggle ── */
+    .nav-toggle {
+      display: none;
+      position: fixed;
+      top: 14px; left: 14px;
+      z-index: 200;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1;
+    }
+    .sidebar.open { display: block; position: fixed; top: 0; left: 0; z-index: 100; height: 100vh }
+
+    /* ── Content ── */
+    .content {
+      flex: 1;
+      max-width: 840px;
+      padding: 60px 56px;
+      overflow-x: hidden;
+    }
+
+    h1 { font-size: 36px; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 12px }
+    h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; margin: 56px 0 16px; padding-top: 56px; border-top: 1px solid var(--border) }
+    h2:first-of-type { border-top: none; padding-top: 0; margin-top: 36px }
+    h3 { font-size: 16px; font-weight: 600; margin: 28px 0 10px; color: var(--accent2) }
+    p { margin-bottom: 16px; color: var(--muted) }
+    p strong { color: var(--text) }
+    ul, ol { padding-left: 20px; margin-bottom: 16px; color: var(--muted) }
+    li { margin-bottom: 6px }
+    a { color: var(--accent2) }
+
+    .lead { font-size: 17px; color: var(--text); margin-bottom: 32px; line-height: 1.6 }
+
+    /* ── Code ── */
+    .pre-wrap { position: relative; margin: 16px 0 24px }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px 24px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    code {
+      font-family: 'Fira Code', 'Cascadia Code', 'SF Mono', Menlo, monospace;
+    }
+    pre code { color: #93c5fd }
+    p code, li code {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 13px;
+      color: #93c5fd;
+    }
+
+    /* ── Syntax highlight classes ── */
+    .kw  { color: #c084fc }  /* keyword */
+    .str { color: #86efac }  /* string */
+    .cmt { color: #7a8fa8 }  /* comment — #7a8fa8 on #0d1117 ≈ 5.7:1 contrast (WCAG AA) */
+    .fn  { color: #60a5fa }  /* function */
+    .num { color: #fb923c }  /* number */
+    .key { color: #e2e8f0 }  /* object key */
+
+    /* ── Copy button ── */
+    .copy-btn {
+      position: absolute;
+      top: 10px; right: 10px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .pre-wrap:hover .copy-btn { opacity: 1 }
+    .copy-btn:hover { background: rgba(255,255,255,0.12); color: var(--text) }
+    .copy-btn.copied { color: var(--green) }
+
+    /* ── Callout ── */
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: rgba(124,58,237,0.07);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 16px 0 24px;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .callout.tip  { border-color: var(--green);  background: rgba(74,222,128,0.06) }
+    .callout.warn { border-color: var(--amber); background: rgba(251,146,60,0.06) }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px }
+    th { text-align: left; padding: 10px 14px; background: var(--card); color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border) }
+    td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--muted) }
+    td:first-child { color: #93c5fd; font-family: monospace; font-size: 13px }
+    tr:hover td { background: rgba(255,255,255,0.02) }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+    .badge-required { background: rgba(248,113,113,0.2); color: #f87171 }
+    .badge-optional { background: rgba(148,163,184,0.15); color: var(--muted) }
+    .badge-deprecated { background: rgba(251,146,60,0.2); color: #fb923c }
+    .badge-plugin { background: rgba(96,165,250,0.15); color: #60a5fa }
+    .badge-builtin { background: rgba(74,222,128,0.12); color: #4ade80 }
+
+    /* ── Back to top ── */
+    #back-to-top {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 18px;
+      opacity: 0;
+      transition: opacity 0.2s, background 0.15s;
+      text-decoration: none;
+    }
+    #back-to-top.visible { opacity: 1 }
+    #back-to-top:hover { background: var(--surface); color: var(--text) }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none }
+      .nav-toggle { display: block }
+      .content { padding: 32px 20px; padding-top: 60px }
+      h1 { font-size: 28px }
+    }
+  </style>
+</head>
+<body>
+
+<button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">☰</button>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-title">
+    <a href="../landing/" class="sidebar-logo">Macro<span>Pad</span></a>
+    Plugin SDK Docs
+  </div>
+  <div class="sidebar-group">Getting Started</div>
+  <a href="#what-is-a-plugin">What is a plugin?</a>
+  <a href="#quickstart">Quick start</a>
+  <a href="#typescript">TypeScript SDK</a>
+  <a href="#file-structure">File structure</a>
+  <a href="#architecture">Architecture</a>
+
+  <div class="sidebar-group">Components</div>
+  <a href="#component-types">Component types</a>
+  <a href="#plugin-event-wiring">Tile plugin event wiring</a>
+  <a href="#trackpad-gestures">Trackpad gestures</a>
+  <a href="#plugin-display-key">pluginDisplayKey</a>
+
+  <div class="sidebar-group">SDK Reference</div>
+  <a href="#sdk-pluginid">sdk.pluginId</a>
+  <a href="#sdk-onaction">sdk.onAction</a>
+  <a href="#sdk-broadcast">sdk.broadcast</a>
+  <a href="#sdk-widget">sdk.widget</a>
+  <a href="#sdk-notify">sdk.notify</a>
+  <a href="#sdk-cron">sdk.cron</a>
+  <a href="#sdk-storage">sdk.storage</a>
+  <a href="#sdk-http">sdk.http</a>
+  <a href="#sdk-shell">sdk.shell</a>
+  <a href="#sdk-log">sdk.log</a>
+  <a href="#sdk-onreload">sdk.onReload</a>
+  <a href="#sdk-ws">sdk.ws</a>
+
+  <div class="sidebar-group">Manifest</div>
+  <a href="#manifest">manifest.json</a>
+  <a href="#params">Plugin params</a>
+
+  <div class="sidebar-group">Reference</div>
+  <a href="#security">Security model</a>
+  <a href="#troubleshooting">Troubleshooting</a>
+
+  <div class="sidebar-group">Examples</div>
+  <a href="#quickstart-example">Demo plugin</a>
+
+  <div class="sidebar-group">Publishing</div>
+  <a href="#local-dev">Local development</a>
+  <a href="#publish">Marketplace</a>
+  <a href="#paid-plugins">Paid plugins</a>
+</nav>
+
+<!-- Main content -->
+<main class="content">
+
+  <h1>Plugin SDK</h1>
+  <p class="lead">Build plugins for MacroPad in two files. Your plugin gets a full Node.js SDK for running shell commands, persisting data, making HTTP requests, pushing live updates to the phone UI, and reacting to buttons, sliders, knobs, switches, voice input, and trackpad gestures.</p>
+
+  <!-- ── What is a plugin ── -->
+  <h2 id="what-is-a-plugin">What is a Plugin?</h2>
+  <p>A MacroPad plugin is a small Node.js script that runs on your computer alongside the MacroPad server. It registers handlers for <strong>action keys</strong> — when a user taps a button, moves a slider, or speaks a voice command on their phone, MacroPad routes that event to your plugin handler by the action key configured on that component.</p>
+  <p>From your handler, you can run shell commands, call APIs, persist data, and push display updates back to the phone — live, with no page reload needed. Plugins also support background timers (cron), outbound WebSocket connections, and desktop notifications.</p>
+  <p>Every plugin is just two files: a <strong>manifest.json</strong> that declares the plugin's metadata and actions, and an <strong>index.js</strong> that exports a factory function that receives the SDK instance and registers handlers.</p>
+
+  <!-- ── Quick start ── -->
+  <h2 id="quickstart">Quick Start</h2>
+  <p>Create a folder with two files:</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>my-plugin/
+  manifest.json
+  index.js</code></pre></div>
+
+  <p>Minimal <code>manifest.json</code>:</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="key">{</span>
+  <span class="str">"id"</span><span class="key">:</span>      <span class="str">"my-plugin"</span>,
+  <span class="str">"name"</span><span class="key">:</span>    <span class="str">"My Plugin"</span>,
+  <span class="str">"version"</span><span class="key">:</span> <span class="str">"1.0.0"</span>,
+  <span class="str">"actions"</span><span class="key">:</span> [
+    { <span class="str">"key"</span><span class="key">:</span> <span class="str">"my-plugin.doThing"</span>, <span class="str">"label"</span><span class="key">:</span> <span class="str">"Do thing"</span> }
+  ]
+<span class="key">}</span></code></pre></div>
+
+  <p>Minimal <code>index.js</code> — factory pattern (recommended):</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="cmt">// index.js</span>
+<span class="kw">module</span>.<span class="fn">exports</span> = (<span class="key">sdk</span>) => {
+  sdk.<span class="fn">onAction</span>(<span class="str">'my-plugin.doThing'</span>, <span class="kw">async</span> (<span class="key">params</span>) => {
+    <span class="kw">const</span> out = <span class="kw">await</span> sdk.shell.<span class="fn">execAsync</span>(<span class="str">'date'</span>)
+    sdk.log.<span class="fn">info</span>(<span class="str">'Current date: '</span> + out)
+  })
+}</code></pre></div>
+
+  <h3 id="typescript">TypeScript</h3>
+  <p>For full type safety, install the SDK types package as a dev dependency:</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>npm install --save-dev @macropad/plugin-sdk</code></pre></div>
+  <p>Then use <code>definePlugin</code> to wrap your factory — the compiler infers the full SDK shape and every method gets inline docs and autocompletion:</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="cmt">// index.ts</span>
+<span class="kw">import</span> { <span class="fn">definePlugin</span> } <span class="kw">from</span> <span class="str">'@macropad/plugin-sdk'</span>
+
+<span class="kw">export default</span> <span class="fn">definePlugin</span>((<span class="key">sdk</span>) => {
+  sdk.<span class="fn">onAction</span>&lt;{ message: <span class="kw">string</span> }&gt;(<span class="str">'my-plugin.send'</span>, <span class="kw">async</span> ({ message }) => {
+    <span class="kw">const</span> out = <span class="kw">await</span> sdk.shell.<span class="fn">execAsync</span>(<span class="str">`echo "${message}"`</span>)
+    sdk.log.<span class="fn">info</span>(out)
+  })
+})</code></pre></div>
+  <p>You can also import the <code>MacroPadSDK</code> interface directly if you prefer an explicit type annotation:</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="kw">import type</span> { <span class="fn">MacroPadSDK</span> } <span class="kw">from</span> <span class="str">'@macropad/plugin-sdk'</span>
+
+<span class="kw">module</span>.<span class="fn">exports</span> = (<span class="key">sdk</span>: <span class="fn">MacroPadSDK</span>) => {
+  <span class="cmt">// ...</span>
+}</code></pre></div>
+  <p>At runtime <code>definePlugin</code> is a no-op — it just returns the function you pass in. The package has no other runtime code; it is types-only.</p>
+
+  <div class="callout">Want to see every SDK feature in one place? Install the <strong>SDK Demo</strong> plugin from the marketplace — it demonstrates every component type and every SDK method with annotated source code. See the <a href="#quickstart-example">full example</a> below.</div>
+
+  <p>Load it in the app: open the Plugin Marketplace &rarr; Developer tab &rarr; "Load from folder". Done.</p>
+
+  <!-- ── File structure ── -->
+  <h2 id="file-structure">File Structure</h2>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>my-plugin/
+  manifest.json   <span class="cmt">← required: metadata, actions list, pricing</span>
+  index.js        <span class="cmt">← required: action handlers</span>
+  icon.png        <span class="cmt">← optional: shown in marketplace (128×128)</span>
+  lib/            <span class="cmt">← optional: helper modules (require('./lib/...'))</span>
+  assets/         <span class="cmt">← optional: any other files your plugin needs</span></code></pre></div>
+
+  <div class="callout tip">Subdirectories are fully supported — both when loading from folder and when installed via zip from the marketplace.</div>
+
+  <!-- ── Architecture ── -->
+  <h2 id="architecture">Architecture Overview</h2>
+  <p>Understanding how MacroPad loads and runs plugins will save you debugging time.</p>
+
+  <h3>Runtime topology</h3>
+  <ul>
+    <li>MacroPad runs a local <strong>WebSocket server on port 3000</strong> inside the Electron main process. The phone PWA connects to this server over your local network.</li>
+    <li>Each plugin runs in its own <strong><code>worker_threads</code> Worker</strong> — isolated from each other and from the main process. A crash or infinite loop in a plugin cannot take down the server.</li>
+    <li>Workers are <em>not</em> a true OS sandbox. They have full Node.js API access — <code>require()</code>, filesystem, network, child processes, etc. This is intentional: plugins are trusted code, like npm packages.</li>
+    <li>Each plugin gets its <strong>own SDK instance</strong>. Rate limits (broadcasts, notifications) are per-plugin and do not share quota across plugins.</li>
+  </ul>
+
+  <h3>Button press flow — end to end</h3>
+  <p>When the user taps a button on their phone:</p>
+  <ol>
+    <li>The PWA sends a <code>{ type: "press", pageId, compId, hold: false }</code> WebSocket message to the server.</li>
+    <li>The server looks up which component was pressed, reads its configured action key (e.g. <code>"my-plugin.doThing"</code>), and routes the event to the plugin worker that owns that key.</li>
+    <li>Inside the worker, the SDK calls your <code>sdk.onAction</code> handler with the params configured on that component in the admin panel.</li>
+    <li>Your handler runs (up to 10-second timeout). Any calls to <code>sdk.broadcast</code>, <code>sdk.widget.set</code>, or <code>sdk.notify</code> are sent back to the main thread and forwarded to all connected clients.</li>
+  </ol>
+
+  <h3>Plugin lifecycle</h3>
+  <ol>
+    <li><strong>Loaded</strong> — the plugin worker is spawned. Your factory function is called and receives the SDK instance.</li>
+    <li><strong>Registered</strong> — your handlers are registered via <code>sdk.onAction()</code>, and any <code>sdk.cron()</code> timers start.</li>
+    <li><strong>Running</strong> — the plugin responds to button presses, slider moves, and other user interactions.</li>
+    <li><strong>Unloaded / hot-reloaded</strong> — the worker is terminated. Any cleanup functions registered with <code>sdk.onReload()</code> are called first. Cron timers are stopped automatically.</li>
+  </ol>
+
+  <h3>Widget write isolation</h3>
+  <p>A plugin can only push display updates to components that belong to it. <code>sdk.widget.set(key, opts)</code> enforces that <code>key</code> must start with <code>pluginId + '.'</code> — the server drops any call that violates this rule.</p>
+
+  <div class="callout tip">Plugin action timeouts are <strong>10 seconds</strong>. If a handler takes longer, a warning is logged and the promise is dropped. Use fire-and-forget patterns (no <code>await</code>) for long-running tasks.</div>
+
+  <!-- ── Component types ── -->
+  <h2 id="component-types">Core Component Types</h2>
+  <p>MacroPad has 15 component types. Some fire plugin actions when the user interacts; others can receive live display updates pushed from a plugin.</p>
+
+  <table>
+    <tr>
+      <th>Type</th>
+      <th>What it renders</th>
+      <th>Fires plugin action?</th>
+      <th>Accepts <code>widget.set</code>?</th>
+    </tr>
+    <tr>
+      <td>button</td>
+      <td>Pressable tile</td>
+      <td><span class="badge badge-plugin">yes — on tap</span></td>
+      <td><span class="badge badge-plugin">yes</span></td>
+    </tr>
+    <tr>
+      <td>switch</td>
+      <td>Toggle on/off</td>
+      <td><span class="badge badge-plugin">yes — with <code>{ active }</code></span></td>
+      <td><span class="badge badge-plugin">yes</span></td>
+    </tr>
+    <tr>
+      <td>toggle</td>
+      <td>Two-state toggle; runs separate on/off shell commands per state</td>
+      <td><span class="badge badge-builtin">built-in only</span></td>
+      <td>no</td>
+    </tr>
+    <tr>
+      <td>slider</td>
+      <td>Vertical or horizontal drag</td>
+      <td><span class="badge badge-plugin">yes — with <code>{ value: 0–100 }</code></span></td>
+      <td><span class="badge badge-plugin">yes</span></td>
+    </tr>
+    <tr>
+      <td>knob</td>
+      <td>Rotary control</td>
+      <td><span class="badge badge-plugin">yes — with <code>{ value: 0–100 }</code></span></td>
+      <td><span class="badge badge-plugin">yes</span></td>
+    </tr>
+    <tr>
+      <td>voice</td>
+      <td>Speech-to-text button</td>
+      <td><span class="badge badge-plugin">yes — with <code>{ transcript }</code></span></td>
+      <td><span class="badge badge-plugin">yes</span></td>
+    </tr>
+    <tr>
+      <td>trackpad</td>
+      <td>Multi-touch surface</td>
+      <td><span class="badge badge-plugin">yes — per-gesture action bindings in admin panel</span></td>
+      <td><span class="badge badge-plugin">yes</span></td>
+    </tr>
+    <tr>
+      <td>tile</td>
+      <td>Display tile. Runs a shell command on a poll interval, OR subscribes to a named <code>sdk.broadcast()</code> event when plugin event fields are configured.</td>
+      <td>no</td>
+      <td><span class="badge badge-plugin">yes — via action key or <code>pluginDisplayKey</code></span></td>
+    </tr>
+    <tr>
+      <td>folder</td>
+      <td>Navigates to a sub-page</td>
+      <td><span class="badge badge-builtin">built-in</span></td>
+      <td>no</td>
+    </tr>
+    <tr>
+      <td>counter</td>
+      <td>Built-in counter with min/max/step</td>
+      <td><span class="badge badge-builtin">built-in</span></td>
+      <td>no</td>
+    </tr>
+    <tr>
+      <td>clock</td>
+      <td>Live clock display</td>
+      <td><span class="badge badge-builtin">built-in</span></td>
+      <td>no</td>
+    </tr>
+    <tr>
+      <td>stopwatch</td>
+      <td>Start/stop/reset timer</td>
+      <td><span class="badge badge-builtin">built-in</span></td>
+      <td>no</td>
+    </tr>
+    <tr>
+      <td>countdown</td>
+      <td>Countdown timer with completion action</td>
+      <td><span class="badge badge-builtin">built-in</span></td>
+      <td>no</td>
+    </tr>
+  </table>
+
+  <p><strong>Plugin-actionable</strong> types fire your handler when the user interacts. <strong>Built-in</strong> types are handled entirely by MacroPad — no plugin API is needed or exposed.</p>
+  <p>If you need a plugin-controlled on/off state, use <code>switch</code> — it tracks toggle state and passes <code>{ active: boolean }</code> to your handler. The <code>toggle</code> type is a built-in shell-command toggle with no plugin involvement.</p>
+
+  <!-- ── Tile plugin event wiring ── -->
+  <h2 id="plugin-event-wiring">Wiring a Tile to Plugin Events</h2>
+  <p>A <code>tile</code> can subscribe to a named broadcast event and automatically update its display when that event fires. Here is the full wiring, step by step:</p>
+
+  <h3>Step 1 — broadcast an event from your plugin</h3>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="cmt">// Every 5s, push the current CPU load as a broadcast event named "cpuLoad"</span>
+sdk.<span class="fn">cron</span>(<span class="num">5000</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> raw = <span class="kw">await</span> sdk.shell.<span class="fn">execAsync</span>(<span class="str">"top -bn1 | grep 'Cpu(s)'"</span>)
+  <span class="kw">const</span> usage = <span class="fn">parseFloat</span>(raw.<span class="fn">match</span>(<span class="str">/(\d+\.\d+)\s*us/</span>)?.[<span class="num">1</span>] ?? <span class="str">'0'</span>)
+  sdk.<span class="fn">broadcast</span>(<span class="str">'cpuLoad'</span>, { value: <span class="str">`${usage}%`</span>, color: usage > <span class="num">80</span> ? <span class="str">'#f87171'</span> : <span class="str">'#4ade80'</span> })
+})</code></pre></div>
+
+  <h3>Step 2 — add a tile in the admin panel</h3>
+  <p>In the admin panel, add a <code>tile</code> component to your layout, then configure its <strong>Plugin event subscription</strong> fields (Plugin, Event, Field) in the settings drawer. Set:</p>
+  <ul>
+    <li><strong>Event</strong>: <code>cpuLoad</code> — this must match the event name you pass to <code>sdk.broadcast</code></li>
+    <li><strong>Field</strong>: <code>value</code> — the tile renders this field from the broadcast payload as its label</li>
+  </ul>
+
+  <h3>What the tile displays</h3>
+  <p>The tile renders the configured <strong>Field</strong> from the broadcast payload as its text. The optional <strong><code>color</code></strong> field in the payload sets the tile's background color. When no plugin event subscription is configured, the tile behaves as a static display tile updated via <code>sdk.widget.set()</code> or a shell poll command.</p>
+
+  <div class="callout tip"><strong>Tile (with plugin subscription) vs widget.set</strong> — a tile configured with plugin event fields is a pub/sub subscriber: it watches for any broadcast event with the given name and re-renders when one arrives. Use it for live data panels. <code>sdk.widget.set</code> targets a specific component by its action key and is better suited for updating a button's appearance in response to a user action.</div>
+
+  <!-- ── Trackpad gestures ── -->
+  <h2 id="trackpad-gestures">Trackpad Gestures</h2>
+  <p>The <code>trackpad</code> component delivers two categories of events.</p>
+
+  <h3>Raw pointer events — PWA only</h3>
+  <p>Raw events (<code>move</code>, <code>scroll</code>, <code>click</code>) are delivered to the PWA client to drive system-level pointer behavior (mouse movement, scrolling, clicks). They are <strong>not routed to plugin handlers</strong> — there is no SDK API to receive them.</p>
+  <table>
+    <tr><th>Event</th><th>Where it goes</th><th>Params shape</th></tr>
+    <tr><td>move</td><td>PWA → OS mouse driver</td><td><code>{ dx, dy, pageId, compId }</code></td></tr>
+    <tr><td>scroll</td><td>PWA → OS scroll</td><td><code>{ dy, pageId, compId }</code></td></tr>
+    <tr><td>click</td><td>PWA → OS click</td><td><code>{ button: 1|2|3, pageId, compId }</code></td></tr>
+  </table>
+
+  <div class="callout warn">If you want continuous control from the trackpad (e.g. volume from swipe distance), use a <strong>slider</strong> component instead — it sends a <code>{ value: 0–100 }</code> param to your handler directly. Gesture events are discrete; they carry no magnitude.</div>
+
+  <h3>Gesture events — routed to your plugin</h3>
+  <p>Gesture events are routed to your <code>sdk.onAction</code> handler based on per-gesture bindings configured in the admin panel. Each gesture (swipe, pinch, tap, etc.) can be mapped independently to any plugin action. All gesture params include <code>{ gesture: GestureType, pageId: string, compId: string }</code>.</p>
+
+  <h3>How to configure gesture bindings</h3>
+  <p>In the admin panel, when editing a trackpad component, scroll to the <strong>Gesture Actions</strong> section. For each gesture you want to handle, select a plugin action from the dropdown. Each gesture is independent — you can bind swipe-left to one action and pinch-in to another.</p>
+  <p>In your manifest, set <code>"componentType": "trackpad"</code> on the action to hint to the admin panel which component type to suggest.</p>
+
+  <table>
+    <tr><th>Gesture</th><th>Description</th></tr>
+    <tr><td>swipeLeft</td><td>One-finger swipe left</td></tr>
+    <tr><td>swipeRight</td><td>One-finger swipe right</td></tr>
+    <tr><td>swipeUp</td><td>One-finger swipe up</td></tr>
+    <tr><td>swipeDown</td><td>One-finger swipe down</td></tr>
+    <tr><td>pinchIn</td><td>Two-finger pinch inward</td></tr>
+    <tr><td>pinchOut</td><td>Two-finger spread outward</td></tr>
+    <tr><td>tap</td><td>Single finger tap</td></tr>
+    <tr><td>doubleTap</td><td>Double tap</td></tr>
+    <tr><td>longPress</td><td>Press and hold</td></tr>
+    <tr><td>twoFingerTap</td><td>Two-finger tap</td></tr>
+    <tr><td>rotateClockwise</td><td>Two-finger rotation clockwise</td></tr>
+    <tr><td>rotateCounterClockwise</td><td>Two-finger rotation counter-clockwise</td></tr>
+  </table>
+
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>sdk.<span class="fn">onAction</span>(<span class="str">'my-plugin.trackpadControl'</span>, (<span class="key">params</span>) => {
+  <span class="kw">if</span> (params.gesture === <span class="str">'swipeLeft'</span>)  { <span class="cmt">/* previous track */</span> }
+  <span class="kw">if</span> (params.gesture === <span class="str">'swipeRight'</span>) { <span class="cmt">/* next track */</span> }
+  <span class="kw">if</span> (params.gesture === <span class="str">'longPress'</span>)  { <span class="cmt">/* toggle play/pause */</span> }
+  <span class="kw">if</span> (params.gesture === <span class="str">'pinchIn'</span>)    { <span class="cmt">/* zoom out */</span> }
+})</code></pre></div>
+
+  <!-- ── pluginDisplayKey ── -->
+  <h2 id="plugin-display-key">The <code>pluginDisplayKey</code> Field</h2>
+  <p>Any <code>tile</code> component can declare a <code>pluginDisplayKey</code> string. This lets your plugin push display updates to that tile by key — even if the tile has no action key, or a different action key than what you want to address.</p>
+  <p>This is useful for pure display tiles: informational panels, status badges, counters, or any tile that the user never taps but that your plugin needs to update dynamically.</p>
+
+  <p>Example config (admin panel sets this field on the tile component):</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="key">{</span>
+  <span class="str">"componentType"</span>: <span class="str">"tile"</span>,
+  <span class="str">"pluginDisplayKey"</span>: <span class="str">"my-spotify.nowPlaying"</span>
+<span class="key">}</span></code></pre></div>
+
+  <p>Your plugin pushes updates to that tile by its display key:</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>sdk.widget.<span class="fn">set</span>(<span class="str">'my-spotify.nowPlaying'</span>, {
+  label: <span class="str">'Playing: Bohemian Rhapsody'</span>,
+  icon:  <span class="str">'music_note'</span>
+})</code></pre></div>
+
+  <p>The server resolves the key against the widget index (which tracks both action keys and <code>pluginDisplayKey</code> values). If the tile is on a page that is not currently displayed, the update is cached and applied when the user navigates to that page.</p>
+
+  <!-- ── SDK Reference ── -->
+  <h2 id="sdk-pluginid">sdk.pluginId</h2>
+  <p>A string property containing your plugin's own ID, exactly as it appears in <code>manifest.json</code>. Use this instead of hardcoding your plugin ID.</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>sdk.log.<span class="fn">info</span>(<span class="str">`Loaded as plugin: ${sdk.pluginId}`</span>)
+<span class="cmt">// "Loaded as plugin: my-plugin"</span></code></pre></div>
+
+  <h2 id="sdk-onaction">sdk.onAction(key, handler)</h2>
+  <p>Register a handler function for an action key. The key must match an action declared in your <code>manifest.json</code>. The server dispatches to this handler when the user interacts with a component configured to that action.</p>
+
+  <table>
+    <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+    <tr><td>key</td><td>string</td><td>Action key, e.g. <code>'my-plugin.doThing'</code>. Must start with your plugin ID.</td></tr>
+    <tr><td>handler</td><td>function</td><td>Called with a <code>params</code> object. May be async. 10-second timeout.</td></tr>
+  </table>
+
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>sdk.<span class="fn">onAction</span>(<span class="str">'my-plugin.greet'</span>, (<span class="key">params</span>) => {
+  sdk.log.<span class="fn">info</span>(<span class="str">'Hello, '</span> + (params?.name || <span class="str">'World'</span>))
+})</code></pre></div>
+
+  <div class="callout warn"><strong>sdk.on</strong> is a deprecated alias for <code>sdk.onAction</code>. It registers the handler identically but does <em>not</em> emit the key-prefix warning. Prefer <code>sdk.onAction</code> in all new code.</div>
+
+  <h3>Params shape by component type</h3>
+  <table>
+    <tr><th>Component</th><th>Params passed to handler</th></tr>
+    <tr><td>button</td><td>Values from manifest <code>params</code> fields (configured per button in admin)</td></tr>
+    <tr><td>switch</td><td><code>{ active: boolean }</code> plus any manifest params</td></tr>
+    <tr><td>slider / knob</td><td><code>{ value: number }</code> (0–100) plus any manifest params</td></tr>
+    <tr><td>voice</td><td><code>{ transcript: string }</code></td></tr>
+    <tr><td>trackpad gesture</td><td><code>{ gesture: GestureType, pageId: string, compId: string }</code></td></tr>
+  </table>
+
+  <!-- ── sdk.broadcast ── -->
+  <h2 id="sdk-broadcast">sdk.broadcast(event, data)</h2>
+  <p>Broadcast a named event to all connected PWA clients over WebSocket. Any <code>tile</code> component with matching plugin event fields configured will update automatically.</p>
+
+  <table>
+    <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+    <tr><td>event</td><td>string</td><td>Event name, e.g. <code>'statusUpdate'</code></td></tr>
+    <tr><td>data</td><td>object</td><td>Any JSON-serializable payload. Keys land at the top level of the wire message.</td></tr>
+  </table>
+
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>sdk.<span class="fn">broadcast</span>(<span class="str">'statusUpdate'</span>, { value: <span class="str">'online'</span>, color: <span class="str">'#4ade80'</span> })</code></pre></div>
+
+  <p>The WebSocket message shape received by the PWA:</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="key">{</span>
+  <span class="str">"type"</span>:     <span class="str">"pluginEvent"</span>,
+  <span class="str">"pluginId"</span>: <span class="str">"my-plugin"</span>,
+  <span class="str">"event"</span>:    <span class="str">"statusUpdate"</span>,
+  <span class="str">"value"</span>:    <span class="str">"online"</span>,    <span class="cmt">// data keys spread to top level</span>
+  <span class="str">"color"</span>:    <span class="str">"#4ade80"</span>
+<span class="key">}</span></code></pre></div>
+
+  <div class="callout warn">Broadcast is <strong>rate limited to 30 messages/second per plugin</strong>. Calls that exceed this limit are silently dropped and a warning is logged. <code>sdk.widget.set</code> and <code>sdk.widget.flash</code> share this same budget.</div>
+
+  <div class="callout tip"><strong>broadcast vs widget.set — which to use?</strong><br>
+  Use <strong><code>sdk.broadcast</code></strong> when you want a <code>tile</code> (with plugin event subscription configured) to react to an event — the tile subscribes by event name and displays the configured field from the payload. Think of it as a pub/sub bus for the phone UI.<br><br>
+  Use <strong><code>sdk.widget.set</code></strong> when you want to push a specific visual update (label, color, badge) directly to a named component — button, tile, slider, etc. It targets one component by its action key. Think of it as a remote setter.</div>
+
+  <!-- ── sdk.widget ── -->
+  <h2 id="sdk-widget">sdk.widget</h2>
+  <p>Push display updates to a specific component by its action key (or <code>pluginDisplayKey</code>). Unlike <code>sdk.broadcast</code>, which fans out to all clients, <code>sdk.widget.set</code> targets a single component in the layout.</p>
+
+  <h3>sdk.widget.set(actionKey, opts)</h3>
+  <table>
+    <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+    <tr><td>actionKey</td><td>string</td><td>Must start with <code>pluginId + '.'</code>. Server enforces this.</td></tr>
+    <tr><td>opts.label</td><td>string</td><td>Text label displayed on the component</td></tr>
+    <tr><td>opts.color</td><td>string</td><td>Background color (CSS hex)</td></tr>
+    <tr><td>opts.icon</td><td>string</td><td>Icon name</td></tr>
+    <tr><td>opts.image</td><td>string | null</td><td>Image URL, or <code>null</code> to clear</td></tr>
+    <tr><td>opts.badge</td><td>string</td><td>Small overlay badge text</td></tr>
+  </table>
+
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>sdk.widget.<span class="fn">set</span>(<span class="str">'my-plugin.status'</span>, {
+  label: <span class="str">'Connected'</span>,
+  color: <span class="str">'#4ade80'</span>,
+  badge: <span class="str">'OK'</span>
+})</code></pre></div>
+
+  <div class="callout">If the target component is on a page that is not currently displayed, the update is <strong>cached</strong> and applied automatically when the user navigates to that page.</div>
+
+  <div class="callout warn"><code>sdk.widget.set</code>, <code>sdk.widget.flash</code>, and <code>sdk.broadcast</code> all share the same <strong>30 messages/second</strong> per-plugin budget.</div>
+
+  <div class="callout warn"><strong>sdk.tile.set(pageId, tileId, opts)</strong> and <strong>sdk.tile.flash(pageId, tileId, color, ms?)</strong> are legacy APIs that address components by page ID and tile ID. They still work but should be avoided in new code — use <code>sdk.widget.set</code> and <code>sdk.widget.flash</code> instead.</div>
+
+  <h3>sdk.widget.flash(actionKey, color, ms?)</h3>
+  <p>Briefly flash a component's background color, then restore it. Default duration is <strong>500ms</strong>.</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>sdk.widget.<span class="fn">flash</span>(<span class="str">'my-plugin.ping'</span>, <span class="str">'#7c3aed'</span>, <span class="num">300</span>)</code></pre></div>
+
+  <!-- ── sdk.notify ── -->
+  <h2 id="sdk-notify">sdk.notify(title, body?)</h2>
+  <p>Show a native desktop notification via the Electron renderer.</p>
+
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>sdk.<span class="fn">notify</span>(<span class="str">'Build complete'</span>, <span class="str">'Your project compiled successfully.'</span>)</code></pre></div>
+
+  <div class="callout warn">Notifications are <strong>rate limited to 5/second per plugin</strong>. Excess calls are dropped with a warning. If you need threshold-based alerts (e.g. CPU &gt; 80% for an extended period), implement your own debounce or cooldown with a variable to avoid notification spam.</div>
+
+  <!-- ── sdk.cron ── -->
+  <h2 id="sdk-cron">sdk.cron(intervalMs, fn)</h2>
+  <p>Run a function on a repeating timer. All cron timers are stopped automatically when the plugin is unloaded or hot-reloaded — you do not need to clean them up manually.</p>
+
+  <table>
+    <tr><th>Parameter</th><th>Description</th></tr>
+    <tr><td>intervalMs</td><td>Interval in milliseconds</td></tr>
+    <tr><td>fn</td><td>Function to call. May be async. Errors are <strong>logged</strong> (not swallowed) — exceptions will appear in the console with <code>[plugin:id] cron error:</code> prefix.</td></tr>
+  </table>
+
+  <p>Returns a stop function — call it to cancel the timer early:</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="kw">const</span> stop = sdk.<span class="fn">cron</span>(<span class="num">10000</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> data = <span class="kw">await</span> sdk.http.<span class="fn">get</span>(<span class="str">'https://api.example.com/status'</span>)
+  sdk.<span class="fn">broadcast</span>(<span class="str">'status'</span>, data)
+})
+
+<span class="cmt">// Cancel early if needed:</span>
+<span class="fn">stop</span>()</code></pre></div>
+
+  <div class="callout tip">For a background-data-only plugin that uses <code>sdk.cron</code> but has no user interactions, you may set <code>"actions": []</code> in your manifest. The plugin will load and run its cron jobs without requiring any button configuration.</div>
+
+  <!-- ── sdk.storage ── -->
+  <h2 id="sdk-storage">sdk.storage</h2>
+  <p>Per-plugin persistent key/value storage. Data is serialized to JSON and saved to <code>userData/plugins-data/&lt;pluginId&gt;.json</code>. Survives plugin hot-reload and app restart. Uninstalling the plugin does <em>not</em> delete the data file.</p>
+  <p>Storage is loaded once into memory the first time any storage method is called. All subsequent reads and writes use the in-memory copy; mutations are written through to disk immediately.</p>
+
+  <table>
+    <tr><th>Method</th><th>Description</th></tr>
+    <tr><td>storage.get(key)</td><td>Returns the stored value, or <code>undefined</code> if not set.</td></tr>
+    <tr><td>storage.getAll()</td><td>Returns a plain object of all key-value pairs.</td></tr>
+    <tr><td>storage.set(key, value)</td><td>Stores any JSON-serializable value.</td></tr>
+    <tr><td>storage.delete(key)</td><td>Removes the key.</td></tr>
+    <tr><td>storage.clear()</td><td>Wipes all storage for this plugin.</td></tr>
+  </table>
+
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="cmt">// Counter that persists across button presses</span>
+sdk.<span class="fn">onAction</span>(<span class="str">'my-plugin.count'</span>, () => {
+  <span class="kw">const</span> n = (<span class="fn">Number</span>(sdk.storage.<span class="fn">get</span>(<span class="str">'count'</span>)) || <span class="num">0</span>) + <span class="num">1</span>
+  sdk.storage.<span class="fn">set</span>(<span class="str">'count'</span>, n)
+  sdk.log.<span class="fn">info</span>(<span class="str">`Pressed ${n} times`</span>)
+})</code></pre></div>
+
+  <!-- ── sdk.http ── -->
+  <h2 id="sdk-http">sdk.http</h2>
+  <p>HTTP helpers with SSRF protection built in. All three methods block requests to local network targets: <code>localhost</code>, <code>127.0.0.1</code>, <code>::1</code>, RFC1918 ranges (<code>10.x</code>, <code>172.16–31.x</code>, <code>192.168.x</code>), and link-local addresses (<code>169.254.x.x</code>). The default timeout is <strong>8 seconds</strong>.</p>
+
+  <h3>sdk.http.get(url, opts?)</h3>
+  <p>GET request. Returns parsed JSON by default. Pass <code>{ raw: true }</code> to get the <code>Response</code> object instead (useful to read status codes or non-JSON bodies). TypeScript users: the return type narrows to <code>Promise&lt;Response&gt;</code> when <code>raw: true</code> is passed.</p>
+
+  <h3>sdk.http.post(url, body, opts?)</h3>
+  <p><code>body</code> is serialized to JSON. Returns parsed JSON by default, or the <code>Response</code> object when <code>raw: true</code>.</p>
+
+  <h3>sdk.http.request(url, init?)</h3>
+  <p>Raw <code>fetch</code> with full <code>RequestInit</code> options. Returns the <code>Response</code> object. <strong>No default timeout</strong> — unlike <code>get</code>/<code>post</code>, you must set <code>signal: AbortSignal.timeout(ms)</code> manually.</p>
+
+  <table>
+    <tr><th>Option</th><th>Description</th></tr>
+    <tr><td>opts.timeout</td><td>Timeout in ms (default 8000). Rejection on timeout is an <code>AbortError</code> (<code>err.name === 'AbortError'</code>).</td></tr>
+    <tr><td>opts.headers</td><td>Additional request headers</td></tr>
+    <tr><td>opts.raw</td><td>When <code>true</code>, return the raw <code>Response</code> instead of parsed JSON</td></tr>
+  </table>
+
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="cmt">// GET JSON</span>
+<span class="kw">const</span> data = <span class="kw">await</span> sdk.http.<span class="fn">get</span>(<span class="str">'https://api.example.com/status'</span>)
+
+<span class="cmt">// GET with raw: true — read status code</span>
+<span class="kw">const</span> res = <span class="kw">await</span> sdk.http.<span class="fn">get</span>(<span class="str">'https://example.com/health'</span>, { raw: <span class="kw">true</span> })
+sdk.log.<span class="fn">info</span>(<span class="str">'Status: '</span> + res.status)
+
+<span class="cmt">// POST JSON</span>
+<span class="kw">await</span> sdk.http.<span class="fn">post</span>(<span class="str">'https://webhook.site/my-hook'</span>, { event: <span class="str">'button_pressed'</span> })
+
+<span class="cmt">// Distinguish timeout from other errors</span>
+<span class="kw">try</span> {
+  <span class="kw">const</span> data = <span class="kw">await</span> sdk.http.<span class="fn">get</span>(<span class="str">'https://slow.example.com/'</span>, { timeout: <span class="num">3000</span> })
+} <span class="kw">catch</span> (err) {
+  <span class="kw">if</span> (err.name === <span class="str">'AbortError'</span>) sdk.log.<span class="fn">warn</span>(<span class="str">'Request timed out'</span>)
+  <span class="kw">else</span> sdk.log.<span class="fn">error</span>(<span class="str">'Network error:'</span>, err.message)
+}</code></pre></div>
+
+  <div class="callout warn"><strong>SSRF protection blocks all RFC1918 addresses</strong>, including your router (<code>192.168.x.x</code>), LAN services, and localhost. This prevents marketplace plugins from scanning your network. If your plugin legitimately needs to reach a local service (e.g. a home server), bypass <code>sdk.http</code> and use Node's built-in <code>fetch</code> or <code>require('http')</code> directly — full Node API access is available to plugins.</div>
+
+  <!-- ── sdk.shell ── -->
+  <h2 id="sdk-shell">sdk.shell</h2>
+  <p>Run shell commands via Node's <code>child_process</code>. Commands are validated against a shell injection pattern before execution (backticks and <code>$(</code> are blocked).</p>
+
+  <h3>sdk.shell.execSync(command, opts?)</h3>
+  <p>Synchronous. Blocks the worker thread until the command completes. Returns stdout as a trimmed string. Throws on non-zero exit. Default timeout: 5 seconds. <strong>Only use for fast commands (&lt;50ms)</strong> such as reading <code>/proc</code> files.</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="kw">const</span> load = sdk.shell.<span class="fn">execSync</span>(<span class="str">'cat /proc/loadavg'</span>)
+sdk.log.<span class="fn">info</span>(load) <span class="cmt">// "0.52 0.58 0.59 2/847 12345"</span></code></pre></div>
+
+  <h3>sdk.shell.execAsync(command, opts?)</h3>
+  <p>Async. Returns a <code>Promise&lt;string&gt;</code> that resolves with stdout, rejects on non-zero exit. Use this for anything that takes more than ~50ms.</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="kw">const</span> ip = <span class="kw">await</span> sdk.shell.<span class="fn">execAsync</span>(<span class="str">"hostname -I | awk '{print $1}'"</span>)
+sdk.log.<span class="fn">info</span>(<span class="str">'Local IP: '</span> + ip)</code></pre></div>
+
+  <div class="callout warn"><strong>sdk.shell.exec</strong> is a deprecated alias for <code>execSync</code>. Use <code>execSync</code> or <code>execAsync</code> in new code. For commands that accept user-supplied arguments, prefer <code>execFileSync</code>/<code>execFile</code> from Node's <code>child_process</code> directly to avoid shell injection.</div>
+
+  <!-- ── sdk.log ── -->
+  <h2 id="sdk-log">sdk.log</h2>
+  <p>Prefixed structured logging. Output appears in the Electron devtools console and server logs. All messages are tagged with the plugin ID.</p>
+
+  <table>
+    <tr><th>Method</th><th>Description</th></tr>
+    <tr><td>log.info(...args)</td><td><code>console.log</code> with <code>[plugin:id]</code> prefix</td></tr>
+    <tr><td>log.warn(...args)</td><td><code>console.warn</code> with <code>[plugin:id]</code> prefix</td></tr>
+    <tr><td>log.error(...args)</td><td><code>console.error</code> with <code>[plugin:id]</code> prefix</td></tr>
+  </table>
+
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>sdk.log.<span class="fn">info</span>(<span class="str">'Plugin started'</span>)
+sdk.log.<span class="fn">warn</span>(<span class="str">'Retrying...'</span>)
+sdk.log.<span class="fn">error</span>(<span class="str">'Failed:'</span>, err.message)</code></pre></div>
+
+  <!-- ── sdk.onReload ── -->
+  <h2 id="sdk-onreload">sdk.onReload(fn)</h2>
+  <p>Register a cleanup function called <em>before</em> the plugin is hot-reloaded or unloaded. You can call <code>sdk.onReload</code> multiple times — all registered functions are called in registration order.</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>sdk.<span class="fn">onReload</span>(() => {
+  conn.<span class="fn">close</span>()          <span class="cmt">// close outbound connections</span>
+  sdk.log.<span class="fn">info</span>(<span class="str">'cleanup done'</span>)
+})</code></pre></div>
+
+  <div class="callout tip">Cron timers are stopped automatically on unload — you do not need to cancel them in <code>onReload</code>.</div>
+
+  <!-- ── sdk.ws ── -->
+  <h2 id="sdk-ws">sdk.ws</h2>
+  <p>The <code>WebSocket</code> constructor from the <code>ws</code> package, exposed on the SDK so plugins can open outbound WebSocket connections without bundling the <code>ws</code> package themselves.</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="kw">const</span> conn = <span class="kw">new</span> sdk.<span class="fn">ws</span>(<span class="str">'wss://example.com/live'</span>)
+conn.on(<span class="str">'message'</span>, (data) => {
+  sdk.<span class="fn">broadcast</span>(<span class="str">'liveData'</span>, JSON.<span class="fn">parse</span>(data))
+})
+
+sdk.<span class="fn">onReload</span>(() => conn.<span class="fn">close</span>())</code></pre></div>
+
+  <div class="callout tip">Always close outbound WebSocket connections in <code>sdk.onReload</code> — otherwise hot-reload will leave stale connections open.</div>
+
+  <!-- ── manifest.json ── -->
+  <h2 id="manifest">manifest.json Reference</h2>
+  <p>Full reference of every supported manifest field:</p>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+    <tr><td>id</td><td>string</td><td><span class="badge badge-required">required</span> Unique slug. Must match the folder name. Use <code>kebab-case</code>.</td></tr>
+    <tr><td>name</td><td>string</td><td><span class="badge badge-required">required</span> Human-readable name shown in the marketplace.</td></tr>
+    <tr><td>version</td><td>string</td><td><span class="badge badge-required">required</span> Semver string, e.g. <code>"1.2.0"</code>. Used for update checks.</td></tr>
+    <tr><td>actions</td><td>array</td><td><span class="badge badge-required">required</span> List of action definitions. Use <code>[]</code> for background-only plugins with no user interactions.</td></tr>
+    <tr><td>description</td><td>string</td><td><span class="badge badge-optional">optional</span> Short description shown in the marketplace.</td></tr>
+    <tr><td>author</td><td>string</td><td><span class="badge badge-optional">optional</span> Your name or handle.</td></tr>
+    <tr><td>authorUrl</td><td>string</td><td><span class="badge badge-optional">optional</span> Link to your website or GitHub profile.</td></tr>
+    <tr><td>homepage</td><td>string</td><td><span class="badge badge-optional">optional</span> Docs or repo URL. Shown as "Docs" link in marketplace.</td></tr>
+    <tr><td>icon</td><td>string</td><td><span class="badge badge-optional">optional</span> Path to icon image relative to plugin folder, emoji, or URL.</td></tr>
+    <tr><td>price</td><td>number</td><td><span class="badge badge-optional">optional</span> Price in cents. <code>0</code> = free. Set to e.g. <code>800</code> for $8.</td></tr>
+    <tr><td>purchaseUrl</td><td>string</td><td><span class="badge badge-optional">optional</span> Your payment link (Stripe, Gumroad, LemonSqueezy). Required when <code>price &gt; 0</code>.</td></tr>
+    <tr><td>downloadUrl</td><td>string</td><td><span class="badge badge-optional">optional</span> Direct URL to a .zip of your plugin. Required for marketplace install.</td></tr>
+    <tr><td>license</td><td>string</td><td><span class="badge badge-optional">optional</span> e.g. <code>"MIT"</code></td></tr>
+    <tr><td>tags</td><td>string[]</td><td><span class="badge badge-optional">optional</span> Used for filtering in the marketplace browse tab.</td></tr>
+    <tr><td>minAppVersion</td><td>string</td><td><span class="badge badge-optional">optional</span> Minimum MacroPad version required.</td></tr>
+  </table>
+
+  <h3>Action definition</h3>
+  <p>Each item in the <code>actions</code> array:</p>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+    <tr><td>key</td><td>string</td><td><span class="badge badge-required">required</span> Unique action identifier. Convention: <code>&lt;plugin-id&gt;.&lt;verb&gt;</code></td></tr>
+    <tr><td>label</td><td>string</td><td><span class="badge badge-required">required</span> Shown in the admin panel action dropdown.</td></tr>
+    <tr><td>componentType</td><td>string</td><td><span class="badge badge-optional">optional</span> Hint for the admin panel. One of: <code>button</code>, <code>switch</code>, <code>slider</code>, <code>knob</code>, <code>tile</code>, <code>voice</code>, <code>trackpad</code></td></tr>
+    <tr><td>description</td><td>string</td><td><span class="badge badge-optional">optional</span> Longer description shown in the admin panel.</td></tr>
+    <tr><td>params</td><td>array</td><td><span class="badge badge-optional">optional</span> Configurable inputs rendered in the admin panel (see Plugin params section).</td></tr>
+  </table>
+
+  <!-- ── Params ── -->
+  <h2 id="params">Plugin Params (Per-Button Config)</h2>
+  <p>Declare a <code>params</code> array on any action to let users configure values per button in the admin panel. When the button is pressed, the configured values arrive in your handler as the <code>params</code> object. Each button can have different param values for the same action.</p>
+
+  <h3>Param definition</h3>
+  <table>
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>key</td><td>Used as the key in the <code>params</code> object passed to your handler</td></tr>
+    <tr><td>label</td><td>Label shown above the input in the admin panel</td></tr>
+    <tr><td>type</td><td><code>text</code>, <code>number</code>, or <code>textarea</code></td></tr>
+    <tr><td>default</td><td>Default value pre-filled in the input</td></tr>
+    <tr><td>placeholder</td><td>Placeholder text for the input</td></tr>
+  </table>
+
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="cmt">// manifest.json</span>
+<span class="str">"actions"</span>: [
+  {
+    <span class="str">"key"</span>: <span class="str">"my-plugin.greet"</span>,
+    <span class="str">"label"</span>: <span class="str">"Show greeting"</span>,
+    <span class="str">"params"</span>: [
+      {
+        <span class="str">"key"</span>:         <span class="str">"name"</span>,
+        <span class="str">"label"</span>:       <span class="str">"Person to greet"</span>,
+        <span class="str">"type"</span>:        <span class="str">"text"</span>,
+        <span class="str">"placeholder"</span>: <span class="str">"Alice"</span>
+      },
+      {
+        <span class="str">"key"</span>:     <span class="str">"delay"</span>,
+        <span class="str">"label"</span>:   <span class="str">"Delay (ms)"</span>,
+        <span class="str">"type"</span>:    <span class="str">"number"</span>,
+        <span class="str">"default"</span>: <span class="num">500</span>
+      }
+    ]
+  }
+]</code></pre></div>
+
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="cmt">// index.js — params arrive in the handler</span>
+sdk.<span class="fn">onAction</span>(<span class="str">'my-plugin.greet'</span>, <span class="kw">async</span> (<span class="key">params</span>) => {
+  <span class="kw">const</span> name  = params?.name  || <span class="str">'World'</span>
+  <span class="kw">const</span> delay = params?.delay || <span class="num">500</span>
+  <span class="kw">await new</span> <span class="fn">Promise</span>(r => <span class="fn">setTimeout</span>(r, delay))
+  sdk.log.<span class="fn">info</span>(<span class="str">`Hello, ${name}!`</span>)
+})</code></pre></div>
+
+  <!-- ── Security ── -->
+  <h2 id="security">Security &amp; Trust Model</h2>
+  <p>MacroPad plugins are <strong>trusted code</strong>, analogous to npm packages. The plugin host enforces a minimal set of guardrails:</p>
+
+  <table>
+    <tr><th>Guardrail</th><th>Detail</th></tr>
+    <tr><td>Broadcast rate limit</td><td>30 messages/second per plugin — excess calls are dropped with a warning</td></tr>
+    <tr><td>Notify rate limit</td><td>5 desktop notifications/second per plugin</td></tr>
+    <tr><td>SSRF protection</td><td><code>sdk.http</code> blocks localhost, 127.0.0.1, ::1, RFC1918 ranges, and 169.254.x.x link-local addresses</td></tr>
+    <tr><td>Shell injection check</td><td>Commands passed to <code>execSync</code>/<code>execAsync</code> are validated — backticks and <code>$(</code> are blocked</td></tr>
+    <tr><td>Widget write isolation</td><td><code>sdk.widget.set/flash</code> only accept keys that start with the plugin's own ID</td></tr>
+    <tr><td>Worker isolation</td><td>Each plugin runs in its own <code>worker_threads</code> Worker — a crash cannot affect other plugins or the server</td></tr>
+  </table>
+
+  <p><strong>What is NOT restricted:</strong></p>
+  <ul>
+    <li>Filesystem access — plugins can read and write arbitrary files</li>
+    <li>Network access beyond the SSRF block list</li>
+    <li><code>require()</code> of Node built-ins or any package installed alongside the plugin</li>
+    <li>Spawning child processes with arbitrary arguments</li>
+  </ul>
+
+  <div class="callout warn">Only install plugins you trust or that you wrote yourself. A malicious plugin has full access to your machine.</div>
+
+  <!-- ── Troubleshooting ── -->
+  <h2 id="troubleshooting">Troubleshooting</h2>
+
+  <h3>My handler never fires</h3>
+  <ul>
+    <li>Check the action key in <code>sdk.onAction</code> matches the key in <code>manifest.json</code> exactly, including the plugin ID prefix.</li>
+    <li>Open the admin panel and confirm the component is configured with that action key (not a different action or "none").</li>
+    <li>Check the devtools console for a <code>[plugin:id] sdk.onAction: key "..." should start with "pluginId."</code> warning — this means a key mismatch.</li>
+  </ul>
+
+  <h3>sdk.widget.set does nothing</h3>
+  <ul>
+    <li>The key must start with your plugin's ID (e.g. <code>"my-plugin.actionKey"</code>). A warning is logged and the call is dropped if it doesn't.</li>
+    <li>If the target component is on a different page, the update is cached — switch to that page to see it applied.</li>
+    <li>Make sure the component is configured with that action key in the admin panel, not a <code>pluginDisplayKey</code> on a separate tile.</li>
+  </ul>
+
+  <h3>sdk.http throws "Plugin ... blocked: requests to private IP ranges"</h3>
+  <p>The SSRF guard is blocking a request to a local address. If you legitimately need to reach a local service, bypass <code>sdk.http</code> and use Node's native APIs directly:</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="cmt">// Bypass sdk.http SSRF guard — only use for intentional local-network requests</span>
+<span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'http://192.168.1.100:8080/api/status'</span>)
+<span class="kw">const</span> data = <span class="kw">await</span> res.<span class="fn">json</span>()</code></pre></div>
+
+  <h3>Tile with plugin subscription shows nothing or stale data</h3>
+  <ul>
+    <li>Confirm the tile's <strong>Event</strong> field (in the Plugin event subscription section) matches the event string in your <code>sdk.broadcast('eventName', ...)</code> call exactly.</li>
+    <li>Confirm the tile's <strong>Field</strong> matches a key in your broadcast payload (default: <code>value</code>).</li>
+    <li>Fire the broadcast manually (press a button that triggers it) and check the devtools console for any rate limit warnings.</li>
+  </ul>
+
+  <h3>My cron fires too fast / rate limit warnings</h3>
+  <p>Broadcasts (including <code>sdk.broadcast</code>, <code>sdk.widget.set</code>, and <code>sdk.widget.flash</code>) share a 30/second per-plugin budget. If a cron fires every 100ms and calls <code>sdk.broadcast</code>, you will hit the limit. Increase the cron interval or batch multiple updates into a single broadcast.</p>
+
+  <h3>Hot-reload loses state</h3>
+  <p>In-memory variables are cleared on hot-reload. Persist any state you need to survive reload using <code>sdk.storage.set</code>. Read it back at plugin startup with <code>sdk.storage.get</code>.</p>
+
+  <!-- ── Quick Start Example ── -->
+  <h2 id="quickstart-example">Quick Start Example — Demo Plugin</h2>
+  <p>A representative example showing the most common SDK patterns. See the full source at <a href="https://github.com/chunkies/macropad/tree/master/plugins/demo" target="_blank"><code>plugins/demo/</code></a> for all component types and every SDK method demonstrated in one place. The demo is also available in the marketplace — search <strong>SDK Demo</strong>.</p>
+
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code><span class="cmt">/**
+ * SDK Demo — condensed. Demonstrates:
+ *   onAction, broadcast, storage, notify, cron, widget.set, widget.flash
+ */</span>
+<span class="kw">module</span>.<span class="fn">exports</span> = (<span class="key">sdk</span>) => {
+
+  <span class="cmt">// ── Persistent state ──────────────────────────────────────</span>
+  <span class="kw">let</span> count  = <span class="fn">Number</span>(sdk.storage.<span class="fn">get</span>(<span class="str">'count'</span>)  ?? <span class="num">0</span>)
+  <span class="kw">let</span> volume = <span class="fn">Number</span>(sdk.storage.<span class="fn">get</span>(<span class="str">'volume'</span>) ?? <span class="num">50</span>)
+
+  <span class="cmt">// ── Cron: broadcast a heartbeat every 10 s ────────────────</span>
+  sdk.<span class="fn">cron</span>(<span class="num">10000</span>, () => {
+    sdk.<span class="fn">broadcast</span>(<span class="str">'status'</span>, { count, volume })
+    sdk.log.<span class="fn">info</span>(<span class="str">`Heartbeat — count=${count} volume=${volume}`</span>)
+  })
+
+  <span class="cmt">// ── Button: increment counter — updates button label live ─</span>
+  sdk.<span class="fn">onAction</span>(<span class="str">'demo.increment'</span>, () => {
+    count++
+    sdk.storage.<span class="fn">set</span>(<span class="str">'count'</span>, count)
+    sdk.<span class="fn">broadcast</span>(<span class="str">'status'</span>, { count, volume })
+    sdk.widget.<span class="fn">set</span>(<span class="str">'demo.increment'</span>, { label: <span class="fn">String</span>(count), badge: <span class="str">`×${count}`</span> })
+    sdk.log.<span class="fn">info</span>(<span class="str">`demo.increment → count=${count}`</span>)
+  })
+
+  <span class="cmt">// ── Button: flash with random color ──────────────────────</span>
+  sdk.<span class="fn">onAction</span>(<span class="str">'demo.colorFlash'</span>, (<span class="key">params</span>) => {
+    <span class="kw">const</span> color = params?.color || <span class="str">'#7c3aed'</span>
+    sdk.<span class="fn">broadcast</span>(<span class="str">'flash'</span>, { color })
+    sdk.widget.<span class="fn">flash</span>(<span class="str">'demo.colorFlash'</span>, color)  <span class="cmt">// flash the button itself</span>
+  })
+
+  <span class="cmt">// ── Slider: volume control ────────────────────────────────</span>
+  sdk.<span class="fn">onAction</span>(<span class="str">'demo.volume'</span>, (<span class="key">params</span>) => {
+    volume = <span class="fn">Math</span>.<span class="fn">max</span>(<span class="num">0</span>, <span class="fn">Math</span>.<span class="fn">min</span>(<span class="num">100</span>, <span class="fn">Math</span>.<span class="fn">round</span>(<span class="fn">Number</span>(params?.value ?? <span class="num">50</span>))))
+    sdk.storage.<span class="fn">set</span>(<span class="str">'volume'</span>, volume)
+    sdk.<span class="fn">broadcast</span>(<span class="str">'volume'</span>, { value: volume })
+  })
+
+  <span class="cmt">// ── HTTP fetch demo ───────────────────────────────────────</span>
+  sdk.<span class="fn">onAction</span>(<span class="str">'demo.httpFetch'</span>, <span class="kw">async</span> () => {
+    <span class="kw">try</span> {
+      <span class="kw">const</span> data = <span class="kw">await</span> sdk.http.<span class="fn">get</span>(<span class="str">'https://worldtimeapi.org/api/timezone/UTC'</span>)
+      sdk.<span class="fn">broadcast</span>(<span class="str">'httpResult'</span>, { ok: <span class="kw">true</span>, time: data.datetime })
+    } <span class="kw">catch</span> (err) {
+      sdk.<span class="fn">broadcast</span>(<span class="str">'httpResult'</span>, { ok: <span class="kw">false</span>, error: err.message })
+    }
+  })
+
+  <span class="cmt">// ── Cleanup on hot-reload ─────────────────────────────────</span>
+  sdk.<span class="fn">onReload</span>(() => {
+    sdk.log.<span class="fn">info</span>(<span class="str">'SDK Demo plugin reloading — cleanup done'</span>)
+  })
+
+  sdk.log.<span class="fn">info</span>(<span class="str">`SDK Demo loaded — pluginId=${sdk.pluginId} count=${count} volume=${volume}`</span>)
+}</code></pre></div>
+
+  <!-- ── Local dev ── -->
+  <h2 id="local-dev">Local Development</h2>
+  <p>You don't need to publish to test your plugin.</p>
+  <ol>
+    <li>Go to the Plugin Marketplace &rarr; <strong>Developer</strong> tab.</li>
+    <li>Click <strong>"Load from folder"</strong> and select your plugin directory.</li>
+    <li>The plugin is copied to <code>userData/plugins/</code> and loaded immediately.</li>
+    <li>Edit your <code>index.js</code>, then click <strong>"Reload plugins"</strong> in the admin panel — no app restart needed.</li>
+  </ol>
+
+  <div class="callout">Plugins loaded this way are marked <code>_local: true</code> and skipped during update checks.</div>
+
+  <!-- ── Publish ── -->
+  <h2 id="publish">Publish to Marketplace</h2>
+  <ol>
+    <li>Create a <strong>GitHub release</strong> (or any public host) and upload a .zip of your plugin folder.</li>
+    <li>Set <code>downloadUrl</code> in your manifest to the direct download URL of the zip.</li>
+    <li>Fork <a href="https://github.com/chunkies/macropad" target="_blank">chunkies/macropad</a> and add your plugin to <code>registry/registry.json</code>.</li>
+    <li>Open a <strong>Pull Request</strong>. Once merged, your plugin appears in the marketplace for all users.</li>
+  </ol>
+
+  <h3>registry.json entry format</h3>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>{
+  <span class="str">"id"</span>:            <span class="str">"my-plugin"</span>,
+  <span class="str">"name"</span>:          <span class="str">"My Plugin"</span>,
+  <span class="str">"version"</span>:       <span class="str">"1.0.0"</span>,
+  <span class="str">"description"</span>:   <span class="str">"What it does"</span>,
+  <span class="str">"author"</span>:        <span class="str">"Your Name"</span>,
+  <span class="str">"authorUrl"</span>:     <span class="str">"https://github.com/you"</span>,
+  <span class="str">"homepage"</span>:      <span class="str">"https://github.com/you/my-plugin"</span>,
+  <span class="str">"icon"</span>:          <span class="str">""</span>,
+  <span class="str">"price"</span>:         <span class="num">0</span>,
+  <span class="str">"purchaseUrl"</span>:   <span class="str">""</span>,
+  <span class="str">"downloadUrl"</span>:   <span class="str">"https://github.com/you/my-plugin/releases/download/v1.0.0/my-plugin.zip"</span>,
+  <span class="str">"license"</span>:       <span class="str">"MIT"</span>,
+  <span class="str">"tags"</span>:          [<span class="str">"productivity"</span>],
+  <span class="str">"downloads"</span>:     <span class="num">0</span>,
+  <span class="str">"minAppVersion"</span>: <span class="str">"1.0.0"</span>
+}</code></pre></div>
+
+  <div class="callout tip">Your zip can use GitHub archive format — a single top-level folder wrapping your plugin files. The installer automatically flattens it.</div>
+
+  <!-- ── Paid plugins ── -->
+  <h2 id="paid-plugins">Paid Plugins</h2>
+  <p>Set <code>price</code> (in cents) and <code>purchaseUrl</code> in your manifest. The app shows a "Buy $X" button that opens the user's browser to your payment URL. <strong>You keep 100% of revenue</strong> — use any payment provider (Stripe, Gumroad, LemonSqueezy, Paddle).</p>
+  <div class="pre-wrap"><button class="copy-btn">Copy</button><pre><code>{
+  <span class="str">"price"</span>:       <span class="num">800</span>,
+  <span class="str">"purchaseUrl"</span>: <span class="str">"https://buy.stripe.com/your-link"</span>
+}</code></pre></div>
+  <p>After purchase, direct the user to download the zip and load it via the Developer tab, or provide a private <code>downloadUrl</code> in your delivery email.</p>
+
+</main>
+
+<a href="#" id="back-to-top" aria-label="Back to top">↑</a>
+
+<script>
+  // ── Sidebar active link on scroll ──
+  const headings = document.querySelectorAll('h2[id], h3[id]')
+  const links    = document.querySelectorAll('.sidebar a[href^="#"]')
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id))
+      }
+    })
+  }, { rootMargin: '-10% 0px -80% 0px' })
+  headings.forEach(h => obs.observe(h))
+
+  // ── Mobile nav toggle ──
+  const navToggle = document.getElementById('navToggle')
+  const sidebar   = document.getElementById('sidebar')
+  navToggle.addEventListener('click', () => sidebar.classList.toggle('open'))
+  sidebar.addEventListener('click', e => {
+    if (e.target.tagName === 'A') sidebar.classList.remove('open')
+  })
+
+  // ── Copy-to-clipboard ──
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const code = btn.nextElementSibling.textContent
+      navigator.clipboard.writeText(code).then(() => {
+        btn.textContent = 'Copied!'
+        btn.classList.add('copied')
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied') }, 1800)
+      })
+    })
+  })
+
+  // ── Back to top ──
+  const backToTop = document.getElementById('back-to-top')
+  window.addEventListener('scroll', () => {
+    backToTop.classList.toggle('visible', window.scrollY > 400)
+  }, { passive: true })
+  backToTop.addEventListener('click', e => {
+    e.preventDefault()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  })
+</script>
+
+</body>
+</html>

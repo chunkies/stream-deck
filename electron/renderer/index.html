@@ -2,156 +2,795 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Stream Deck</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' wss: ws:; font-src 'self'">
+  <title>MacroPad</title>
+  <link rel="stylesheet" href="./src/styles/main.css">
 </head>
 <body>
-
+<div id="update-banner" class="update-banner" style="display:none">
+  <span id="update-banner-msg"></span>
+  <button id="update-banner-btn" class="update-banner-btn">Restart Now</button>
+</div>
 <div class="layout">
 
-  <!-- ── Sidebar ── -->
   <aside class="sidebar">
-    <h1 class="logo">Stream Deck</h1>
 
-    <div class="server-block">
-      <img id="qr-img" class="qr" style="display:none">
-      <div class="url-row">
-        <span class="label">URL</span>
-        <a id="server-url" class="url" href="#" target="_blank">—</a>
-      </div>
-      <div class="url-row">
-        <span class="label">Cert</span>
-        <a id="cert-url" class="url" href="#" target="_blank">Download</a>
-      </div>
+    <div class="sidebar-header">
+      <h1 class="logo">MacroPad</h1>
     </div>
 
-    <div class="status-block">
-      <div class="status-row">
-        <span class="label">Phone</span>
+    <img id="qr-img" class="qr" style="display:none">
+
+    <div class="info-block">
+      <div class="info-row">
+        <span class="info-label">Status</span>
         <span id="phone-status" class="badge disconnected">Disconnected</span>
       </div>
-      <div class="status-row">
-        <span class="label">Last press</span>
+      <div class="info-row">
+        <span class="info-label">URL</span>
+        <a id="server-url" class="url" href="#" target="_blank">—</a>
+      </div>
+      <div class="info-row" id="cert-row">
+        <span class="info-label">Cert</span>
+        <a id="cert-url" class="url" href="#" target="_blank">Download →</a>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Last tap</span>
         <span id="last-press" class="muted">—</span>
       </div>
+      <div class="info-row">
+        <span class="info-label">Autostart</span>
+        <label class="sw">
+          <input type="checkbox" id="autostart-toggle">
+          <span class="sw-track"><span class="sw-thumb"></span></span>
+        </label>
+      </div>
     </div>
 
-    <div class="sidebar-actions">
-      <button id="add-page-btn" class="btn-secondary">+ Add Page</button>
+    <div class="sidebar-footer">
+      <button class="sidebar-settings-btn" id="settings-open-btn">⚙ Settings</button>
     </div>
+
   </aside>
 
-  <!-- ── Main ── -->
-  <main class="main">
+  <!-- ── Settings overlay ── -->
+  <div class="settings-overlay" id="settings-overlay" style="display:none">
+    <nav class="settings-nav">
+      <div class="settings-nav-header">Settings</div>
+      <button class="settings-nav-item active" data-section="backup">Backup</button>
+      <button class="settings-nav-item" data-section="webhook">Webhook</button>
+      <button class="settings-nav-item" data-section="scheduled">Scheduled Actions</button>
+      <button class="settings-nav-item" data-section="license">License</button>
+      <button class="settings-nav-item" data-section="about">About</button>
+    </nav>
+    <div class="settings-body">
+      <button class="settings-close" id="settings-close-btn">✕</button>
 
-    <div class="page-tabs" id="page-tabs"></div>
-
-    <div class="grid-wrap">
-      <div class="grid" id="grid"></div>
-    </div>
-
-  </main>
-
-</div>
-
-<!-- ── Edit Modal ── -->
-<div class="modal-overlay" id="modal" style="display:none">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="modal-title">Edit Button</h2>
-      <button class="modal-close" id="modal-close">✕</button>
-    </div>
-
-    <div class="modal-body">
-      <div class="field-row">
-        <label>Icon</label>
-        <input id="f-icon" type="text" maxlength="4" placeholder="emoji or text">
-      </div>
-      <div class="field-row">
-        <label>Label</label>
-        <input id="f-label" type="text" placeholder="Button label">
-      </div>
-      <div class="field-row">
-        <label>Color</label>
-        <input id="f-color" type="color" value="#1e293b">
-      </div>
-      <div class="field-row">
-        <label>Action</label>
-        <select id="f-type">
-          <option value="command">Command</option>
-          <option value="toggle">Toggle</option>
-          <option value="sequence">Sequence</option>
-          <option value="page">Go to Page</option>
-        </select>
-      </div>
-
-      <!-- command -->
-      <div id="fields-command" class="action-fields">
-        <div class="field-row">
-          <label>Command</label>
-          <input id="f-command" type="text" placeholder="e.g. playerctl play-pause">
+      <div class="settings-section active" id="ssec-backup">
+        <h2 class="settings-section-title">Backup</h2>
+        <p class="settings-section-desc">Export your layout to a file or import a previously saved config.</p>
+        <div class="settings-row-pair">
+          <button id="export-btn" class="btn-secondary">Export Config</button>
+          <button id="import-btn" class="btn-secondary">Import Config</button>
         </div>
       </div>
 
-      <!-- toggle -->
-      <div id="fields-toggle" class="action-fields" style="display:none">
-        <div class="field-row">
-          <label>On command</label>
-          <input id="f-toggle-on" type="text" placeholder="command when turning ON">
-        </div>
-        <div class="field-row">
-          <label>Off command</label>
-          <input id="f-toggle-off" type="text" placeholder="command when turning OFF">
-        </div>
-      </div>
-
-      <!-- sequence -->
-      <div id="fields-sequence" class="action-fields" style="display:none">
-        <div class="field-row">
-          <label>Commands<br><span class="muted" style="font-weight:400;font-size:11px">one per line</span></label>
-          <textarea id="f-sequence" rows="4" placeholder="cmd1&#10;cmd2&#10;cmd3"></textarea>
-        </div>
-        <div class="field-row">
-          <label>Delay (ms)</label>
-          <input id="f-seq-delay" type="number" value="150" min="0" max="5000">
+      <div class="settings-section" id="ssec-webhook">
+        <h2 class="settings-section-title">Webhook</h2>
+        <p class="settings-section-desc">Trigger buttons remotely via HTTP POST.</p>
+        <div class="settings-card" id="webhook-card">
+          <div class="info-row">
+            <span class="info-label">Enabled</span>
+            <label class="sw">
+              <input type="checkbox" id="webhook-toggle">
+              <span class="sw-track"><span class="sw-thumb"></span></span>
+            </label>
+          </div>
+          <div id="webhook-url-row" style="display:none">
+            <div class="field-hint" style="margin-bottom:6px">POST this URL to trigger a button:</div>
+            <div class="copy-row">
+              <input id="webhook-url-input" type="text" readonly style="font-family:monospace">
+              <button id="webhook-copy-btn" class="btn-sm">Copy</button>
+            </div>
+            <div class="field-hint" style="margin-top:4px">Replace :pageId and :buttonId with IDs</div>
+          </div>
         </div>
       </div>
 
-      <!-- page -->
-      <div id="fields-page" class="action-fields" style="display:none">
-        <div class="field-row">
-          <label>Target page</label>
-          <select id="f-page-target"></select>
+      <div class="settings-section" id="ssec-scheduled">
+        <h2 class="settings-section-title">Scheduled Actions</h2>
+        <p class="settings-section-desc">Automatically trigger buttons on a cron schedule.</p>
+        <div class="settings-card" id="cron-card">
+          <div id="cron-list"></div>
+          <button id="cron-add-btn" class="btn-secondary">+ Add</button>
+          <div id="cron-form" style="display:none;margin-top:4px">
+            <div class="field-row" style="margin-bottom:4px"><label>Label</label><input id="cron-label" type="text" placeholder="e.g. Morning"></div>
+            <div class="field-row" style="margin-bottom:4px"><label>Cron</label><input id="cron-expr" type="text" placeholder="*/5 * * * *" style="font-family:monospace"></div>
+            <div class="field-row" style="margin-bottom:4px"><label>Page</label><select id="cron-page"></select></div>
+            <div class="field-row" style="margin-bottom:4px"><label>Button</label><select id="cron-comp"></select></div>
+            <div class="field-row" style="margin-bottom:6px"><label>Enabled</label><label class="sw sw-sm"><input type="checkbox" id="cron-enabled" checked><span class="sw-track"><span class="sw-thumb"></span></span></label></div>
+            <div class="row-pair">
+              <button id="cron-save-btn" class="btn-primary">Save</button>
+              <button id="cron-cancel-btn" class="btn-secondary">Cancel</button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="modal-footer">
-      <button id="modal-delete" class="btn-danger">Remove Button</button>
-      <button id="modal-save"   class="btn-primary">Save</button>
+      <div class="settings-section" id="ssec-license">
+        <h2 class="settings-section-title">License</h2>
+        <p class="settings-section-desc">Activate MacroPad Pro to unlock all features.</p>
+        <div class="settings-card" id="license-card">
+          <div id="license-status-row" class="info-row" style="margin-bottom:4px">
+            <span class="info-label">Plan</span>
+            <span id="license-badge" class="badge disconnected">Free</span>
+          </div>
+          <div id="license-activate-row">
+            <div class="copy-row">
+              <input id="license-key-input" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" style="font-family:monospace">
+              <button id="license-activate-btn" class="btn-sm">Activate</button>
+            </div>
+            <div id="license-error" class="field-hint" style="color:#ef4444;margin-top:3px;display:none">Invalid license key.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section" id="ssec-about">
+        <h2 class="settings-section-title">About</h2>
+        <p class="settings-section-desc">MacroPad remote desktop controller.</p>
+        <div class="settings-card">
+          <div class="info-row">
+            <span class="info-label">Version</span>
+            <span id="about-version" class="muted">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Updates</span>
+            <span id="about-update-status" class="muted">Up to date</span>
+          </div>
+          <div class="settings-row-pair" style="margin-top:8px">
+            <button id="about-check-btn" class="btn-secondary">Check for updates</button>
+            <button id="about-restart-btn" class="btn-primary" style="display:none">Restart to install</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
+
+  <main class="main">
+    <div class="page-tabs" id="page-tabs"></div>
+    <div class="grid-wrap">
+      <div class="grid" id="grid"></div>
+      <div class="empty-state" id="empty-state" style="display:none">
+        <div class="empty-icon">⊞</div>
+        <div class="empty-title">No pages yet</div>
+        <div class="empty-hint">Create a page, then drag components from the right panel onto the grid</div>
+        <button class="btn-primary" id="empty-add-page-btn">+ Add Page</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ── Right component panel ── -->
+  <aside class="component-panel" id="component-panel">
+    <!-- Populated by renderComponentPanel() -->
+  </aside>
+
 </div>
+
+<!-- ── Config drawer (slides up from bottom) ── -->
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-header-left">
+      <h2 id="modal-title">Configure</h2>
+    </div>
+    <div class="drawer-header-right">
+      <div style="display:none">
+        <input type="number" id="f-col-span" value="1" min="1" max="8">
+        <input type="number" id="f-row-span" value="1" min="1" max="8">
+      </div>
+      <button id="modal-delete" class="btn-danger" style="display:none">Remove</button>
+      <button id="modal-save" class="btn-primary">Save</button>
+      <button class="modal-close" id="drawer-close">✕</button>
+    </div>
+  </div>
+
+  <div class="drawer-body">
+
+    <!-- ── LEFT: Appearance editor (shared across all component types) ── -->
+    <div class="editor-left">
+
+      <!-- Live preview -->
+      <div class="editor-preview" id="ea-preview" style="background:#1e293b">
+        <div class="preview-icon" id="ea-preview-icon"></div>
+        <div class="preview-label" id="ea-preview-label">Button</div>
+      </div>
+
+      <!-- Icon -->
+      <div class="ea-section" id="ea-icon-section">
+        <div class="ea-label">Icon</div>
+        <div class="ea-icon-row">
+          <input id="ea-icon" type="text" maxlength="4" placeholder="🎮" class="ea-icon-input">
+          <button class="btn-sm emoji-picker-btn" id="ea-emoji-toggle">Pick emoji ▾</button>
+        </div>
+        <div class="emoji-picker-panel" id="ea-emoji-panel" style="display:none">
+          <input id="ea-emoji-search" type="text" placeholder="Search emojis..." class="emoji-search">
+          <div class="emoji-cats" id="ea-emoji-cats"></div>
+          <div class="emoji-grid" id="ea-emoji-grid"></div>
+        </div>
+      </div>
+
+      <!-- Label -->
+      <div class="ea-section" id="ea-label-section">
+        <div class="ea-label">Label</div>
+        <input id="ea-label" type="text" placeholder="Button label">
+      </div>
+
+      <!-- Background -->
+      <div class="ea-section">
+        <div class="ea-label">Background</div>
+        <div class="swatch-grid" id="ea-solid-swatches"></div>
+        <div class="ea-label" style="margin-top:8px">Gradients</div>
+        <div class="swatch-grid" id="ea-gradient-swatches"></div>
+        <div class="ea-color-row">
+          <input id="ea-color" type="color" value="#1e293b" title="Custom color">
+          <span class="ea-custom-label">Custom</span>
+        </div>
+      </div>
+
+      <!-- Active-state color + initial state (switch only) -->
+      <div class="ea-section" id="ea-active-section" style="display:none">
+        <div class="ea-label">Active color</div>
+        <div class="swatch-grid" id="ea-active-swatches"></div>
+        <div class="ea-color-row">
+          <input id="ea-active-color" type="color" value="#4f46e5" title="Active state color">
+          <span class="ea-custom-label">Custom</span>
+        </div>
+        <div class="field-row" style="margin-top:8px">
+          <label>Default on</label>
+          <label class="toggle-switch"><input id="ea-active-default" type="checkbox"><span class="toggle-knob"></span></label>
+        </div>
+      </div>
+
+      <!-- Image / GIF -->
+      <div class="ea-section" id="ea-image-section">
+        <div class="ea-label">Image / GIF</div>
+        <div id="ea-img-preview" class="ea-img-preview" style="display:none"></div>
+        <div class="ea-img-actions">
+          <button class="btn-sm" id="ea-img-upload-btn">Upload</button>
+          <button class="btn-sm btn-sm-danger" id="ea-img-clear-btn" style="display:none">Remove</button>
+        </div>
+        <input id="ea-img-url" type="text" placeholder="Paste image or GIF URL…" class="ea-img-url">
+        <input id="ea-img-file" type="file" accept="image/*" style="display:none">
+      </div>
+
+    </div>
+
+    <!-- ── RIGHT: Action config ── -->
+    <div class="editor-right">
+
+    <!-- ── Button fields ── -->
+    <div id="comp-button">
+      <div class="drawer-fields">
+        <div class="field-row">
+          <label>Action</label>
+          <select id="f-action-type">
+            <option value="builtin">Built-in</option>
+            <option value="hotkey">Hotkey</option>
+            <option value="command">Command</option>
+            <option value="sequence">Sequence</option>
+            <option value="page">Go to Page</option>
+            <option value="webhook">Webhook (HTTP request)</option>
+            <option value="conditional">Conditional</option>
+          </select>
+        </div>
+      </div>
+      <div id="action-builtin"><div class="field-row"><label>Action</label><select id="f-builtin-key"></select></div></div>
+      <div id="action-hotkey" style="display:none">
+        <div class="field-row">
+          <label>Keys</label>
+          <div>
+            <input id="f-hotkey" type="text" placeholder="ctrl+shift+f5">
+            <div class="field-hint">xdotool format (e.g. <code>ctrl+shift+f5</code>, <code>super+l</code>)</div>
+          </div>
+        </div>
+      </div>
+      <div id="action-command" style="display:none"><div class="field-row"><label>Command</label><input id="f-command" type="text" placeholder="e.g. playerctl play-pause"></div></div>
+      <div id="action-sequence" style="display:none">
+        <div class="field-row"><label>Commands<br><span class="field-hint">one per line</span></label><textarea id="f-sequence" rows="3" placeholder="cmd1&#10;cmd2"></textarea></div>
+        <div class="field-row"><label>Delay ms</label><input id="f-seq-delay" type="number" value="150" min="0"></div>
+      </div>
+      <div id="action-page" style="display:none"><div class="field-row"><label>Page</label><select id="f-page-target"></select></div></div>
+      <div id="action-plugin" style="display:none">
+        <div class="field-row">
+          <label>Action</label>
+          <select id="f-plugin-action"><option value="">— no plugins installed —</option></select>
+        </div>
+        <div id="plugin-comp-hint" class="field-hint plugin-comp-hint" style="display:none"></div>
+        <div class="plugin-reload-row">
+          <button class="btn-sm" id="plugin-reload-btn">⟳ Reload plugins</button>
+          <span class="field-hint">Plugins live in <code>userData/plugins/</code></span>
+        </div>
+        <div id="plugin-params"></div>
+      </div>
+      <div id="action-webhook" style="display:none">
+        <div class="field-row">
+          <label>URL</label>
+          <div>
+            <input id="f-webhook-url" type="text" placeholder="https://example.com/api">
+            <div class="field-hint">Must start with http:// or https://</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Method</label>
+          <select id="f-webhook-method">
+            <option value="POST" selected>POST</option>
+            <option value="GET">GET</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Body</label>
+          <div>
+            <textarea id="f-webhook-body" rows="3" placeholder='{"key":"value"}'></textarea>
+            <div class="field-hint">Optional body for POST / PUT requests</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Headers</label>
+          <div>
+            <textarea id="f-webhook-headers" rows="2" placeholder="Authorization: Bearer token&#10;X-Custom: value"></textarea>
+            <div class="field-hint">One <code>Key: Value</code> per line</div>
+          </div>
+        </div>
+      </div>
+      <div id="action-conditional" style="display:none">
+        <div class="field-row">
+          <label>Condition</label>
+          <select id="f-cond-condition">
+            <option value="toggle">Toggle active</option>
+            <option value="tile">Tile contains</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Key</label>
+          <div>
+            <input id="f-cond-key" type="text" placeholder="page1:button1">
+            <div class="field-hint">pageId:componentId of the toggle or tile</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Value</label>
+          <div>
+            <input id="f-cond-value" type="text" placeholder="running (for tile contains)">
+            <div class="field-hint">Text the tile must contain (tile condition only)</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Then</label>
+          <div>
+            <select id="f-cond-then-type">
+              <option value="command">Command</option>
+              <option value="hotkey">Hotkey</option>
+              <option value="builtin">Built-in</option>
+            </select>
+            <input id="f-cond-then-cmd" type="text" placeholder="command or combo" style="margin-top:4px">
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Else</label>
+          <div>
+            <select id="f-cond-else-type">
+              <option value="">(none)</option>
+              <option value="command">Command</option>
+              <option value="hotkey">Hotkey</option>
+              <option value="builtin">Built-in</option>
+            </select>
+            <input id="f-cond-else-cmd" type="text" placeholder="command or combo (optional)" style="margin-top:4px">
+          </div>
+        </div>
+      </div>
+      <div class="hold-section">
+        <div class="hold-header">
+          <span class="field-hint">Hold action (500ms)</span>
+          <label class="sw sw-sm">
+            <input type="checkbox" id="f-hold-enable">
+            <span class="sw-track"><span class="sw-thumb"></span></span>
+          </label>
+        </div>
+        <div id="hold-fields" style="display:none">
+          <div class="field-row"><label>Hold cmd</label><input id="f-hold-command" type="text" placeholder="e.g. systemctl suspend"></div>
+        </div>
+      </div>
+      <!-- compat hidden inputs -->
+      <input id="f-icon" type="hidden"><input id="f-label" type="hidden"><input id="f-color" type="hidden" value="#1e293b">
+      <input id="img-file-input" type="hidden"><div id="img-preview" style="display:none"></div>
+      <button id="img-upload-btn" style="display:none"></button><button id="img-clear-btn" style="display:none"></button>
+    </div>
+
+    <!-- ── Switch fields ── -->
+    <div id="comp-switch" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row">
+          <label>Action</label>
+          <select id="t-action-type">
+            <option value="builtin">Built-in</option>
+            <option value="hotkey">Hotkey</option>
+            <option value="command">Commands (on/off)</option>
+            <option value="sequence">Sequence</option>
+            <option value="page">Go to Page</option>
+            <option value="plugin">Plugin</option>
+          </select>
+        </div>
+      </div>
+      <div id="t-action-builtin" style="display:none"><div class="field-row"><label>Action</label><select id="t-builtin-key"></select></div></div>
+      <div id="t-action-hotkey" style="display:none">
+        <div class="field-row"><label>Keys</label><div><input id="t-hotkey" type="text" placeholder="ctrl+shift+f5"><div class="field-hint">xdotool format (e.g. <code>ctrl+shift+f5</code>)</div></div></div>
+      </div>
+      <div id="t-action-command" style="display:none">
+        <div class="field-row"><label>Off cmd</label><input id="t-off-cmd" type="text" placeholder="command when turning OFF"></div>
+        <div class="field-row"><label>On cmd</label><input id="t-on-cmd" type="text" placeholder="command when turning ON"></div>
+      </div>
+      <div id="t-action-sequence" style="display:none">
+        <div class="field-row"><label>Commands<br><span class="field-hint">one per line</span></label><textarea id="t-sequence" rows="3" placeholder="cmd1&#10;cmd2"></textarea></div>
+        <div class="field-row"><label>Delay ms</label><input id="t-seq-delay" type="number" value="150" min="0"></div>
+      </div>
+      <div id="t-action-page" style="display:none"><div class="field-row"><label>Page</label><select id="t-page-target"></select></div></div>
+      <div id="t-action-plugin" style="display:none">
+        <div class="field-row"><label>Action</label><select id="t-plugin-action"><option value="">— no plugins installed —</option></select></div>
+      </div>
+      <!-- hidden compat -->
+      <input id="t-label" type="hidden"><input id="t-color" type="hidden" value="#1e293b">
+      <input id="t-icon" type="hidden"><input id="t-active-icon" type="hidden">
+      <input id="t-active-label" type="hidden"><input id="t-active-color" type="hidden" value="#4f46e5">
+      <input id="t-img-file-input" type="hidden"><input id="t-active-img-file-input" type="hidden">
+      <div id="t-img-preview" style="display:none"></div><div id="t-active-img-preview" style="display:none"></div>
+      <button id="t-img-upload-btn" style="display:none"></button><button id="t-img-clear-btn" style="display:none"></button>
+      <button id="t-active-img-upload-btn" style="display:none"></button><button id="t-active-img-clear-btn" style="display:none"></button>
+    </div>
+
+    <!-- ── Slider fields ── -->
+    <div id="comp-slider" style="display:none">
+      <input id="s-label" type="hidden"><input id="s-color" type="hidden" value="#1e293b">
+      <div class="drawer-fields">
+        <div class="field-row"><label>Min</label><input id="s-min" type="number" value="0"></div>
+        <div class="field-row"><label>Max</label><input id="s-max" type="number" value="100"></div>
+        <div class="field-row"><label>Step</label><input id="s-step" type="number" value="5" min="1"></div>
+        <div class="field-row"><label>Default</label><input id="s-default" type="number" value="50"></div>
+        <div class="field-row">
+          <label>Infinite</label>
+          <div>
+            <label class="sw sw-sm"><input type="checkbox" id="s-infinite"><span class="sw-track"><span class="sw-thumb"></span></span></label>
+            <div class="field-hint">Resets to center each drag — unlimited range</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Action</label>
+          <select id="s-action-type">
+            <option value="volume">System Volume</option>
+            <option value="scroll">Mouse Scroll</option>
+            <option value="hotkey">Hotkey</option>
+            <option value="command">Command</option>
+            <option value="sequence">Sequence</option>
+            <option value="plugin">Plugin</option>
+          </select>
+        </div>
+      </div>
+      <div id="s-action-volume" style="display:none">
+        <div class="field-hint" style="padding:4px 0">Maps slider 0–100 directly to system audio volume.</div>
+      </div>
+      <div id="s-action-scroll" style="display:none">
+        <div class="field-row">
+          <label>Direction</label>
+          <select id="s-scroll-dir">
+            <option value="vertical">Vertical ↑↓</option>
+            <option value="horizontal">Horizontal ←→</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Speed</label>
+          <select id="s-scroll-speed">
+            <option value="1">Slow (1×)</option>
+            <option value="2" selected>Normal (2×)</option>
+            <option value="4">Fast (4×)</option>
+          </select>
+        </div>
+        <div class="field-hint" style="padding:4px 0">Sends mouse scroll events. Best with Infinite enabled.</div>
+      </div>
+      <div id="s-action-hotkey" style="display:none">
+        <div class="field-row"><label>Keys</label><div><input id="s-hotkey" type="text" placeholder="ctrl+shift+f5"><div class="field-hint">Fired on release</div></div></div>
+      </div>
+      <div id="s-action-command" style="display:none">
+        <div class="field-row">
+          <label>Command</label>
+          <div>
+            <input id="s-command" type="text" placeholder="wpctl set-volume @DEFAULT_AUDIO_SINK@ {value}%">
+            <div class="field-hint">Use <code>{value}</code> where the number goes</div>
+          </div>
+        </div>
+      </div>
+      <div id="s-action-sequence" style="display:none">
+        <div class="field-row"><label>Commands<br><span class="field-hint">one per line, <code>{value}</code> ok</span></label><textarea id="s-sequence" rows="3" placeholder="cmd1&#10;cmd2"></textarea></div>
+        <div class="field-row"><label>Delay ms</label><input id="s-seq-delay" type="number" value="150" min="0"></div>
+      </div>
+      <div id="s-action-plugin" style="display:none">
+        <div class="field-row"><label>Action</label><select id="s-plugin-action"><option value="">— no plugins installed —</option></select></div>
+        <div class="field-hint" style="padding:4px 0">Use <code>{value}</code> in params — slider value is passed automatically.</div>
+      </div>
+    </div>
+
+    <!-- ── Knob fields ── -->
+    <div id="comp-knob" style="display:none">
+      <input id="k-label" type="hidden"><input id="k-color" type="hidden" value="#1e293b">
+      <div class="drawer-fields">
+        <div class="field-row"><label>Min</label><input id="k-min" type="number" value="0"></div>
+        <div class="field-row"><label>Max</label><input id="k-max" type="number" value="100"></div>
+        <div class="field-row"><label>Step</label><input id="k-step" type="number" value="1" min="1"></div>
+        <div class="field-row"><label>Default</label><input id="k-default" type="number" value="50"></div>
+        <div class="field-row">
+          <label>Infinite</label>
+          <div>
+            <label class="sw sw-sm"><input type="checkbox" id="k-infinite"><span class="sw-track"><span class="sw-thumb"></span></span></label>
+            <div class="field-hint">Resets to center each drag — unlimited range</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Action</label>
+          <select id="k-action-type">
+            <option value="volume">System Volume</option>
+            <option value="scroll">Mouse Scroll</option>
+            <option value="hotkey">Hotkey</option>
+            <option value="command">Command</option>
+            <option value="sequence">Sequence</option>
+            <option value="plugin">Plugin</option>
+          </select>
+        </div>
+      </div>
+      <div id="k-action-volume" style="display:none">
+        <div class="field-hint" style="padding:4px 0">Maps knob 0–100 directly to system audio volume.</div>
+      </div>
+      <div id="k-action-scroll" style="display:none">
+        <div class="field-row">
+          <label>Direction</label>
+          <select id="k-scroll-dir">
+            <option value="vertical">Vertical ↑↓</option>
+            <option value="horizontal">Horizontal ←→</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Speed</label>
+          <select id="k-scroll-speed">
+            <option value="1">Slow (1×)</option>
+            <option value="2" selected>Normal (2×)</option>
+            <option value="4">Fast (4×)</option>
+          </select>
+        </div>
+        <div class="field-hint" style="padding:4px 0">Sends mouse scroll events. Best with Infinite enabled.</div>
+      </div>
+      <div id="k-action-hotkey" style="display:none">
+        <div class="field-row"><label>Keys</label><div><input id="k-hotkey" type="text" placeholder="ctrl+shift+f5"><div class="field-hint">Fired on release</div></div></div>
+      </div>
+      <div id="k-action-command" style="display:none">
+        <div class="field-row">
+          <label>Command</label>
+          <div>
+            <input id="k-command" type="text" placeholder="e.g. amixer set Master {value}%">
+            <div class="field-hint">Use <code>{value}</code>. Rotate to adjust.</div>
+          </div>
+        </div>
+      </div>
+      <div id="k-action-sequence" style="display:none">
+        <div class="field-row"><label>Commands<br><span class="field-hint">one per line, <code>{value}</code> ok</span></label><textarea id="k-sequence" rows="3" placeholder="cmd1&#10;cmd2"></textarea></div>
+        <div class="field-row"><label>Delay ms</label><input id="k-seq-delay" type="number" value="150" min="0"></div>
+      </div>
+      <div id="k-action-plugin" style="display:none">
+        <div class="field-row"><label>Action</label><select id="k-plugin-action"><option value="">— no plugins installed —</option></select></div>
+        <div class="field-hint" style="padding:4px 0">Use <code>{value}</code> in params — knob value is passed automatically.</div>
+      </div>
+    </div>
+
+    <!-- ── Tile fields ── -->
+    <div id="comp-tile" style="display:none">
+      <input id="tile-label" type="hidden"><input id="tile-color" type="hidden" value="#0f172a">
+      <div class="drawer-fields">
+        <div class="field-row">
+          <label>Command</label>
+          <div>
+            <input id="tile-command" type="text" placeholder="playerctl metadata title">
+            <div class="field-hint">Runs every N seconds — first line shown</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Interval</label>
+          <div>
+            <input id="tile-interval" type="number" value="5" min="1" max="3600">
+            <div class="field-hint">seconds</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Format</label>
+          <div>
+            <input id="tile-format" type="text" placeholder="{value}">
+            <div class="field-hint">Use <code>{value}</code> for output, e.g. <code>CPU: {value}%</code></div>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Tap cmd</label>
+          <div>
+            <input id="tile-tap-cmd" type="text" placeholder="optional command when tapped">
+          </div>
+        </div>
+      </div>
+      <div class="drawer-section-title" style="margin-top:8px">Plugin event subscription</div>
+      <div class="drawer-fields">
+        <div class="field-row"><label>Plugin</label><input id="ptile-plugin-id" type="text" placeholder="system-info"></div>
+        <div class="field-row"><label>Event</label><input id="ptile-event" type="text" placeholder="cpu"></div>
+        <div class="field-row"><label>Field</label>
+          <div>
+            <input id="ptile-field" type="text" placeholder="value" value="value">
+            <div class="field-hint">Field from plugin's broadcast payload. Leave plugin blank to disable.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Voice fields ── -->
+    <div id="comp-voice" style="display:none">
+      <input id="voice-icon" type="hidden"><input id="voice-label" type="hidden"><input id="voice-color" type="hidden" value="#1e293b">
+      <div class="drawer-fields">
+        <div class="field-row">
+          <label>Mode</label>
+          <select id="voice-mode">
+            <option value="smart">Smart — press matching button by voice</option>
+            <option value="command">Command — run transcript as shell command</option>
+            <option value="template">Template — run command with transcript</option>
+          </select>
+        </div>
+      </div>
+      <div id="voice-cmd-field" style="display:none">
+        <div class="field-row">
+          <label>Command</label>
+          <div>
+            <input id="voice-command" type="text" placeholder="notify-send '{transcript}'">
+            <div class="field-hint">Use <code>{transcript}</code> for the spoken text</div>
+          </div>
+        </div>
+      </div>
+      <div class="field-hint" style="padding:4px 0">Tap to start/stop listening. Needs microphone permission.</div>
+    </div>
+
+    <!-- ── Folder fields ── -->
+    <div id="comp-folder" style="display:none">
+      <div class="field-hint" style="padding:8px 0">Tap on phone to enter. Add sub-pages below, then click <strong>Enter Folder</strong> to add buttons inside.</div>
+      <div class="folder-pages-section">
+        <div class="folder-section-hdr">
+          <span class="folder-section-label">Sub-pages</span>
+          <button class="btn-sm" id="folder-add-page-btn">+ Add page</button>
+        </div>
+        <div id="folder-pages-list" class="folder-pages-list"></div>
+      </div>
+      <button class="btn-primary" id="folder-edit-btn" style="margin-top:14px;width:100%">Enter Folder →</button>
+    </div>
+
+    <!-- ── Counter fields ── -->
+    <div id="comp-counter" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row"><label>Min</label><input id="ctr-min" type="number" value="0"></div>
+        <div class="field-row"><label>Max</label><div><input id="ctr-max" type="number" placeholder="unlimited"><div class="field-hint">Leave blank for unlimited</div></div></div>
+        <div class="field-row"><label>Step</label><input id="ctr-step" type="number" value="1" min="1"></div>
+      </div>
+      <div class="field-hint" style="padding:4px 0">Tap to increment. Hold to decrement. Double-tap to reset.</div>
+    </div>
+
+    <!-- ── Clock fields ── -->
+    <div id="comp-clock" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row"><label>Format</label><div><input id="clk-format" type="text" value="HH:mm"><div class="field-hint">Tokens: HH hh mm ss A</div></div></div>
+        <div class="field-row">
+          <label>Show date</label>
+          <label class="sw sw-sm"><input type="checkbox" id="clk-show-date"><span class="sw-track"><span class="sw-thumb"></span></span></label>
+        </div>
+        <div class="field-row"><label>Date format</label><div><input id="clk-date-format" type="text" placeholder="ddd D MMM"><div class="field-hint">Tokens: ddd D MMM YYYY</div></div></div>
+        <div class="field-row"><label>Timezone</label><div><input id="clk-timezone" type="text" placeholder="America/New_York"><div class="field-hint">IANA timezone (blank = local)</div></div></div>
+      </div>
+    </div>
+
+    <!-- ── Stopwatch fields ── -->
+    <div id="comp-stopwatch" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row">
+          <label>Show ms</label>
+          <label class="sw sw-sm"><input type="checkbox" id="sw-show-ms"><span class="sw-track"><span class="sw-thumb"></span></span></label>
+        </div>
+      </div>
+      <div class="field-hint" style="padding:4px 0">Tap to start/stop. Hold to reset.</div>
+    </div>
+
+    <!-- ── Countdown fields ── -->
+    <div id="comp-countdown" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row"><label>Duration</label><div><input id="cd-duration" type="number" value="60" min="1"><div class="field-hint">seconds</div></div></div>
+        <div class="field-row"><label>On complete</label><div><input id="cd-on-complete" type="text" placeholder="shell command (optional)"><div class="field-hint">Runs when countdown reaches zero</div></div></div>
+      </div>
+      <div class="field-hint" style="padding:4px 0">Tap to start/stop. Hold to reset.</div>
+    </div>
+
+    <div id="comp-trackpad" style="display:none">
+      <div class="drawer-fields">
+        <div class="field-row"><label>Sensitivity</label><div><input id="tp-sensitivity" type="number" value="1.0" min="0.1" max="5" step="0.1"><div class="field-hint">Mouse speed multiplier (default 1.0)</div></div></div>
+        <div class="field-row"><label>Natural scroll</label><div><label class="toggle-switch"><input id="tp-natural-scroll" type="checkbox"><span class="toggle-knob"></span></label><div class="field-hint">Reverses scroll direction</div></div></div>
+        <div class="drawer-section-title" style="margin-top:12px;font-size:11px;font-weight:600;text-transform:uppercase;opacity:.6">Gesture Actions</div>
+        <div class="field-row"><label>Swipe Left</label><select id="tp-gest-swipeLeft"><option value="">— none —</option></select></div>
+        <div class="field-row"><label>Swipe Right</label><select id="tp-gest-swipeRight"><option value="">— none —</option></select></div>
+        <div class="field-row"><label>Swipe Up</label><select id="tp-gest-swipeUp"><option value="">— none —</option></select></div>
+        <div class="field-row"><label>Swipe Down</label><select id="tp-gest-swipeDown"><option value="">— none —</option></select></div>
+        <div class="field-row"><label>Double Tap</label><select id="tp-gest-doubleTap"><option value="">— none —</option></select></div>
+        <div class="field-row"><label>Long Press</label><select id="tp-gest-longPress"><option value="">— none —</option></select></div>
+        <div class="field-row"><label>2-Finger Tap</label><select id="tp-gest-twoFingerTap"><option value="">— none —</option></select></div>
+        <div class="field-row"><label>Pinch In</label><select id="tp-gest-pinchIn"><option value="">— none —</option></select></div>
+        <div class="field-row"><label>Pinch Out</label><select id="tp-gest-pinchOut"><option value="">— none —</option></select></div>
+      </div>
+      <div class="field-hint" style="padding:4px 0">1-finger drag: move · Tap: click · 2-finger drag: scroll · 2-finger tap: gesture</div>
+    </div>
+
+    </div><!-- /editor-right -->
+  </div><!-- /drawer-body -->
+</div><!-- /drawer -->
 
 <!-- ── Add Page Modal ── -->
 <div class="modal-overlay" id="page-modal" style="display:none">
-  <div class="modal" style="max-width:340px">
+  <div class="modal" style="max-width:480px">
     <div class="modal-header">
       <h2>New Page</h2>
       <button class="modal-close" id="page-modal-close">✕</button>
     </div>
     <div class="modal-body">
-      <div class="field-row">
-        <label>Page name</label>
-        <input id="f-page-name" type="text" placeholder="e.g. Gaming">
-      </div>
+      <div class="field-row"><label>Name</label><input id="f-page-name" type="text" placeholder="e.g. Gaming"></div>
+      <div class="page-modal-tpl-label">Templates</div>
+      <div class="page-modal-tpl-grid" id="page-modal-templates"></div>
     </div>
     <div class="modal-footer">
-      <button id="page-modal-save" class="btn-primary">Create</button>
+      <button id="page-modal-save" class="btn-primary" disabled>Create</button>
     </div>
   </div>
 </div>
 
-<script src="renderer.js"></script>
+<!-- ── Page Settings Modal ── -->
+<div class="modal-overlay" id="rename-modal" style="display:none">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <h2>Page Settings</h2>
+      <button class="modal-close" id="rename-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row"><label>Name</label><input id="f-rename-name" type="text" placeholder="Page name"></div>
+      <div class="grid-inputs" style="margin-top:4px">
+        <div class="s-field">
+          <label>Cols</label>
+          <input id="f-rename-cols" type="number" min="1" max="8" placeholder="3">
+        </div>
+        <div class="s-field">
+          <label>Rows</label>
+          <input id="f-rename-rows" type="number" min="1" max="8" placeholder="4">
+        </div>
+      </div>
+      <div class="field-hint" style="margin-top:8px;margin-bottom:4px;font-size:11px">Auto-profile (match active window)</div>
+      <div class="field-row">
+        <label style="font-size:11px">Window class</label>
+        <input id="f-auto-class" type="text" placeholder="e.g. spotify" style="font-size:11px">
+      </div>
+      <div class="field-row">
+        <label style="font-size:11px">Window title</label>
+        <input id="f-auto-title" type="text" placeholder="e.g. Spotify" style="font-size:11px">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="rename-modal-save" class="btn-primary">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<script type="module" src="./src/main.ts"></script>
 </body>
 </html>

@@ -1,0 +1,210 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    name: Test (gate)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Unit + browser tests
+        run: npm test
+
+      - name: Build app
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Install Xvfb
+        run: sudo apt-get install -y xvfb
+
+      - name: PWA E2E tests
+        run: npx playwright test --project=pwa
+
+      - name: Renderer E2E tests (Electron + Xvfb)
+        run: xvfb-run --auto-servernum npx playwright test --project=renderer
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux
+          - os: windows-2022
+            platform: win
+
+    runs-on: ${{ matrix.os }}
+    name: Build (${{ matrix.platform }})
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app
+        run: npm run build
+
+      # --publish never: we handle publishing in the release job below.
+      # GH_TOKEN is still needed so electron-builder can read release metadata.
+      - name: Package (Linux)
+        if: matrix.platform == 'linux'
+        run: npx electron-builder --linux --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Code signing — degrades gracefully when secrets are absent (unsigned build).
+      # To enable signing, add these GitHub Secrets to the repo:
+      #   MAC_CERTS            — base64-encoded Developer ID Application .p12 certificate
+      #                          openssl base64 -in cert.p12 | tr -d '\n'
+      #   MAC_CERTS_PASSWORD   — password used when exporting the .p12
+      #   APPLE_ID             — your Apple ID email (for notarization)
+      #   APPLE_APP_SPECIFIC_PASSWORD — app-specific password from appleid.apple.com
+      #   APPLE_TEAM_ID        — 10-char team ID from developer.apple.com/account
+      #
+      # Once those 5 secrets are set, this step signs + notarizes automatically.
+      # CSC_IDENTITY_AUTO_DISCOVERY stays false — we always provide the cert explicitly.
+      - name: Package (macOS)
+        if: matrix.platform == 'mac'
+        run: npx electron-builder --mac --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          CSC_LINK: ${{ secrets.MAC_CERTS }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      # Code signing — degrades gracefully when secrets are absent (unsigned build).
+      # To enable signing, add these GitHub Secrets to the repo:
+      #   WIN_CSC_LINK         — base64-encoded .pfx certificate
+      #                          certutil -encode cert.pfx cert.b64 && type cert.b64
+      #   WIN_CSC_KEY_PASSWORD — password used when exporting the .pfx
+      #
+      # Once those 2 secrets are set, this step signs automatically.
+      - name: Package (Windows)
+        if: matrix.platform == 'win'
+        run: npx electron-builder --win --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # latest*.yml and *.blockmap are required by electron-updater.
+      # They must travel alongside the installers into the GitHub Release.
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-builds
+          path: |
+            releases/*.AppImage
+            releases/*.deb
+            releases/latest*.yml
+            releases/*.blockmap
+
+      - name: Upload macOS artifacts
+        if: matrix.platform == 'mac'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-builds
+          path: |
+            releases/*.dmg
+            releases/latest*.yml
+            releases/*.blockmap
+
+      - name: Upload Windows artifacts
+        if: matrix.platform == 'win'
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-builds
+          path: |
+            releases/*.exe
+            releases/latest*.yml
+            releases/*.blockmap
+
+  release:
+    needs: build
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f | sort
+
+      # NOTE: If you add a license-generation step here, it MUST include:
+      #   env:
+      #     LICENSE_SECRET: ${{ secrets.LICENSE_SECRET }}
+      # Example (uncomment and adjust path as needed):
+      # - name: Generate license keys
+      #   run: node scripts/gen-license.js
+      #   env:
+      #     LICENSE_SECRET: ${{ secrets.LICENSE_SECRET }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MacroPad ${{ github.ref_name }}
+          body: |
+            ## Download
+
+            | Platform | File |
+            |----------|------|
+            | Linux (portable) | `macropad-*.AppImage` |
+            | Linux (Debian/Ubuntu) | `macropad-*.deb` |
+            | Windows | `macropad-*.exe` |
+
+            ### Quick start
+            1. Download for your platform
+            2. Run it — a QR code appears
+            3. Scan the QR code on your phone
+            4. Start adding buttons
+
+            See the [full documentation](https://chunkies.github.io/macropad/) and [plugin SDK](https://chunkies.github.io/macropad/plugins).
+          files: |
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
+            artifacts/**/*.exe
+            artifacts/**/latest*.yml
+            artifacts/**/*.blockmap
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

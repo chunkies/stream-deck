@@ -1,0 +1,62 @@
+import type { Config, Page } from '../../electron/shared/types.js'
+
+export interface NavStackEntry {
+  pages:   Page[]
+  pageIdx: number
+}
+
+export interface WidgetCacheEntry {
+  label?: string
+  color?: string
+  icon?:  string
+  image?: string | null
+  badge?: string
+}
+
+export interface PwaState {
+  ws:             WebSocket | null
+  config:         Config | null
+  currentPageIdx: number
+  toggleStates:   Record<string, boolean>
+  currentPages:   Page[] | null
+  navStack:       NavStackEntry[]
+  swipeStartX:    number
+  swipeStartY:    number
+  swipeStartTime: number
+  swipeTracking:  boolean
+  swipeActive:    boolean
+  widgetCache:    Map<string, WidgetCacheEntry>
+}
+
+export const state: PwaState = {
+  ws:             null,
+  config:         null,
+  currentPageIdx: 0,
+  toggleStates:   {},
+  currentPages:   null,
+  navStack:       [],
+  swipeStartX:    0,
+  swipeStartY:    0,
+  swipeStartTime: 0,
+  swipeTracking:  false,
+  swipeActive:    false,
+  widgetCache:    new Map(),
+}
+
+export interface DomRefs {
+  grid:      HTMLElement
+  pageDots:  HTMLElement
+  pageNameEl: HTMLElement
+  wsStatusEl: HTMLElement
+  wsDotEl:   HTMLElement
+  offlineEl: HTMLElement
+}
+
+export const dom: DomRefs = {
+  grid:       document.getElementById('grid')!,
+  pageDots:   document.getElementById('page-dots')!,
+  pageNameEl: document.getElementById('page-name')!,
+  wsStatusEl: document.getElementById('ws-status')!,
+  wsDotEl:    document.getElementById('ws-dot')!,
+  offlineEl:  document.getElementById('offline-overlay')!,
+}

@@ -1,0 +1,143 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/chunkies/macropad/master/sdk/manifest.schema.json",
+  "title": "MacroPad Plugin Manifest",
+  "description": "Schema for MacroPad plugin manifest.json files",
+  "type": "object",
+  "required": ["id", "name", "version", "description", "author", "actions"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": {
+      "type": "string",
+      "description": "Unique plugin identifier. Lowercase letters, numbers, and hyphens only. Must match the GitHub repo suffix (macropad-plugin-{id}).",
+      "pattern": "^[a-z0-9-]+$",
+      "examples": ["my-plugin", "obs", "system-info"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable display name shown in the marketplace.",
+      "examples": ["My Plugin", "OBS Studio"]
+    },
+    "version": {
+      "type": "string",
+      "description": "Semver version string. Must match the GitHub release tag (v{version}).",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0", "2.1.3"]
+    },
+    "description": {
+      "type": "string",
+      "description": "One or two sentence description shown in the marketplace card.",
+      "maxLength": 280
+    },
+    "author": {
+      "type": "string",
+      "description": "Author name or organisation.",
+      "examples": ["Your Name", "MacroPad Team"]
+    },
+    "authorUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Link to the author's GitHub profile or website."
+    },
+    "homepage": {
+      "type": "string",
+      "format": "uri",
+      "description": "Link to the plugin's GitHub repo or docs page."
+    },
+    "icon": {
+      "type": "string",
+      "description": "Emoji or URL to a 128×128 PNG shown in the marketplace.",
+      "examples": ["🔊", "🎬", "https://example.com/icon.png"]
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier.",
+      "examples": ["MIT", "Apache-2.0", "GPL-3.0"]
+    },
+    "minAppVersion": {
+      "type": "string",
+      "description": "Minimum MacroPad app version required to run this plugin.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0"]
+    },
+    "actions": {
+      "type": "array",
+      "description": "List of action keys this plugin handles. Each action maps to a component type the user can place on their macropad.",
+      "items": {
+        "type": "object",
+        "required": ["key", "label"],
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Unique action key. Must be prefixed with the plugin id (e.g. 'my-plugin.doThing').",
+            "pattern": "^[a-z0-9-]+\\.[a-zA-Z0-9._-]+$",
+            "examples": ["my-plugin.doThing", "obs.startRecording"]
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable label shown in the component action picker."
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional longer description shown as a tooltip."
+          },
+          "componentType": {
+            "type": "string",
+            "description": "Suggested component type for this action.",
+            "enum": ["button", "switch", "slider", "knob", "voice", "trackpad"]
+          },
+          "params": {
+            "type": "array",
+            "description": "Configurable parameters the user sets in the admin panel. Passed to the handler as the params argument.",
+            "items": {
+              "type": "object",
+              "required": ["key", "label"],
+              "additionalProperties": false,
+              "properties": {
+                "key":         { "type": "string" },
+                "label":       { "type": "string" },
+                "description": { "type": "string" },
+                "type": {
+                  "type": "string",
+                  "enum": ["text", "number", "textarea"],
+                  "default": "text"
+                },
+                "default":     { "type": ["string", "number"] },
+                "placeholder": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "widgets": {
+      "type": "array",
+      "description": "Optional live-data widgets this plugin can populate. Users drag these onto their grid and the plugin pushes updates via sdk.broadcast().",
+      "items": {
+        "type": "object",
+        "required": ["key", "label"],
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Event name passed to sdk.broadcast(key, data). Must be prefixed with the plugin id.",
+            "examples": ["my-plugin.status", "obs.nowPlaying"]
+          },
+          "label":          { "type": "string" },
+          "description":    { "type": "string" },
+          "icon":           { "type": "string" },
+          "field": {
+            "type": "string",
+            "description": "Which field of the broadcast payload to display. Defaults to 'value'.",
+            "default": "value",
+            "examples": ["value", "text", "count", "remaining"]
+          },
+          "defaultColSpan": { "type": "integer", "minimum": 1, "maximum": 6 },
+          "defaultRowSpan": { "type": "integer", "minimum": 1, "maximum": 6 }
+        }
+      }
+    }
+  }
+}

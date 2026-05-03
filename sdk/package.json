@@ -1,0 +1,37 @@
+{
+  "name": "@macropad/plugin-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript types and testing utilities for building MacroPad plugins",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./testing": {
+      "types": "./testing.d.ts",
+      "default": "./testing.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "testing.js",
+    "testing.d.ts",
+    "manifest.schema.json",
+    "README.md"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chunkies/macropad",
+    "directory": "sdk"
+  },
+  "homepage": "https://chunkies.github.io/macropad",
+  "keywords": ["macropad", "plugin", "sdk", "types"],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

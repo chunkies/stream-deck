@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "moduleResolution": "node"
+  },
+  "include": [
+    "electron/shared/**/*",
+    "electron/main/**/*",
+    "electron/preload/**/*",
+    "electron/server/**/*",
+    "electron/tests/server/**/*",
+    "electron/tests/setup.ts",
+    "electron.vite.config.ts"
+  ]
+}

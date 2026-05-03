@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": []
+  },
+  "include": [
+    "electron/shared/**/*",
+    "electron/renderer/src/**/*",
+    "pwa/src/**/*",
+    "electron/tests/renderer/**/*",
+    "pwa/tests/**/*"
+  ]
+}
